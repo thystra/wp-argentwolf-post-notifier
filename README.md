@@ -1,5 +1,4 @@
-\
-<!-- /home/alan/src/wp-argentwolf-post-notifier/README.md -->
+<!-- ~/src/wp-argentwolf-post-notifier/README.md -->
 # ArgentWolf Post Notifier
 
 ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
@@ -7,7 +6,9 @@ verified, unsubscribe-capable email notifications when posts are actually
 published.
 
 The project is currently in the architecture and repository-scaffolding stage.
-No functional plugin release is available yet.
+No functional plugin release is available yet. The intended public distribution
+channel, once the plugin is complete and operational, is the WordPress.org
+Plugin Directory.
 
 ## Planned features
 
@@ -43,9 +44,15 @@ Registered WordPress account verification remains a separate companion plugin:
 
 [ArgentWolf Email Verification](https://github.com/thystra/wp-argentwolf-email-verification)
 
-The notifier will use a stable public verification API from that plugin and
-will fail closed for registered-user recipients when no authoritative
-verification provider is available.
+The notifier will use the companion plugin's canonical
+`argentwolf_email_verification_...` public API and will fail closed for
+registered-user recipients when no authoritative verification provider is
+available.
+
+The preferred WordPress.org release sequence is to publish and obtain approval
+for ArgentWolf Email Verification first, then declare the approved
+`argentwolf-email-verification` slug through the notifier's `Requires Plugins`
+header.
 
 Standalone subscribers are maintained by the notifier and must complete a
 double-opt-in confirmation before they are eligible for post notifications.
@@ -66,28 +73,36 @@ the send queue and are rechecked before delivery.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete proposed design.
 
+## Canonical name
+
+The public product name is **ArgentWolf Post Notifier**. The canonical plugin
+slug and text domain are `argentwolf-post-notifier`. Public code identifiers
+use the `ArgentWolf\PostNotifier` namespace or the
+`argentwolf_post_notifier_` prefix.
+
 ## Development
 
-Primary development checkout:
+A conventional local checkout is:
 
-```text
-/home/alan/src/wp-argentwolf-post-notifier
-```
-
-Primary development host:
-
-```text
-fafnir
+```bash
+mkdir -p ~/src
+cd ~/src
+git clone https://github.com/thystra/wp-argentwolf-post-notifier.git
+cd ~/src/wp-argentwolf-post-notifier
 ```
 
 The first development milestones are:
 
 1. establish the plugin skeleton and automated quality gates;
-2. add a public verification contract to the companion plugin;
+2. publish a canonical verification contract from the companion plugin;
 3. implement versioned database schema;
 4. implement the verified standalone subscription block;
 5. implement the editor and actual-publication campaign lifecycle; and
 6. implement content rendering, queue delivery, unsubscribe, and statistics.
+
+WordPress.org submission is a separate release gate after operational testing.
+The exact submitted ZIP must pass Plugin Check, package inspection, privacy and
+license review, and the full supported-version test matrix.
 
 See [TODO.md](TODO.md) for acceptance criteria and release planning.
 
@@ -108,4 +123,4 @@ Development is supported through the repository's GitHub funding links:
 Financial support does not change the GPL license or grant exclusive control
 over the open-source project.
 
-<!-- EOF: /home/alan/src/wp-argentwolf-post-notifier/README.md -->
+<!-- EOF: ~/src/wp-argentwolf-post-notifier/README.md -->

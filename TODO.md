@@ -1,5 +1,4 @@
-\
-<!-- /home/alan/src/wp-argentwolf-post-notifier/TODO.md -->
+<!-- ~/src/wp-argentwolf-post-notifier/TODO.md -->
 # ArgentWolf Post Notifier TODO
 
 ## How to use this file
@@ -25,7 +24,7 @@ Target: documentation scaffold
 - [x] Add `TODO.md`.
 - [x] Expand `README.md`.
 - [x] Add GPL-2.0 license text.
-- [ ] Review the initial documentation commit on `fafnir`.
+- [ ] Review the initial documentation commit in the local development checkout.
 - [ ] Commit and push the documentation baseline.
 
 Acceptance criteria:
@@ -75,23 +74,33 @@ Target: companion verification release plus notifier adapter
 Repository:
 `https://github.com/thystra/wp-argentwolf-email-verification`
 
+- [ ] Standardize the companion display name on
+      `ArgentWolf Email Verification`.
+- [ ] Standardize new public APIs on the
+      `argentwolf_email_verification_` prefix; do not publish new `wrav_*` or
+      `argent_*` APIs.
 - [ ] Add a stable public function:
-      `wrav_ev_is_user_verified( int $user_id ): bool`.
+      `argentwolf_email_verification_is_user_verified( int $user_id ): bool`.
 - [ ] Consider a status function returning `verified`, `pending`, or `unknown`.
 - [ ] Preserve the current safety rule that missing legacy pending metadata does
       not lock out existing users.
 - [ ] Document the public API.
 - [ ] Add tests for verified, pending, missing-meta, deleted, and administrator
       users.
-- [ ] Confirm the existing `wrav_ev_user_verified` action fires for all intended
+- [ ] Add and test the canonical
+      `argentwolf_email_verification_user_verified` action for all intended
       successful verification paths, including administrative verification if
       desired.
 - [ ] Release and tag the companion API version.
+- [ ] Prepare the companion plugin for WordPress.org review.
+- [ ] Confirm the requested `argentwolf-email-verification` slug.
+- [ ] Submit and obtain WordPress.org approval before declaring it as a hard
+      dependency of ArgentWolf Post Notifier.
 
 ### Notifier work
 
 - [ ] Define `VerificationProvider`.
-- [ ] Implement `WolfRavenEmailVerificationProvider`.
+- [ ] Implement `ArgentWolfEmailVerificationProvider`.
 - [ ] Add provider detection and version/health reporting.
 - [ ] Fail closed for registered-user delivery when no authoritative provider
       is available.
@@ -467,7 +476,7 @@ Target: `0.1.0`
 - [ ] Push `main`.
 - [ ] Create annotated `v0.1.0` tag.
 - [ ] Push tag.
-- [ ] Publish release archive and checksum.
+- [ ] Publish the GitHub release archive and checksum.
 - [ ] Separately validate any production deployment.
 
 Acceptance criteria:
@@ -479,7 +488,99 @@ Acceptance criteria:
 - [ ] Staging validates registered-user verification and standalone double
       opt-in.
 - [ ] Staging validates unsubscribe and click tracking.
-- [ ] Release publication is not confused with production installation.
+- [ ] Release publication is not confused with production installation or
+      WordPress.org publication.
+
+## Milestone 15 — WordPress.org submission and directory release
+
+Target: after operational `0.1.0` validation
+
+### Dependency readiness
+
+- [ ] Complete WordPress.org review of ArgentWolf Email Verification first if
+      it remains a hard dependency.
+- [ ] Plan the two submissions sequentially; WordPress.org generally permits
+      only one active plugin submission per developer at a time.
+- [ ] Confirm its approved slug is exactly
+      `argentwolf-email-verification`.
+- [ ] Add `Requires Plugins: argentwolf-email-verification` only after the
+      dependency is resolvable through WordPress.org.
+- [ ] Otherwise make registered-user verification self-contained before
+      submitting the notifier.
+
+### Naming and metadata
+
+- [ ] Confirm the requested `argentwolf-post-notifier` slug is available.
+- [ ] Use `ArgentWolf Post Notifier` in the main plugin header and
+      `readme.txt`.
+- [ ] Add a unique Plugin URI.
+- [ ] Set accurate `Requires at least`, `Tested up to`, and `Requires PHP`
+      values from the tested matrix.
+- [ ] Keep the main plugin Version and `readme.txt` Stable Tag identical.
+- [ ] Declare GPL-2.0-or-later consistently in headers, `readme.txt`, and
+      `LICENSE`.
+- [ ] Confirm the author and contributor WordPress.org accounts and contact
+      information are current.
+
+### Directory package review
+
+- [ ] Create a concise WordPress.org-format `readme.txt`.
+- [ ] Keep `readme.txt` below the practical 10 KB limit.
+- [ ] Document subscriber data, click statistics, retention, uninstall behavior,
+      and any external mail transport assumptions.
+- [ ] Add directory icon, banner, and screenshot assets after UI stabilization.
+- [ ] Ensure each screenshot entry matches an uploaded screenshot asset.
+- [ ] Remove any GitHub/custom update checker from the directory build.
+- [ ] Verify no remote executable code, undisclosed telemetry, or unnecessary
+      external requests exist.
+- [ ] Use WordPress-provided libraries where available.
+- [ ] Audit every bundled dependency, image, and asset for GPL compatibility.
+- [ ] Include or link to human-readable source and reproducible build
+      instructions for generated assets.
+- [ ] Exclude tests, caches, backups, local environment files, full development
+      dependency trees, and unrelated documentation from the installable ZIP.
+- [ ] Retain source manifests such as `composer.json` when needed for
+      open-source review.
+- [ ] Verify the exact submission ZIP installs through **Plugins → Add New →
+      Upload Plugin**.
+- [ ] Verify the submission ZIP is below 10 MB.
+
+### Automated and manual review
+
+- [ ] Test with `WP_DEBUG` enabled.
+- [ ] Run WordPress Plugin Check using the current WordPress.org review profile.
+- [ ] Resolve every error and review each warning.
+- [ ] Run PHPCS, PHPUnit, JavaScript tests, editor end-to-end tests,
+      accessibility checks, and `git diff --check`.
+- [ ] Review all capability checks, nonces, REST permission callbacks,
+      sanitization, validation, escaping, SQL preparation, and direct-file
+      access guards.
+- [ ] Produce a WordPress.org submission-readiness report tied to the exact ZIP
+      checksum.
+- [ ] Do not describe the plugin as directory-compliant until this gate passes.
+
+### Submission and release
+
+- [ ] Whitelist `plugins@wordpress.org` for review correspondence.
+- [ ] Upload the complete production-ready ZIP for review.
+- [ ] Track and answer review feedback in the original review thread.
+- [ ] After approval, initialize the WordPress.org SVN repository.
+- [ ] Publish reviewed code to `trunk` and a matching stable version tag.
+- [ ] Upload directory assets to the SVN `assets` directory.
+- [ ] Confirm the WordPress.org release through the release-management
+      workflow.
+- [ ] Verify installation and updates from WordPress.org on a clean staging
+      site.
+- [ ] Use SVN only for reviewed releases, not day-to-day development commits.
+
+Acceptance criteria:
+
+- [ ] The dependency is resolvable or no longer required.
+- [ ] Plugin Check and the full test matrix pass for the submitted ZIP.
+- [ ] Plugin headers, Stable Tag, Git tag, package version, and SVN tag agree.
+- [ ] WordPress.org approves the plugin.
+- [ ] The directory package installs, activates, sends test notifications, and
+      processes a scheduled publication on staging.
 
 ## Later candidates
 
@@ -500,4 +601,4 @@ These are not part of the first stable release unless reprioritized.
 - [ ] Administrative campaign cancellation and restart policies.
 - [ ] Webhook/API integrations only after authentication and privacy design.
 
-<!-- EOF: /home/alan/src/wp-argentwolf-post-notifier/TODO.md -->
+<!-- EOF: ~/src/wp-argentwolf-post-notifier/TODO.md -->

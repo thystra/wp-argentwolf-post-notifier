@@ -1,5 +1,4 @@
-\
-<!-- /home/alan/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->
+<!-- ~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->
 # ArgentWolf Post Notifier Architecture
 
 ## 1. Purpose
@@ -32,6 +31,28 @@ components are implemented.
 
 The initial repository contains only project scaffolding. Implementation is
 tracked in `TODO.md`.
+
+## 2.1 Canonical naming
+
+The public product and vendor name is **ArgentWolf Post Notifier**. The project
+must not be described as “Argent Post Notifier.”
+
+Canonical identifiers are:
+
+```text
+Display name: ArgentWolf Post Notifier
+Plugin slug: argentwolf-post-notifier
+Text domain: argentwolf-post-notifier
+PHP namespace: ArgentWolf\PostNotifier
+Public API prefix: argentwolf_post_notifier_
+Constant prefix: ARGENTWOLF_POST_NOTIFIER_
+Block namespace: argentwolf-post-notifier
+Custom-table prefix: argentwolf_pn_
+```
+
+The shorter custom-table prefix exists to keep SQL identifiers practical. It
+does not authorize shortened public branding. Legacy `awpn_*`, `argent_*`, and
+`wrav_*` identifiers must not be introduced into the new plugin APIs.
 
 ## 3. Core design decisions
 
@@ -84,13 +105,13 @@ resolution and again before send.
 The preferred companion API is:
 
 ```php
-wrav_ev_is_user_verified( int $user_id ): bool
+argentwolf_email_verification_is_user_verified( int $user_id ): bool
 ```
 
 The companion plugin should also expose a status API when practical:
 
 ```php
-wrav_ev_get_user_verification_status( int $user_id ): string
+argentwolf_email_verification_get_user_verification_status( int $user_id ): string
 ```
 
 Expected status values are `verified`, `pending`, and `unknown`.
@@ -112,19 +133,62 @@ A temporary compatibility adapter that reads the companion plugin's private
 user-meta marker may be used only if it is isolated, prominently documented,
 covered by compatibility tests, and scheduled for removal.
 
-### 3.4 Static plugin dependency headers are not the primary integration
+### 3.4 Dependency and WordPress.org sequencing
 
-The companion plugin is distributed from GitHub and is not assumed to be
-installable from the WordPress.org plugin directory. The notifier therefore
-uses runtime integration checks rather than depending solely on a
-`Requires Plugins` header.
+During development, integration is discovered at runtime through the
+verification adapter so either plugin can be developed and tested independently.
 
-Runtime checks report:
+For WordPress.org distribution, the preferred final relationship is a formal
+dependency on the separately published **ArgentWolf Email Verification**
+plugin:
 
-- companion plugin detected and supported;
-- companion plugin detected but API too old;
-- alternate verification adapter active; or
-- no authoritative registered-user verification provider.
+```text
+Requires Plugins: argentwolf-email-verification
+```
+
+WordPress resolves `Requires Plugins` through WordPress.org-formatted slugs.
+Therefore:
+
+1. the companion plugin must use the canonical display name and slug;
+2. its public API must use the
+   `argentwolf_email_verification_...` prefix;
+3. it must be accepted into the WordPress.org Plugin Directory first; and
+4. the notifier must not be submitted with a hard dependency that WordPress.org
+   cannot resolve.
+
+If the companion plugin is not available from WordPress.org, the notifier may
+continue development with runtime health checks, but WordPress.org submission is
+blocked unless registered-user verification is made self-contained.
+
+### 3.5 WordPress.org distribution architecture
+
+GitHub is the development and issue-tracking repository. WordPress.org SVN is a
+release repository and receives only reviewed release artifacts.
+
+The release pipeline must produce a deterministic directory package that:
+
+- is complete and operational;
+- contains GPL-compatible code, data, images, and dependencies;
+- uses WordPress core libraries rather than bundled replacements;
+- contains no custom update checker or remote executable code;
+- contains no undisclosed telemetry or external requests;
+- excludes tests, caches, backups, local environment files, and unnecessary
+  development dependencies;
+- includes or links to human-readable source and build instructions for
+  generated JavaScript and CSS;
+- contains a valid `readme.txt` kept under the practical WordPress.org size
+  limit;
+- keeps the main plugin Version and readme Stable Tag synchronized;
+- includes accurate privacy and third-party-service disclosures; and
+- passes the current WordPress Plugin Check review profile.
+
+The subscription and click-statistics features are local to the WordPress site.
+They do not contact an ArgentWolf-operated service. Optional SMTP plugins remain
+separate site-owner choices.
+
+A WordPress.org submission-readiness report is a release artifact. Architecture
+alignment alone is not proof that the finished plugin or submitted ZIP complies
+with every directory guideline.
 
 ## 4. Major components
 
@@ -181,11 +245,11 @@ Post meta stores editorial intent and configuration, not delivery state.
 Suggested keys:
 
 ```text
-_awpn_send_intent
-_awpn_audience_config
-_awpn_content_mode
-_awpn_template_id
-_awpn_cta_text
+_argentwolf_post_notifier_send_intent
+_argentwolf_post_notifier_audience_config
+_argentwolf_post_notifier_content_mode
+_argentwolf_post_notifier_template_id
+_argentwolf_post_notifier_cta_text
 ```
 
 Registered post meta must have REST schemas, sanitization, authorization, and
@@ -244,7 +308,7 @@ Registered users remain in WordPress user tables. Their notification preference
 is stored in user meta:
 
 ```text
-_awpn_subscription_preference
+_argentwolf_post_notifier_subscription_preference
 ```
 
 Suggested values:
@@ -296,13 +360,13 @@ interface VerificationProvider {
 Initial provider:
 
 ```text
-WolfRavenEmailVerificationProvider
+ArgentWolfEmailVerificationProvider
 ```
 
 Optional extension filter:
 
 ```text
-awpn_verification_provider
+argentwolf_post_notifier_verification_provider
 ```
 
 The provider result is authoritative for registered-user eligibility. Unknown
@@ -513,7 +577,7 @@ no_email
 
 Table prefixes use `$wpdb->prefix`.
 
-### 8.1 `awpn_campaigns`
+### 8.1 `argentwolf_pn_campaigns`
 
 Representative fields:
 
@@ -549,7 +613,7 @@ last_error_message
 Large bodies may be split into a campaign-content table if measurement shows a
 need.
 
-### 8.2 `awpn_campaign_recipients`
+### 8.2 `argentwolf_pn_campaign_recipients`
 
 Representative fields:
 
@@ -583,7 +647,7 @@ The email snapshot is needed so a frozen campaign does not silently change
 destination when a profile is edited after campaign creation. Privacy erasure
 and retention rules control its lifetime.
 
-### 8.3 `awpn_subscribers`
+### 8.3 `argentwolf_pn_subscribers`
 
 Representative fields:
 
@@ -609,7 +673,7 @@ updated_at_gmt
 
 Do not store raw confirmation or management tokens.
 
-### 8.4 `awpn_lists`
+### 8.4 `argentwolf_pn_lists`
 
 Representative fields:
 
@@ -623,7 +687,7 @@ created_at_gmt
 updated_at_gmt
 ```
 
-### 8.5 `awpn_list_members`
+### 8.5 `argentwolf_pn_list_members`
 
 Representative fields:
 
@@ -637,7 +701,7 @@ created_at_gmt
 UNIQUE typed membership
 ```
 
-### 8.6 `awpn_suppressions`
+### 8.6 `argentwolf_pn_suppressions`
 
 Representative fields:
 
@@ -656,7 +720,7 @@ privacy decision. At minimum, a deterministic keyed hash must prevent
 re-importing an unsubscribed address without an explicit verified resubscribe
 workflow.
 
-### 8.7 `awpn_clicks`
+### 8.7 `argentwolf_pn_clicks`
 
 Representative fields:
 
@@ -880,7 +944,30 @@ Deferred unless separately approved:
 - network-wide multisite campaigns; and
 - automatic notification on ordinary post updates.
 
-## 18. Relevant WordPress behavior
+## 18. WordPress.org release model
+
+The Git repository remains the authoritative development history. A GitHub tag
+and release archive are not, by themselves, a WordPress.org release.
+
+Before initial submission:
+
+1. verify the requested slug is still available;
+2. finish and test the complete plugin;
+3. prepare the main plugin header and `readme.txt`;
+4. run the supported WordPress/PHP matrix with `WP_DEBUG` enabled;
+5. run WordPress Plugin Check using the current review checks;
+6. audit GPL compatibility and third-party notices;
+7. inspect the exact submission ZIP and keep it below WordPress.org's upload
+   limit;
+8. ensure the companion dependency is available from WordPress.org if declared;
+   and
+9. produce a written submission-readiness report.
+
+After approval, publish stable releases through WordPress.org SVN using matching
+version tags. Do not use SVN trunk as a development branch or push noisy
+intermediate commits.
+
+## 19. Relevant WordPress behavior
 
 The implementation should be checked against current official WordPress
 documentation before coding or changing hooks.
@@ -895,9 +982,17 @@ Key references:
   `https://developer.wordpress.org/reference/functions/wp_publish_post/`
 - Plugin headers and dependencies:
   `https://developer.wordpress.org/plugins/plugin-basics/header-requirements/`
+- Detailed Plugin Guidelines:
+  `https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/`
+- Common review issues:
+  `https://developer.wordpress.org/plugins/wordpress-org/common-issues/`
+- WordPress.org `readme.txt` format:
+  `https://developer.wordpress.org/plugins/wordpress-org/how-your-readme-txt-works/`
+- WordPress.org submission and maintenance:
+  `https://developer.wordpress.org/plugins/wordpress-org/planning-submitting-and-maintaining-plugins/`
 - WordPress Cron:
   `https://developer.wordpress.org/plugins/cron/`
 - Plugin privacy:
   `https://developer.wordpress.org/plugins/privacy/`
 
-<!-- EOF: /home/alan/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->
+<!-- EOF: ~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->

@@ -1,5 +1,4 @@
-\
-<!-- /home/alan/src/wp-argentwolf-post-notifier/AGENTS.md -->
+<!-- ~/src/wp-argentwolf-post-notifier/AGENTS.md -->
 # AGENTS.md
 
 This file contains project-specific instructions for agents and maintainers
@@ -11,12 +10,14 @@ in this file take precedence for this project.
 
 - Project: ArgentWolf Post Notifier
 - Repository: `https://github.com/thystra/wp-argentwolf-post-notifier`
-- Development host: `fafnir`
-- Development checkout: `/home/alan/src/wp-argentwolf-post-notifier`
-- Normal development user: `alan`
+- Conventional local checkout: `~/src/wp-argentwolf-post-notifier`
 - Plugin slug: `argentwolf-post-notifier`
 - Text domain: `argentwolf-post-notifier`
 - PHP namespace: `ArgentWolf\PostNotifier`
+- Public PHP/API prefix: `argentwolf_post_notifier_`
+- Constant prefix: `ARGENTWOLF_POST_NOTIFIER_`
+- Block namespace: `argentwolf-post-notifier`
+- Internal custom-table prefix: `argentwolf_pn_`
 - License: GPL-2.0-or-later
 - Initial supported post type: `post`
 - Intended WordPress baseline: WordPress 7.x, while maintaining the documented
@@ -33,22 +34,44 @@ package, and production evidence support that statement.
 - Be helpful and conversational when discussing architecture, alternatives,
   risks, privacy, deliverability, and operational consequences.
 - Clearly distinguish verified behavior, proposed design, assumptions, test
-  results, package state, and production state.
-- Before every command block, state the exact computer where it runs.
-- Commands for this repository normally run on `fafnir`.
+  results, package state, WordPress.org submission state, and production state.
+- Before every command block, state the exact computer where it runs when that
+  computer is known from the active task. Do not commit private hostnames,
+  usernames, addresses, or deployment paths to this public repository.
 - Give complete, copy-pasteable commands.
-- Always use the full path
-  `/home/alan/src/wp-argentwolf-post-notifier` when identifying the checkout.
-- Browser downloads belong in `/home/alan/Downloads/`.
+- Use `~/src/wp-argentwolf-post-notifier` as the conventional local checkout
+  path in public documentation. Resolve `~` to the active operator's home
+  directory at execution time.
+- Use `~/Downloads/` for generic download examples.
 - Never confuse a ChatGPT sandbox path such as `/mnt/data/...` with a path on
-  `fafnir` or `nidhoggur`.
+  an operator's computer.
 - Put backups outside the repository working tree, normally below
-  `/home/alan/src/wp-argentwolf-post-notifier-backups/`.
+  `~/src/wp-argentwolf-post-notifier-backups/`.
 - Preserve local work. Stop on an unexpected file, manifest, anchor, dirty
   worktree, or repository state rather than guessing.
 - Prefer versioned applicator scripts for multi-file changes.
-- Do not commit, push, tag, package, or deploy unless the requested workflow
-  includes that operation and its output can be reviewed.
+- Do not commit, push, tag, package, submit to WordPress.org, or deploy unless
+  the requested workflow includes that operation and its output can be
+  reviewed.
+
+## Canonical naming
+
+The public product name is **ArgentWolf Post Notifier**. Do not shorten it to
+“Argent Post Notifier” or use “Argent” as the product or vendor name.
+
+Use these identifiers consistently:
+
+- display name: `ArgentWolf Post Notifier`;
+- plugin slug and text domain: `argentwolf-post-notifier`;
+- PHP namespace: `ArgentWolf\PostNotifier`;
+- public functions, actions, and filters: `argentwolf_post_notifier_...`;
+- constants: `ARGENTWOLF_POST_NOTIFIER_...`;
+- block names: `argentwolf-post-notifier/...`; and
+- compact database table suffixes: `argentwolf_pn_...`.
+
+The compact `argentwolf_pn_` storage prefix is an implementation identifier,
+not a public-facing product name. Do not introduce new `argent_*`, `awpn_*`, or
+legacy `wrav_*` identifiers.
 
 ## Product invariants
 
@@ -135,7 +158,7 @@ The preferred integration contract is a stable public function supplied by the
 verification plugin, for example:
 
 ```php
-wrav_ev_is_user_verified( int $user_id ): bool
+argentwolf_email_verification_is_user_verified( int $user_id ): bool
 ```
 
 The notifier should wrap external verification in its own adapter interface so
@@ -155,9 +178,43 @@ being a WordPress.org dependency, do not assume the `Requires Plugins` header
 can install or resolve it correctly. Provide runtime health checks, clear admin
 notices, and pre-publish eligibility warnings.
 
+## WordPress.org distribution target
+
+The intended public distribution channel is the WordPress.org Plugin Directory
+after the plugin is complete and operational.
+
+- Treat GitHub as the development repository and WordPress.org SVN as a release
+  repository.
+- Do not add a custom GitHub update checker to a WordPress.org package.
+- Keep the directory package production-ready and exclude tests, caches,
+  backups, local configuration, and unnecessary development artifacts.
+- Include or clearly link human-readable source and build instructions for any
+  compiled or minified assets.
+- Maintain a valid `readme.txt`, matching plugin-header version and Stable Tag,
+  complete license declarations, internationalization, privacy disclosures,
+  and a unique Plugin URI.
+- Run WordPress Plugin Check with the current WordPress.org review checks before
+  submission and before every directory release.
+- Do not claim current guideline compliance solely from architecture
+  documentation; compliance is determined from the finished code and exact
+  submitted archive.
+
+If ArgentWolf Email Verification remains a hard dependency, submit and obtain
+approval for that plugin under the intended
+`argentwolf-email-verification` WordPress.org slug before submitting this
+plugin. Only then add:
+
+```text
+Requires Plugins: argentwolf-email-verification
+```
+
+Until the dependency is available from WordPress.org, use runtime integration
+during development and treat WordPress.org submission of the notifier as
+blocked.
+
 ## Intended architecture
 
-Read `/home/alan/src/wp-argentwolf-post-notifier/ARCHITECTURE.md` before making
+Read `~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md` before making
 structural changes. Update that document when changing:
 
 - campaign lifecycle;
@@ -171,7 +228,7 @@ structural changes. Update that document when changing:
 - public endpoint behavior; or
 - supported post types.
 
-Use `/home/alan/src/wp-argentwolf-post-notifier/TODO.md` as the active milestone
+Use `~/src/wp-argentwolf-post-notifier/TODO.md` as the active milestone
 and task ledger. Mark work complete only after its acceptance criteria and tests
 pass.
 
@@ -197,7 +254,7 @@ pass.
 - Keep transport behind an interface even when the first implementation uses
   `wp_mail()`.
 - Make public hooks and filters deliberate, documented, stable, and prefixed
-  `awpn_`.
+  `argentwolf_post_notifier_`.
 
 ## Required tests
 
@@ -249,19 +306,19 @@ Do not claim success until command output confirms it.
 
 ## Commit and release workflow
 
-A normal review sequence on `fafnir` should include complete commands for:
+A normal review sequence for the conventional checkout should include:
 
 ```bash
-cd /home/alan/src/wp-argentwolf-post-notifier
+cd ~/src/wp-argentwolf-post-notifier
 git status --short --branch
 git diff --check
 git diff
 ```
 
-When Alan approves the change, include explicit commands for:
+When the maintainer approves the change, include explicit commands for:
 
 ```bash
-cd /home/alan/src/wp-argentwolf-post-notifier
+cd ~/src/wp-argentwolf-post-notifier
 git add <explicit-paths>
 git commit -m "<descriptive message>"
 git push origin main
@@ -279,4 +336,4 @@ Do not use broad `git add .` in release instructions when explicit files can be
 listed. Git publication does not establish that a package was installed or
 activated on a WordPress site.
 
-<!-- EOF: /home/alan/src/wp-argentwolf-post-notifier/AGENTS.md -->
+<!-- EOF: ~/src/wp-argentwolf-post-notifier/AGENTS.md -->
