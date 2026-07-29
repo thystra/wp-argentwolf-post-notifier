@@ -29,8 +29,10 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The initial repository contains only project scaffolding. Implementation is
-tracked in `TODO.md`.
+The repository contains the `0.1.0-alpha.1` development skeleton. It defines
+bootstrap, lifecycle, service-registration, test, CI, and packaging boundaries,
+but it does not implement campaigns, subscribers, delivery, unsubscribe, or
+statistics. Implementation remains tracked in `TODO.md`.
 
 ## 2.1 Canonical naming
 

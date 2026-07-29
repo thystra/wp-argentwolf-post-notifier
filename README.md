@@ -5,10 +5,23 @@ ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
 verified, unsubscribe-capable email notifications when posts are actually
 published.
 
-The project is currently in the architecture and repository-scaffolding stage.
-No functional plugin release is available yet. The intended public distribution
-channel, once the plugin is complete and operational, is the WordPress.org
-Plugin Directory.
+The project now contains the `0.1.0-alpha.1` development skeleton: plugin
+bootstrap, lifecycle handlers, namespaced service registration, automated
+quality-gate configuration, and deterministic packaging. Campaign creation,
+subscriber collection, delivery, unsubscribe handling, and statistics are not
+implemented yet. The intended public distribution channel, once the plugin is
+complete and operational, is the WordPress.org Plugin Directory.
+
+## Development requirements
+
+- WordPress 7.0 or newer;
+- PHP 8.2 or newer;
+- Composer 2 for PHP development dependencies;
+- Node.js 20 or newer and npm 9 or newer for editor tooling.
+
+The source tree includes a verified project-local Composer installer helper.
+The runtime package has no third-party PHP dependency in this alpha and retains
+a reviewed fallback PSR-4 autoloader.
 
 ## Planned features
 

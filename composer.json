@@ -1,0 +1,50 @@
+{
+  "name": "thystra/argentwolf-post-notifier",
+  "description": "Development scaffold for the ArgentWolf Post Notifier WordPress plugin.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "phpunit/phpunit": "^11.5",
+    "wp-coding-standards/wpcs": "^3.2",
+    "yoast/phpunit-polyfills": "^3.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArgentWolf\\PostNotifier\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ArgentWolf\\PostNotifier\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "scripts": {
+    "lint:php": "php tests/lint-php.php",
+    "phpcs": "phpcs -q",
+    "test:unit": "phpunit --configuration phpunit.xml.dist",
+    "test:integration": "phpunit --configuration phpunit.integration.xml.dist",
+    "test:dependency-free": "php tests/run.php",
+    "test": [
+      "@lint:php",
+      "@phpcs",
+      "@test:unit",
+      "@test:dependency-free"
+    ],
+    "build": "bash build/build-plugin.sh 0.1.0-alpha.1"
+  },
+  "support": {
+    "issues": "https://github.com/thystra/wp-argentwolf-post-notifier/issues",
+    "source": "https://github.com/thystra/wp-argentwolf-post-notifier"
+  }
+}

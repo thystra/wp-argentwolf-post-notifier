@@ -24,46 +24,51 @@ Target: documentation scaffold
 - [x] Add `TODO.md`.
 - [x] Expand `README.md`.
 - [x] Add GPL-2.0 license text.
-- [ ] Review the initial documentation commit in the local development checkout.
-- [ ] Commit and push the documentation baseline.
+- [x] Review the initial documentation commit in the local development checkout.
+- [x] Commit and push the documentation baseline.
 
 Acceptance criteria:
 
-- [ ] `git diff --check` passes.
-- [ ] Repository status contains only the intended documentation files.
-- [ ] Documentation consistently distinguishes design from implemented state.
-- [ ] Scheduled-post and verification invariants are present in all relevant
+- [x] `git diff --check` passes.
+- [x] Repository status contains only the intended documentation files.
+- [x] Documentation consistently distinguishes design from implemented state.
+- [x] Scheduled-post and verification invariants are present in all relevant
       documents.
 
 ## Milestone 1 — Development skeleton and quality gates
 
 Target: `0.1.0-alpha.1`
 
-- [ ] Select and document the minimum supported WordPress version.
-- [ ] Select and document the minimum supported PHP version.
-- [ ] Add the main plugin bootstrap file.
-- [ ] Add Composer autoloading.
-- [ ] Add namespaced service registration.
-- [ ] Add PHPCS with WordPress Coding Standards.
-- [ ] Add PHPUnit and the WordPress test environment.
-- [ ] Add JavaScript build tooling for editor and blocks.
-- [ ] Add lint commands for PHP, JavaScript, CSS, and Markdown as appropriate.
-- [ ] Add GitHub Actions for syntax, PHPCS, PHPUnit, and JavaScript tests.
-- [ ] Add `.gitattributes`, `.gitignore`, and distribution exclusions.
-- [ ] Add `readme.txt` for the WordPress plugin package.
-- [ ] Add activation, deactivation, upgrade, and uninstall skeletons.
-- [ ] Add centralized version constants and schema versioning.
-- [ ] Add a development build command.
-- [ ] Add a clean distribution-zip command.
-- [ ] Add a package-manifest test.
+Implemented candidate scope: bootstrap, lifecycle handlers, service container,
+dependency definitions, tests, CI, JavaScript tooling, and package validation.
+Implementation boxes are complete; acceptance gates remain open until the
+committed checkout passes CI and minimum-version activation testing.
+
+- [x] Select and document the minimum supported WordPress version: 7.0.
+- [x] Select and document the minimum supported PHP version: 8.2.
+- [x] Add the main plugin bootstrap file.
+- [x] Add Composer autoloading.
+- [x] Add namespaced service registration.
+- [x] Add PHPCS with WordPress Coding Standards.
+- [x] Add PHPUnit and the WordPress test environment.
+- [x] Add JavaScript build tooling for editor and blocks.
+- [x] Add lint commands for PHP, JavaScript, CSS, and Markdown as appropriate.
+- [x] Add GitHub Actions for syntax, PHPCS, PHPUnit, and JavaScript tests.
+- [x] Add `.gitattributes`, `.gitignore`, and distribution exclusions.
+- [x] Add `readme.txt` for the WordPress plugin package.
+- [x] Add activation, deactivation, upgrade, and uninstall skeletons.
+- [x] Add centralized version constants and schema versioning.
+- [x] Add a development build command.
+- [x] Add a clean distribution-zip command.
+- [x] Add a package-manifest test.
 
 Acceptance criteria:
 
 - [ ] A clean checkout installs dependencies and runs all empty/skeleton suites.
 - [ ] Plugin activates and deactivates without warnings on the selected minimum
       WordPress/PHP combination and WordPress 7.x.
-- [ ] Distribution archive contains only expected files.
-- [ ] No application feature is falsely described as complete.
+- [x] Distribution archive contains only expected files.
+- [x] No application feature is falsely described as complete.
 
 ## Milestone 2 — Verification-provider contract
 

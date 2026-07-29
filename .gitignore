@@ -1,0 +1,9 @@
+/.phpunit.cache/
+/assets/build/
+/dist/
+/node_modules/
+/tools/composer.phar
+/vendor/
+*.log
+*.swp
+.DS_Store

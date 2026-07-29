@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<ruleset name="ArgentWolf Post Notifier">
+	<description>WordPress Coding Standards for ArgentWolf Post Notifier.</description>
+	<file>argentwolf-post-notifier.php</file>
+	<file>autoload.php</file>
+	<file>src</file>
+	<file>uninstall.php</file>
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<exclude-pattern>node_modules/*</exclude-pattern>
+	<exclude-pattern>dist/*</exclude-pattern>
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<config name="minimum_supported_wp_version" value="7.0"/>
+	<!--
+		PSR-4 class files intentionally match their class names. Renaming these
+		files to lowercase-hyphenated WordPress filenames would break Composer
+		and the package fallback autoloader on case-sensitive filesystems.
+	-->
+	<rule ref="WordPress">
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+	</rule>
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="argentwolf-post-notifier"/>
+			</property>
+		</properties>
+	</rule>
+	<rule ref="Generic.Files.LineLength">
+		<properties>
+			<property name="lineLimit" value="100"/>
+			<property name="absoluteLineLimit" value="120"/>
+		</properties>
+	</rule>
+</ruleset>

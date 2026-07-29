@@ -1,0 +1,30 @@
+* text=auto eol=lf
+
+*.php text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.txt text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+
+/.github export-ignore
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/AGENTS.md export-ignore
+/ARCHITECTURE.md export-ignore
+/CHANGELOG.md export-ignore
+/TODO.md export-ignore
+/assets/src export-ignore
+/bin export-ignore
+/build export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/phpcs.xml.dist export-ignore
+/phpunit.xml.dist export-ignore
+/phpunit.integration.xml.dist export-ignore
+/tests export-ignore
+/webpack.config.cjs export-ignore

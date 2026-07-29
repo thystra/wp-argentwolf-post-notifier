@@ -20,8 +20,10 @@ in this file take precedence for this project.
 - Internal custom-table prefix: `argentwolf_pn_`
 - License: GPL-2.0-or-later
 - Initial supported post type: `post`
-- Intended WordPress baseline: WordPress 7.x, while maintaining the documented
-  minimum version selected before the first release
+- Minimum supported WordPress version: WordPress 7.0
+- Minimum supported PHP version: PHP 8.2
+- Development and release testing must also cover the current stable WordPress
+  and supported PHP branches
 - Companion project:
   `https://github.com/thystra/wp-argentwolf-email-verification`
 
@@ -46,7 +48,7 @@ package, and production evidence support that statement.
 - Never confuse a ChatGPT sandbox path such as `/mnt/data/...` with a path on
   an operator's computer.
 - Put backups outside the repository working tree, normally below
-  `~/src/wp-argentwolf-post-notifier-backups/`.
+  `/home/alan/src/backups/wp-argentwolf-post-notifier-backups/`.
 - Preserve local work. Stop on an unexpected file, manifest, anchor, dirty
   worktree, or repository state rather than guessing.
 - Prefer versioned applicator scripts for multi-file changes.

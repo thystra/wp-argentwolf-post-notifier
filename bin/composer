@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# File: bin/composer
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
+
+if command -v composer >/dev/null 2>&1; then
+	composer "$@"
+elif [[ -f "${PROJECT_DIR}/tools/composer.phar" ]]; then
+	php "${PROJECT_DIR}/tools/composer.phar" "$@"
+else
+	printf '%s\n' \
+		'Composer is not installed.' \
+		'Run: bash build/install-composer.sh' >&2
+fi
+
+# EOF: bin/composer
