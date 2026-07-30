@@ -67,6 +67,21 @@ $assert(
 	),
 	'WordPress core export destination must not be pre-created.'
 );
+$required_test_constants = array(
+	'WP_TESTS_DOMAIN',
+	'WP_TESTS_EMAIL',
+	'WP_TESTS_TITLE',
+	'WP_PHP_BINARY',
+);
+foreach ( $required_test_constants as $test_constant ) {
+	$assert(
+		str_contains(
+			(string) $installer,
+			"define( '{$test_constant}'"
+		),
+		sprintf( 'Installer must define %s.', $test_constant )
+	);
+}
 $container = new Container();
 $created   = 0;
 $container->set(

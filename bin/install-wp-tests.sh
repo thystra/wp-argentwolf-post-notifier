@@ -52,6 +52,10 @@ define( 'DB_PASSWORD', '${db_pass}' );
 define( 'DB_HOST', '${db_host}' );
 define( 'DB_CHARSET', 'utf8mb4' );
 define( 'DB_COLLATE', '' );
+define( 'WP_TESTS_DOMAIN', 'example.org' );
+define( 'WP_TESTS_EMAIL', 'admin@example.org' );
+define( 'WP_TESTS_TITLE', 'ArgentWolf Post Notifier Tests' );
+define( 'WP_PHP_BINARY', PHP_BINARY );
 \$table_prefix = 'wptests_';
 define( 'WP_DEBUG', true );
 EOF
