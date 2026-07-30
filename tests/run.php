@@ -24,6 +24,8 @@ use ArgentWolf\PostNotifier\Version;
 
 $main   = file_get_contents( $root . '/argentwolf-post-notifier.php' );
 $readme = file_get_contents( $root . '/readme.txt' );
+$installer = file_get_contents( $root . '/bin/install-wp-tests.sh' );
+$workflow  = file_get_contents( $root . '/.github/workflows/ci.yml' );
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -39,6 +41,25 @@ $assert(
 	'The unresolved companion dependency must not be declared yet.'
 );
 
+$assert(
+	! str_contains( (string) $installer, 'main "$@" || true' ),
+	'WordPress test installation failures must not be suppressed.'
+);
+$assert(
+	str_contains( (string) $installer, 'main "$@"' ),
+	'WordPress test installer must return its real child-process status.'
+);
+$assert(
+	str_contains(
+		(string) $workflow,
+		'test -r "${WP_TESTS_DIR}/includes/functions.php"'
+	),
+	'CI must verify the installed WordPress test-library path.'
+);
+$assert(
+	str_contains( (string) $workflow, 'sudo apt-get install --yes subversion' ),
+	'CI must install the Subversion dependency explicitly.'
+);
 $container = new Container();
 $created   = 0;
 $container->set(

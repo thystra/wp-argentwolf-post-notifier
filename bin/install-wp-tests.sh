@@ -54,11 +54,24 @@ define( 'DB_COLLATE', '' );
 define( 'WP_DEBUG', true );
 EOF
 
+	if [[ ! -r "${tests_dir}/includes/functions.php" ||
+		! -r "${tests_dir}/includes/bootstrap.php" ||
+		! -r "${tests_dir}/wp-tests-config.php" ||
+		! -r "${core_dir}/wp-settings.php" ]]; then
+		printf 'ERROR: WordPress test environment is incomplete.\n' >&2
+		printf 'WP_TESTS_DIR=%s\n' "${tests_dir}" >&2
+		printf 'WP_CORE_DIR=%s\n' "${core_dir}" >&2
+		return 1
+	fi
+
 	printf 'WordPress %s test environment installed.\n' "${wp_version}"
 	printf 'WP_TESTS_DIR=%s\n' "${tests_dir}"
+	printf 'WP_CORE_DIR=%s\n' "${core_dir}"
 	return 0
 }
 
-main "$@" || true
+# This installer runs as an isolated child process. Its status must
+# reach CI and development callers when installation fails.
+main "$@"
 
 # EOF: bin/install-wp-tests.sh
