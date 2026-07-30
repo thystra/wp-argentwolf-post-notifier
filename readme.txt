@@ -4,7 +4,7 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.4
-Stable tag: 0.1.0-alpha.1
+Stable tag: 0.1.0-alpha.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,10 +15,12 @@ Development scaffold for verified, unsubscribe-capable post notification campaig
 ArgentWolf Post Notifier is currently an alpha development scaffold.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
-version tracking, development tooling, tests, continuous integration, and
-distribution packaging. Campaign creation, subscriber collection, email
-delivery, unsubscribe handling, and statistics are not implemented in this
-alpha.
+verification-provider contract, development tooling, tests, continuous
+integration, and distribution packaging. Registered-user verification now
+integrates with ArgentWolf Email Verification 0.3.4 or a filtered alternate
+provider and fails closed when no authoritative provider is healthy. Campaign
+creation, subscriber collection, email delivery, unsubscribe handling, and
+statistics are not implemented in this alpha.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -60,6 +62,12 @@ During development, integration is discovered at runtime. A formal WordPress.org
 dependency will be added only after the companion plugin is approved there.
 
 == Changelog ==
+
+= 0.1.0-alpha.2 =
+* Add the registered-user verification-provider contract and typed statuses.
+* Integrate with the released ArgentWolf Email Verification 0.3.4 public API.
+* Add provider health/version reporting, fail-closed eligibility, and an alternate-provider filter.
+* Add an administrator warning and companion-backed integration tests.
 
 = 0.1.0-alpha.1 =
 

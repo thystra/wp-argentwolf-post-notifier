@@ -3,7 +3,7 @@
  * Plugin Name: ArgentWolf Post Notifier
  * Plugin URI: https://github.com/thystra/wp-argentwolf-post-notifier
  * Description: Scaffold for verified post notifications sent after posts are published.
- * Version: 0.1.0-alpha.1
+ * Version: 0.1.0-alpha.2
  * Requires at least: 7.0
  * Requires PHP: 8.4
  * Author: Alan Johnson

@@ -356,6 +356,7 @@ interface VerificationProvider {
     public function is_available(): bool;
     public function status_for_user( int $user_id ): VerificationStatus;
     public function description(): string;
+    public function health(): VerificationProviderHealth;
 }
 ```
 
@@ -373,6 +374,18 @@ argentwolf_post_notifier_verification_provider
 
 The provider result is authoritative for registered-user eligibility. Unknown
 is ineligible by default.
+
+The initial adapter requires the canonical public functions released by
+ArgentWolf Email Verification 0.3.4. It detects the companion version from the
+file that defines the public status function and reports distinct health codes
+for a missing API, unknown version, obsolete API, and healthy provider.
+
+No private `_wrav_ev_*` metadata compatibility adapter is included. The
+`argentwolf_post_notifier_verification_provider` filter may replace the default
+provider, but a filtered value must implement `VerificationProvider`. Missing,
+invalid, obsolete, or failing providers resolve to `unknown`, so registered-user
+delivery fails closed. A successful `wp_mail()` call is transport evidence only
+and is never verification evidence.
 
 ### 4.7 Content extraction and rendering
 

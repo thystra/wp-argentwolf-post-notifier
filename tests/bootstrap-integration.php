@@ -37,10 +37,15 @@ require_once $_tests_dir . '/includes/functions.php';
 tests_add_filter(
 	'muplugins_loaded',
 	static function (): void {
+		$companion = getenv( 'ARGENTWOLF_EMAIL_VERIFICATION_FILE' );
+		if ( $companion && is_readable( $companion ) ) {
+			require_once $companion;
+		}
+
 		require dirname( __DIR__ ) . '/argentwolf-post-notifier.php';
 	}
 );
 
 require $_tests_dir . '/includes/bootstrap.php';
 
-// EOF: tests/bootstrap-integration.php
+// EOF: tests/bootstrap-integration.php.

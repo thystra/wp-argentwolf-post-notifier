@@ -74,29 +74,33 @@ Acceptance criteria:
 
 Target: companion verification release plus notifier adapter
 
+Companion API `v0.3.4` is released. The notifier adapter uses only the
+canonical public API and deliberately omits a private-meta adapter.
+
+
 ### Companion plugin work
 
 Repository:
 `https://github.com/thystra/wp-argentwolf-email-verification`
 
-- [ ] Standardize the companion display name on
+- [x] Standardize the companion display name on
       `ArgentWolf Email Verification`.
-- [ ] Standardize new public APIs on the
+- [x] Standardize new public APIs on the
       `argentwolf_email_verification_` prefix; do not publish new `wrav_*` or
       `argent_*` APIs.
-- [ ] Add a stable public function:
+- [x] Add a stable public function:
       `argentwolf_email_verification_is_user_verified( int $user_id ): bool`.
-- [ ] Consider a status function returning `verified`, `pending`, or `unknown`.
-- [ ] Preserve the current safety rule that missing legacy pending metadata does
+- [x] Consider a status function returning `verified`, `pending`, or `unknown`.
+- [x] Preserve the current safety rule that missing legacy pending metadata does
       not lock out existing users.
-- [ ] Document the public API.
-- [ ] Add tests for verified, pending, missing-meta, deleted, and administrator
+- [x] Document the public API.
+- [x] Add tests for verified, pending, missing-meta, deleted, and administrator
       users.
-- [ ] Add and test the canonical
+- [x] Add and test the canonical
       `argentwolf_email_verification_user_verified` action for all intended
       successful verification paths, including administrative verification if
       desired.
-- [ ] Release and tag the companion API version.
+- [x] Release and tag the companion API version.
 - [ ] Prepare the companion plugin for WordPress.org review.
 - [ ] Confirm the requested `argentwolf-email-verification` slug.
 - [ ] Submit and obtain WordPress.org approval before declaring it as a hard
@@ -104,17 +108,17 @@ Repository:
 
 ### Notifier work
 
-- [ ] Define `VerificationProvider`.
-- [ ] Implement `ArgentWolfEmailVerificationProvider`.
-- [ ] Add provider detection and version/health reporting.
-- [ ] Fail closed for registered-user delivery when no authoritative provider
+- [x] Define `VerificationProvider`.
+- [x] Implement `ArgentWolfEmailVerificationProvider`.
+- [x] Add provider detection and version/health reporting.
+- [x] Fail closed for registered-user delivery when no authoritative provider
       is available.
 - [ ] Add editor and settings warnings for missing or obsolete provider APIs.
-- [ ] Add a documented extension point for alternate verification providers.
-- [ ] Ensure `wp_mail()` success is never used as proof of verification.
-- [ ] Decide whether a temporary 0.2.0 private-meta compatibility adapter is
+- [x] Add a documented extension point for alternate verification providers.
+- [x] Ensure `wp_mail()` success is never used as proof of verification.
+- [x] Decide whether a temporary 0.2.0 private-meta compatibility adapter is
       necessary; omit it unless needed for migration.
-- [ ] Add integration tests with the companion plugin.
+- [x] Add integration tests with the companion plugin.
 
 Acceptance criteria:
 

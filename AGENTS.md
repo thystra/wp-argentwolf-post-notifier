@@ -26,6 +26,14 @@ in this file take precedence for this project.
   and supported PHP branches
 - Companion project:
   `https://github.com/thystra/wp-argentwolf-email-verification`
+- Minimum companion public API version: ArgentWolf Email Verification 0.3.4
+- Registered-user verification must fail closed when no healthy authoritative
+  provider is available
+- Alternate providers use the
+  `argentwolf_post_notifier_verification_provider` filter and must implement
+  `VerificationProvider`
+- Do not read companion private `_wrav_ev_*` metadata from this plugin
+- Never treat `wp_mail()` success as proof of email verification
 
 The repository is currently a design and development scaffold. Do not describe
 a feature as implemented, released, installed, or deployed until repository,

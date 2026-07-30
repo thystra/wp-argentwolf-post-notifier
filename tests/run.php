@@ -21,6 +21,10 @@ use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Version;
+use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
+use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
+use ArgentWolf\PostNotifier\Verification\VerificationProviderResolver;
+use ArgentWolf\PostNotifier\Verification\VerificationStatus;
 
 $main   = file_get_contents( $root . '/argentwolf-post-notifier.php' );
 $readme = file_get_contents( $root . '/readme.txt' );
@@ -130,6 +134,67 @@ $assert(
 		$composer_manifest['config']['platform']['php'] ?? null
 	),
 	'Composer dependency resolution must target the PHP 8.4 floor.'
+);
+$verification_files = array(
+	'src/Verification/VerificationProvider.php',
+	'src/Verification/VerificationStatus.php',
+	'src/Verification/VerificationProviderHealth.php',
+	'src/Verification/ArgentWolfEmailVerificationProvider.php',
+	'src/Verification/VerificationProviderResolver.php',
+	'src/Verification/RegisteredUserEligibility.php',
+);
+foreach ( $verification_files as $verification_file ) {
+	$assert(
+		is_readable( $root . '/' . $verification_file ),
+		sprintf( 'Verification contract file must exist: %s.', $verification_file )
+	);
+}
+$provider = new ArgentWolfEmailVerificationProvider(
+	static fn ( int $user_id ): string => 10 === $user_id
+		? 'verified'
+		: 'pending',
+	static fn (): bool => true,
+	static fn (): string => '0.3.4'
+);
+$assert( $provider->health()->is_healthy(), 'Released companion contract must be healthy.' );
+$policy = new RegisteredUserEligibility( $provider );
+$assert( $policy->is_eligible( 10 ), 'Verified users must be eligible.' );
+$assert( ! $policy->is_eligible( 11 ), 'Pending users must be ineligible.' );
+$assert(
+	'unverified' === $policy->skip_reason_for_user( 11 ),
+	'Pending users must have the unverified skip reason.'
+);
+$missing_provider = new ArgentWolfEmailVerificationProvider(
+	static fn (): string => 'verified',
+	static fn (): bool => false,
+	static fn (): ?string => null
+);
+$missing_policy = new RegisteredUserEligibility( $missing_provider );
+$assert(
+	! $missing_policy->is_eligible( 10 ),
+	'Missing providers must fail closed.'
+);
+$assert(
+	'verification_unknown' === $missing_policy->skip_reason_for_user( 10 ),
+	'Missing providers must use the verification_unknown skip reason.'
+);
+$resolver = new VerificationProviderResolver(
+	$missing_provider,
+	static fn () => 'invalid'
+);
+$assert(
+	'verification_unknown' === (
+		new RegisteredUserEligibility( $resolver->resolve() )
+	)->skip_reason_for_user( 10 ),
+	'Invalid alternate providers must fail closed.'
+);
+$verification_source = '';
+foreach ( glob( $root . '/src/Verification/*.php' ) ?: array() as $source_file ) {
+	$verification_source .= (string) file_get_contents( $source_file );
+}
+$assert(
+	! str_contains( $verification_source, 'wp_mail(' ),
+	'Mail transport success must never be treated as verification proof.'
 );
 $container = new Container();
 $created   = 0;

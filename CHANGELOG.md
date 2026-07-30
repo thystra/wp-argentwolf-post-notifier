@@ -1,7 +1,16 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-alpha.1 — Unreleased
+## 0.1.0-alpha.2 — Unreleased
+
+- Add a typed registered-user verification-provider contract.
+- Integrate with the released ArgentWolf Email Verification 0.3.4 public API.
+- Add provider version and health reporting with fail-closed eligibility.
+- Add the alternate-provider filter and an administrator health warning.
+- Add unit and companion-backed WordPress integration tests.
+- Deliberately omit private companion metadata access and mail-success inference.
+
+## 0.1.0-alpha.1 — 2026-07-29
 
 - Add the initial plugin bootstrap and namespaced service container.
 - Add activation, deactivation, upgrade, and uninstall skeletons.
