@@ -21,7 +21,7 @@ in this file take precedence for this project.
 - License: GPL-2.0-or-later
 - Initial supported post type: `post`
 - Minimum supported WordPress version: WordPress 7.0
-- Minimum supported PHP version: PHP 8.2
+- Minimum supported PHP version: PHP 8.4
 - Development and release testing must also cover the current stable WordPress
   and supported PHP branches
 - Companion project:

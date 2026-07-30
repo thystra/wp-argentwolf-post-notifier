@@ -45,7 +45,7 @@ Implementation boxes are complete; acceptance gates remain open until the
 committed checkout passes CI and minimum-version activation testing.
 
 - [x] Select and document the minimum supported WordPress version: 7.0.
-- [x] Select and document the minimum supported PHP version: 8.2.
+- [x] Select and document the minimum supported PHP version: 8.4.
 - [x] Add the main plugin bootstrap file.
 - [x] Add Composer autoloading.
 - [x] Add namespaced service registration.

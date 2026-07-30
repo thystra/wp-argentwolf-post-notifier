@@ -5,7 +5,7 @@
 
 - Add the initial plugin bootstrap and namespaced service container.
 - Add activation, deactivation, upgrade, and uninstall skeletons.
-- Select WordPress 7.0 and PHP 8.2 as the initial minimum versions.
+- Select WordPress 7.0 and PHP 8.4 as the initial minimum versions.
 - Add Composer, PHPUnit, WordPress Coding Standards, and JavaScript tooling.
 - Resolve initial PHPCS line-length, docblock, comment, and PSR-4 filename-policy findings.
 - Correct JavaScript formatting and SCSS lint targeting, require the supported npm floor,

@@ -3,7 +3,7 @@ Contributors: thystra
 Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.0
-Requires PHP: 8.2
+Requires PHP: 8.4
 Stable tag: 0.1.0-alpha.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -65,7 +65,7 @@ dependency will be added only after the companion plugin is approved there.
 
 * Add the initial plugin bootstrap and namespaced service container.
 * Add activation, deactivation, upgrade, and uninstall skeletons.
-* Select WordPress 7.0 and PHP 8.2 as the initial minimum versions.
+* Select WordPress 7.0 and PHP 8.4 as the initial minimum versions.
 * Add Composer, PHPUnit, WordPress Coding Standards, and JavaScript tooling.
 * Add continuous integration and deterministic package-manifest validation.
 * Preserve the rule that scheduled posts never create campaigns before actual publication.

@@ -5,7 +5,7 @@
  * Description: Scaffold for verified post notifications sent after posts are published.
  * Version: 0.1.0-alpha.1
  * Requires at least: 7.0
- * Requires PHP: 8.2
+ * Requires PHP: 8.4
  * Author: Alan Johnson
  * Author URI: https://www.wolfandraven.blog/
  * License: GPL-2.0-or-later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
-if ( version_compare( PHP_VERSION, '8.2', '<' ) ) {
+if ( version_compare( PHP_VERSION, '8.4', '<' ) ) {
 	add_action( 'admin_notices', 'argentwolf_post_notifier_php_requirement_notice' );
 	return;
 }
@@ -70,7 +70,7 @@ function argentwolf_post_notifier_php_requirement_notice(): void {
 
 	echo '<div class="notice notice-error"><p>';
 	echo esc_html__(
-		'ArgentWolf Post Notifier requires PHP 8.2 or newer.',
+		'ArgentWolf Post Notifier requires PHP 8.4 or newer.',
 		'argentwolf-post-notifier'
 	);
 	echo '</p></div>';

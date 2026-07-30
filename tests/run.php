@@ -35,7 +35,7 @@ preg_match( '/^[\h]*\*[\h]+Requires PHP:[\h]*(\S+)[\h]*$/m', (string) $main, $ph
 $assert( Version::PLUGIN === ( $header[1] ?? null ), 'Plugin header and Version::PLUGIN must match.' );
 $assert( Version::PLUGIN === ( $stable[1] ?? null ), 'Plugin version and readme Stable Tag must match.' );
 $assert( '7.0' === ( $wordpress[1] ?? null ), 'Requires at least must be WordPress 7.0.' );
-$assert( '8.2' === ( $php[1] ?? null ), 'Requires PHP must be 8.2.' );
+$assert( '8.4' === ( $php[1] ?? null ), 'Requires PHP must be 8.4.' );
 $assert(
 	! str_contains( (string) $main, 'Requires Plugins:' ),
 	'The unresolved companion dependency must not be declared yet.'
@@ -118,6 +118,18 @@ $assert(
 		'cacheDirectory='
 	),
 	'PHPUnit 11-only cacheDirectory must not remain configured.'
+);
+$assert(
+	'>=8.4' === (
+		$composer_manifest['require']['php'] ?? null
+	),
+	'Composer runtime requirement must be PHP 8.4 or newer.'
+);
+$assert(
+	'8.4.0' === (
+		$composer_manifest['config']['platform']['php'] ?? null
+	),
+	'Composer dependency resolution must target the PHP 8.4 floor.'
 );
 $container = new Container();
 $created   = 0;
