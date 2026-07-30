@@ -60,6 +60,13 @@ $assert(
 	str_contains( (string) $workflow, 'sudo apt-get install --yes subversion' ),
 	'CI must install the Subversion dependency explicitly.'
 );
+$assert(
+	! str_contains(
+		(string) $installer,
+		'mkdir -p "${tests_dir}" "${core_dir}"'
+	),
+	'WordPress core export destination must not be pre-created.'
+);
 $container = new Container();
 $created   = 0;
 $container->set(

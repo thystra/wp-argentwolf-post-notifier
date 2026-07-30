@@ -18,7 +18,9 @@ main() {
 	fi
 
 	rm -rf -- "${tests_dir}" "${core_dir}"
-	mkdir -p "${tests_dir}" "${core_dir}" || return 1
+	# The exact WordPress core export destination must not exist before
+	# svn export. Only create the test-library parent here.
+	mkdir -p "${tests_dir}" || return 1
 
 	if ! svn export --quiet \
 		"https://develop.svn.wordpress.org/tags/${wp_version}/tests/phpunit/includes/" \
