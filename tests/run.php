@@ -82,6 +82,43 @@ foreach ( $required_test_constants as $test_constant ) {
 		sprintf( 'Installer must define %s.', $test_constant )
 	);
 }
+$composer_manifest = json_decode(
+	(string) file_get_contents( $root . '/composer.json' ),
+	true
+);
+$unit_phpunit_config = file_get_contents(
+	$root . '/phpunit.xml.dist'
+);
+$integration_phpunit_config = file_get_contents(
+	$root . '/phpunit.integration.xml.dist'
+);
+$assert(
+	'^9.6.16' === (
+		$composer_manifest['require-dev']['phpunit/phpunit'] ?? null
+	),
+	'WordPress 7.0 integration tests must use PHPUnit 9.6.'
+);
+$assert(
+	str_contains(
+		(string) $unit_phpunit_config,
+		'schema.phpunit.de/9.6/phpunit.xsd'
+	),
+	'Unit-test configuration must target the PHPUnit 9.6 schema.'
+);
+$assert(
+	str_contains(
+		(string) $integration_phpunit_config,
+		'schema.phpunit.de/9.6/phpunit.xsd'
+	),
+	'Integration configuration must target the PHPUnit 9.6 schema.'
+);
+$assert(
+	! str_contains(
+		(string) $unit_phpunit_config,
+		'cacheDirectory='
+	),
+	'PHPUnit 11-only cacheDirectory must not remain configured.'
+);
 $container = new Container();
 $created   = 0;
 $container->set(

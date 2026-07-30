@@ -15,6 +15,7 @@
   failures stop CI before PHPUnit runs with a missing test library.
 - Leave the WordPress core destination absent until SVN exports core into it.
 - Define the WordPress test-site constants required by the core bootstrap.
+- Use PHPUnit 9.6, the supported runner for WordPress 7.0 integration tests.
 - Do not declare the unresolved WordPress.org companion dependency.
 - Do not implement campaign, subscriber, delivery, unsubscribe, or statistics
   behavior in this scaffold.
