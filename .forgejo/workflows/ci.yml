@@ -18,9 +18,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php:
-          - '8.4'
-          - '8.5'
+        include:
+          - php: '8.4'
+            image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
+          - php: '8.5'
+            image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace
+    container:
+      image: ${{ matrix.image }}
 
     steps:
       - name: Check out repository
@@ -28,12 +32,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up PHP
-        uses: https://github.com/shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
-        with:
-          php-version: ${{ matrix.php }}
-          coverage: none
-          tools: composer:v2
+      - name: Verify shared PHP CI image
+        run: argentwolf-verify-php-ci-image
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist
@@ -47,6 +47,8 @@ jobs:
   wordpress:
     name: WordPress 7.0.2 integration
     runs-on: forgejo-workstation
+    container:
+      image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
     services:
       mysql:
         image: mysql:8.4
@@ -65,21 +67,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up PHP
-        uses: https://github.com/shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
-        with:
-          php-version: '8.4'
-          coverage: none
-          extensions: mysqli
-          tools: composer:v2
+      - name: Verify shared PHP CI image
+        run: argentwolf-verify-php-ci-image
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
-
-      - name: Install Subversion
-        run: |
-          apt-get update
-          apt-get install --yes subversion
 
       - name: Install released verification companion
         run: |

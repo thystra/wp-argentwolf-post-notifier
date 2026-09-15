@@ -48,6 +48,24 @@ required by JavaScript actions such as `actions/checkout`. `bookworm-v2` adds th
 runner compatibility requirement without baking project dependencies into the
 image.
 
+## Qualified v2 identities
+
+The first routine-CI-qualified shared images are recorded in
+`ci/images/qualified-images.json`. Routine workflows pin the OCI index digest so
+Docker selects the reviewed `linux/amd64` manifest while retaining the published
+attestation manifest in the index.
+
+```text
+PHP 8.4 OCI index:   sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
+PHP 8.4 linux/amd64: sha256:42546274ac98968ce674838ad7f2009ac2eecd28465c64d34fe282f9bb504e6d
+PHP 8.5 OCI index:   sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace
+PHP 8.5 linux/amd64: sha256:207268bfdb8dd00b9eceb316ec714a2a50f981dbf3ac1c9cd24d799216d2ea7f
+```
+
+Do not change `qualified-images.json` or routine workflow image references until
+a replacement image has been independently built, self-tested, published,
+anonymously pulled, and its registry identity captured.
+
 ## Build and qualify
 
 Build from a clean committed checkout on a trusted Docker host:

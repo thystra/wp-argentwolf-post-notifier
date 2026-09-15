@@ -33,6 +33,14 @@ $workflow_path = $root . '/.forgejo/workflows/ci.yml';
 $workflow      = is_readable( $workflow_path )
 	? file_get_contents( $workflow_path )
 	: '';
+$qualified_images_path = $root . '/ci/images/qualified-images.json';
+$qualified_images      = is_readable( $qualified_images_path )
+	? json_decode( (string) file_get_contents( $qualified_images_path ), true )
+	: null;
+$image_verifier_path = $root . '/ci/images/php/verify-image.sh';
+$image_verifier      = is_readable( $image_verifier_path )
+	? file_get_contents( $image_verifier_path )
+	: '';
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -72,8 +80,57 @@ $assert(
 	'CI must verify the installed WordPress test-library path.'
 );
 $assert(
-	str_contains( (string) $workflow, 'apt-get install --yes subversion' ),
-	'CI must install the Subversion dependency explicitly.'
+	is_array( $qualified_images )
+		&& 1 === ( $qualified_images['schemaVersion'] ?? null ),
+	'Qualified CI image metadata must exist and use schema version 1.'
+);
+$qualified_php_images = array(
+	'php84' => array(
+		'minor' => '8.4',
+		'digest' => 'sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95',
+	),
+	'php85' => array(
+		'minor' => '8.5',
+		'digest' => 'sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace',
+	),
+);
+foreach ( $qualified_php_images as $image_key => $expected_image ) {
+	$image = $qualified_images['images'][ $image_key ] ?? array();
+	$assert(
+		$expected_image['minor'] === ( $image['phpMinor'] ?? null ),
+		sprintf( 'Qualified %s metadata must record the expected PHP minor.', $image_key )
+	);
+	$assert(
+		$expected_image['digest'] === ( $image['indexDigest'] ?? null ),
+		sprintf( 'Qualified %s metadata must record the reviewed OCI index digest.', $image_key )
+	);
+	$assert(
+		isset( $image['reference'] )
+			&& str_ends_with( (string) $image['reference'], '@' . $expected_image['digest'] ),
+		sprintf( 'Qualified %s reference must pin its reviewed OCI index digest.', $image_key )
+	);
+	$assert(
+		isset( $image['reference'] )
+			&& str_contains( (string) $workflow, (string) $image['reference'] ),
+		sprintf( 'Forgejo CI must consume the qualified %s image by digest.', $image_key )
+	);
+}
+$assert(
+	! str_contains( (string) $workflow, 'setup-php@' )
+		&& ! str_contains( (string) $workflow, 'shivammathur/setup-php' ),
+	'Forgejo CI must use qualified PHP images instead of provisioning PHP at runtime.'
+);
+$assert(
+	str_contains( (string) $workflow, 'argentwolf-verify-php-ci-image' ),
+	'Forgejo PHP jobs must verify the selected shared CI image before running project tests.'
+);
+$assert(
+	str_contains( (string) $image_verifier, 'php composer node git curl svn rsync unzip zip' ),
+	'Shared PHP CI image verification must require the Forgejo action and WordPress test tools.'
+);
+$assert(
+	! str_contains( (string) $workflow, 'apt-get install --yes subversion' ),
+	'Forgejo WordPress CI must use Subversion from the qualified shared image.'
 );
 $assert(
 	! str_contains(
