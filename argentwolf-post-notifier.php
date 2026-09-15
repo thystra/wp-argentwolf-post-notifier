@@ -2,8 +2,8 @@
 /**
  * Plugin Name: ArgentWolf Post Notifier
  * Plugin URI: https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier
- * Description: Scaffold for verified post notifications sent after posts are published.
- * Version: 0.1.0-alpha.2
+ * Description: Alpha foundation for verified post notifications sent after publication.
+ * Version: 0.1.0-alpha.3
  * Requires at least: 7.0
  * Requires PHP: 8.4
  * Requires Plugins: argentwolf-email-verification

@@ -1,6 +1,6 @@
 {
   "name": "thystra/argentwolf-post-notifier",
-  "description": "Development scaffold for the ArgentWolf Post Notifier WordPress plugin.",
+  "description": "Development foundation for the ArgentWolf Post Notifier WordPress plugin.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {

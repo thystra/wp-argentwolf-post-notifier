@@ -9,6 +9,8 @@ namespace ArgentWolf\PostNotifier;
 
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Database\EmailIdentity;
+use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
@@ -52,8 +54,25 @@ final class Plugin {
 		if ( null === self::$instance ) {
 			$container = new Container();
 			$container->set(
+				SchemaMigrator::class,
+				static fn (): SchemaMigrator => new SchemaMigrator()
+			);
+			$container->set(
+				EmailIdentity::class,
+				static fn (): EmailIdentity => new EmailIdentity()
+			);
+			$container->set(
 				UpgradeManager::class,
-				static fn (): UpgradeManager => new UpgradeManager()
+				static function ( Container $services ): UpgradeManager {
+					$migrator = $services->get( SchemaMigrator::class );
+					if ( ! $migrator instanceof SchemaMigrator ) {
+						throw new LogicException(
+							'The schema migrator is invalid.'
+						);
+					}
+
+					return new UpgradeManager( $migrator );
+				}
 			);
 			$container->set(
 				ArgentWolfEmailVerificationProvider::class,

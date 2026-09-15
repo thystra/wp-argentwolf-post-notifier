@@ -29,10 +29,11 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository contains the `0.1.0-alpha.2` development skeleton. It defines
-bootstrap, lifecycle, service-registration, test, CI, and packaging boundaries,
-but it does not implement campaigns, subscribers, delivery, unsubscribe, or
-statistics. Implementation remains tracked in `TODO.md`.
+The repository is now in `0.1.0-alpha.3` development. Alpha.2 established the
+verification-provider contract; alpha.3 begins the persistent data foundation
+with versioned migrations and plugin-owned tables. Campaign creation, subscriber
+workflows, delivery, unsubscribe behavior, and statistics execution remain future
+milestones tracked in `TODO.md`.
 
 ## 2.1 Canonical naming
 
@@ -590,7 +591,33 @@ no_email
 
 ## 8. Database design
 
-Table prefixes use `$wpdb->prefix`.
+Table prefixes use `$wpdb->prefix`. Schema changes are forward-only, ordered
+migrations. The schema option advances only after a migration completes. A
+connection-scoped MySQL advisory lock serializes migration execution for the
+active site prefix; callers wait only for a bounded interval and fail rather
+than running migrations concurrently without a lock. Re-running a completed
+migration path must be harmless.
+
+Schema version 1 creates the seven tables below. It intentionally does not add
+foreign-key constraints so WordPress table-prefix operation, `dbDelta()`
+compatibility, and controlled uninstall remain straightforward; application
+repositories enforce typed relationships and all required lookup/uniqueness
+indexes remain database constraints.
+
+Email deduplication and suppression use one canonical normalization service and
+a persistent random 32-byte site-local HMAC key. Only deterministic SHA-256 HMAC
+values are used for keyed email identity. The key is not derived from WordPress
+salts because rotating site salts must not silently change stored identity
+hashes. The key is preserved with plugin data and removed only during explicitly
+destructive uninstall.
+
+There is no automatic schema downgrade. Before an operator deliberately runs
+older code against a newer schema, restore a compatible database backup or use a
+documented forward recovery migration. Failed migrations do not advance the
+stored schema version, so the same code can retry after the underlying fault is
+corrected. Schema 1 remains provisional while alpha.3 is under development. Once
+a tagged checkpoint ships schema 1, its migration becomes immutable upgrade
+history; later structural changes require schema 2 or newer.
 
 ### 8.1 `argentwolf_pn_campaigns`
 
@@ -712,8 +739,9 @@ list_id
 member_type               user|subscriber
 user_id                   nullable
 subscriber_id             nullable
+member_key                  canonical `user:<id>` or `subscriber:<id>` identity
 created_at_gmt
-UNIQUE typed membership
+UNIQUE list_id,member_key
 ```
 
 ### 8.6 `argentwolf_pn_suppressions`
@@ -888,6 +916,9 @@ to view all subscriber data or edit global templates.
 
 The plugin supplies:
 
+- preserve-by-default uninstall behavior; destructive uninstall is enabled only
+  by the explicit `argentwolf_post_notifier_delete_data_on_uninstall` option and
+  removes plugin-owned tables, version state, and the keyed email-hash secret;
 - privacy-policy helper text;
 - personal-data exporter;
 - personal-data eraser;

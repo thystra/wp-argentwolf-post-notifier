@@ -10,6 +10,12 @@
 - Record architectural changes in `ARCHITECTURE.md`.
 - Do not use completion marks to imply deployment to a WordPress site.
 - Release versions below are planning targets and may be adjusted deliberately.
+- Alpha versions are development milestones. Tag major checkpoints when useful,
+  but do not automatically create Forgejo/GitHub Release objects for alpha
+  completion.
+- Begin public prerelease publication with the RC phase after the intended
+  feature set is substantially complete and automated plus disposable-VM
+  qualification has passed.
 
 ## Milestone 0 — Repository and design baseline
 
@@ -138,6 +144,12 @@ exist.
 ## Milestone 3 — Database schema and migrations
 
 Target: `0.1.0-alpha.3`
+
+Implementation is split into reviewable tranches. The first tranche establishes
+the migration engine, schema version 1, core table/index layout, keyed email
+identity, and safe preserve-by-default uninstall behavior. Cleanup and
+concurrency/recovery qualification remain separate acceptance work within this
+milestone.
 
 - [ ] Implement versioned schema migrations.
 - [ ] Create campaigns table.

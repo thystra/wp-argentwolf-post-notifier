@@ -4,24 +4,25 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-alpha.2
+Stable tag: 0.1.0-alpha.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Development scaffold for verified, unsubscribe-capable post notification campaigns created after posts are actually published.
+Alpha foundation for verified, unsubscribe-capable post notification campaigns created after publication.
 
 == Description ==
 
-ArgentWolf Post Notifier is currently an alpha development scaffold.
+ArgentWolf Post Notifier is currently an alpha development build.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
-integration, and distribution packaging. Registered-user verification supports
-the public API introduced in ArgentWolf Email Verification 0.3.4 and is tested
-against the current 1.0.2 release; it fails closed when no authoritative provider
-is healthy. Campaign
-creation, subscriber collection, email delivery, unsubscribe handling, and
-statistics are not implemented in this alpha.
+integration, deterministic packaging, and initial versioned database schema.
+Registered-user verification supports the public API introduced in ArgentWolf
+Email Verification 0.3.4 and is tested against the current 1.0.2 release; it
+fails closed when no authoritative provider is healthy. The database foundation
+now reserves durable storage for later campaign, recipient, subscriber, list,
+suppression, and click workflows. Those workflows, email delivery, unsubscribe
+handling, and statistics execution are not implemented in this alpha.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -64,6 +65,11 @@ now available from WordPress.org. This plugin declares the dependency while stil
 checking provider health and API compatibility at runtime.
 
 == Changelog ==
+
+= 0.1.0-alpha.3 =
+* Begin versioned schema migrations and create the initial plugin-owned tables.
+* Add canonical normalized email identity with a persistent keyed SHA-256 hash.
+* Add migration locking and preserve-by-default uninstall handling for the new data foundation.
 
 = 0.1.0-alpha.2 =
 * Add the registered-user verification-provider contract and typed statuses.

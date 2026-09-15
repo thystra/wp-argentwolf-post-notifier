@@ -14,14 +14,14 @@ final class Version {
 	/**
 	 * Plugin version.
 	 */
-	public const PLUGIN = '0.1.0-alpha.2';
+	public const PLUGIN = '0.1.0-alpha.3';
 
 	/**
 	 * Database schema version.
 	 *
-	 * Schema zero means that no custom tables have been introduced.
+	 * Schema one introduces the initial plugin-owned data tables.
 	 */
-	public const SCHEMA = '0';
+	public const SCHEMA = '1';
 
 	/**
 	 * Prevent construction.

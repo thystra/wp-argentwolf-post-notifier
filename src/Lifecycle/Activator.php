@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
+use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Version;
 
 /**
@@ -19,20 +20,16 @@ final class Activator {
 	 * @return void
 	 */
 	public static function activate(): void {
+		( new SchemaMigrator() )->migrate();
+
 		update_option(
 			'argentwolf_post_notifier_version',
 			Version::PLUGIN,
 			false
 		);
 
-		update_option(
-			'argentwolf_post_notifier_schema_version',
-			Version::SCHEMA,
-			false
-		);
-
 		/**
-		 * Fires after the development scaffold activates.
+		 * Fires after activation and required schema migrations complete.
 		 *
 		 * @param string $plugin_version Plugin version.
 		 * @param string $schema_version Schema version.
