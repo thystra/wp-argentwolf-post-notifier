@@ -69,18 +69,25 @@ final class DestructiveUninstaller {
 			throw new LogicException( 'Destructive uninstall is not enabled.' );
 		}
 
-		$tables = TableNames::from_database( $this->database )->all();
+		$tables    = TableNames::from_database( $this->database )->all();
+		$inspector = new SchemaInspector( $this->database );
 		foreach ( array_reverse( $tables ) as $table ) {
-			$query = $this->database->prepare( 'DROP TABLE IF EXISTS %i', $table );
+			// Table names are produced exclusively by the internal TableNames resolver.
+			$quoted_table = '`' . str_replace( '`', '``', $table ) . '`';
 
 			// Plugin-owned table removal is necessarily a direct uncached database write.
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
 			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
-			$result = $this->database->query( $query );
+			$result = $this->database->query( "DROP TABLE IF EXISTS {$quoted_table}" );
 			// phpcs:enable
-			if ( false === $result ) {
-				throw new RuntimeException( 'Plugin-owned database table could not be removed.' );
+			if ( false === $result || $inspector->table_exists( $table ) ) {
+				// Internal exception text is not rendered output; table names come from TableNames.
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new RuntimeException(
+					'Plugin-owned database table could not be removed: ' . $table
+				);
+				// phpcs:enable
 			}
 		}
 
