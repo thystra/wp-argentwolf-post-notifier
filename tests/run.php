@@ -1,6 +1,6 @@
 <?php
 /**
- * Dependency-free scaffold tests.
+ * Dependency-free project contract tests.
  *
  * File: tests/run.php
  */
@@ -16,7 +16,8 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 
 require_once $root . '/autoload.php';
 
-use ArgentWolf\PostNotifier\Lifecycle\Activator;
+use ArgentWolf\PostNotifier\Database\EmailIdentity;
+use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Support\Container;
@@ -48,6 +49,9 @@ $package_manifest_script = file_get_contents( $root . '/tests/package-manifest.s
 $companion_installer = file_get_contents( $root . '/bin/install-verification-companion.sh' );
 $package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
 $package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
+$schema_one_source = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
+$activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
+$uninstall_source = file_get_contents( $root . '/uninstall.php' );
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -80,6 +84,75 @@ $assert(
 		'The `0.1.0-alpha.2` implementation boundary ends at this provider contract'
 	),
 	'Architecture must state the alpha.2 implementation boundary explicitly.'
+);
+$assert(
+	str_contains(
+		(string) $todo,
+		'Alpha versions are development milestones.'
+	),
+	'TODO must distinguish alpha checkpoints from public prerelease publication.'
+);
+$agents = file_get_contents( $root . '/AGENTS.md' );
+$assert(
+	str_contains(
+		(string) $agents,
+		'Completing an alpha milestone does **not** by itself authorize a Forgejo or'
+	),
+	'AGENTS must preserve the alpha-development/RC release lifecycle.'
+);
+$assert(
+	str_contains(
+		(string) $todo,
+		"## Milestone 3 — Database schema and migrations\n\nTarget: `0.1.0-alpha.3`"
+	),
+	'Alpha.3 must remain the database schema and migrations milestone.'
+);
+$database_files = array(
+	'src/Database/EmailIdentity.php',
+	'src/Database/Migration.php',
+	'src/Database/MigrationLock.php',
+	'src/Database/Migrations/Schema1.php',
+	'src/Database/SchemaInspector.php',
+	'src/Database/SchemaMigrator.php',
+	'src/Database/TableNames.php',
+);
+foreach ( $database_files as $database_file ) {
+	$assert(
+		is_readable( $root . '/' . $database_file ),
+		sprintf( 'Database foundation file must exist: %s.', $database_file )
+	);
+}
+$table_names = new TableNames( 'wp_' );
+$assert( 7 === count( $table_names->all() ), 'Schema one must own exactly seven tables.' );
+foreach ( $table_names->all() as $table_name ) {
+	$assert(
+		str_starts_with( $table_name, 'wp_argentwolf_pn_' ),
+		'Table names must use the canonical argentwolf_pn_ prefix.'
+	);
+}
+$assert(
+	str_contains( (string) $schema_one_source, 'UNIQUE KEY campaign_key (campaign_key)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY campaign_email (campaign_id,email_hash)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY email_hash (email_hash)' ),
+	'Schema one must retain campaign, campaign-recipient, and email uniqueness constraints.'
+);
+$identity = new EmailIdentity( str_repeat( "\x31", 32 ) );
+$assert(
+	'person@example.com' === $identity->normalize( ' Person@Example.COM ' ),
+	'Email normalization must be deterministic and case-normalized.'
+);
+$assert(
+	$identity->hash( 'Person@Example.COM' ) === $identity->hash( 'person@example.com' ),
+	'Email hashing must operate on the canonical normalized identity.'
+);
+$assert(
+	str_contains( (string) $activator_source, '( new SchemaMigrator() )->migrate();' ),
+	'Activation must run versioned database migrations before recording the plugin version.'
+);
+$assert(
+	str_contains( (string) $uninstall_source, 'TableNames::from_database' )
+		&& str_contains( (string) $uninstall_source, 'EmailIdentity::HASH_KEY_OPTION' ),
+	'Destructive uninstall must remove plugin-owned tables and keyed email identity state.'
 );
 $editor_source = file_get_contents( $root . '/assets/src/editor.js' );
 $assert(
@@ -385,31 +458,10 @@ $assert( $container->get( 'test' ) === $container->get( 'test' ), 'Services must
 $assert( 1 === $created, 'Container factory must run once.' );
 
 $GLOBALS['argentwolf_post_notifier_test_actions'] = array();
-$GLOBALS['argentwolf_post_notifier_test_options'] = array();
 
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( string $hook, callable $callback, int $priority = 10 ): void {
 		$GLOBALS['argentwolf_post_notifier_test_actions'][] = array( $hook, $callback, $priority );
-	}
-}
-
-if ( ! function_exists( 'update_option' ) ) {
-	function update_option( string $name, mixed $value, bool $autoload = true ): bool {
-		unset( $autoload );
-		$GLOBALS['argentwolf_post_notifier_test_options'][ $name ] = $value;
-		return true;
-	}
-}
-
-if ( ! function_exists( 'get_option' ) ) {
-	function get_option( string $name, mixed $default = false ): mixed {
-		return $GLOBALS['argentwolf_post_notifier_test_options'][ $name ] ?? $default;
-	}
-}
-
-if ( ! function_exists( 'do_action' ) ) {
-	function do_action( string $hook, mixed ...$arguments ): void {
-		unset( $hook, $arguments );
 	}
 }
 
@@ -421,22 +473,6 @@ $assert(
 	'UpgradeManager must register on plugins_loaded.'
 );
 
-Activator::activate();
-
-$assert(
-	Version::PLUGIN === (
-		$GLOBALS['argentwolf_post_notifier_test_options']['argentwolf_post_notifier_version']
-		?? null
-	),
-	'Activation must record the plugin version.'
-);
-$assert(
-	Version::SCHEMA === (
-		$GLOBALS['argentwolf_post_notifier_test_options']['argentwolf_post_notifier_schema_version']
-		?? null
-	),
-	'Activation must record the schema version.'
-);
 $assert( Plugin::instance() === Plugin::instance(), 'Plugin::instance() must return one instance.' );
 
 if ( array() !== $failures ) {
@@ -446,6 +482,6 @@ if ( array() !== $failures ) {
 	exit( 1 );
 }
 
-fwrite( STDOUT, "All dependency-free scaffold tests passed.\n" );
+fwrite( STDOUT, "All dependency-free project tests passed.\n" );
 
 // EOF: tests/run.php

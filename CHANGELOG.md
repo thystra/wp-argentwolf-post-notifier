@@ -1,6 +1,21 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
+## 0.1.0-alpha.3 — Unreleased
+
+- Begin the versioned database-migration foundation with schema version 1.
+- Add campaigns, campaign recipients, standalone subscribers, named lists, typed
+  list memberships, global suppressions, and click-event tables with required
+  uniqueness and queue/search indexes.
+- Add canonical email normalization and a persistent site-local keyed SHA-256
+  email identity service.
+- Serialize schema upgrades with a bounded MySQL advisory lock and advance the
+  stored schema version only after each migration completes.
+- Preserve plugin data on uninstall by default and remove plugin-owned tables and
+  the keyed hash secret only when destructive uninstall is explicitly enabled.
+- Document the alpha-development/RC release lifecycle; alpha checkpoints no
+  longer imply public prerelease publication.
+
 ## 0.1.0-alpha.2 — 2026-09-15
 
 - Add a typed registered-user verification-provider contract.

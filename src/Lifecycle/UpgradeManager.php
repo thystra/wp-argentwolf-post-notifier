@@ -8,12 +8,21 @@
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Version;
 
 /**
  * Idempotent plugin-version and schema-version coordinator.
  */
 final class UpgradeManager implements Registerable {
+	/**
+	 * Construct the upgrade coordinator.
+	 *
+	 * @param SchemaMigrator|null $schema_migrator Optional schema migrator.
+	 */
+	public function __construct( private ?SchemaMigrator $schema_migrator = null ) {
+	}
+
 	/**
 	 * Register the upgrade check.
 	 *
@@ -24,10 +33,7 @@ final class UpgradeManager implements Registerable {
 	}
 
 	/**
-	 * Record the current code versions.
-	 *
-	 * Schema migrations begin in the database milestone. Schema zero performs
-	 * no database operation.
+	 * Apply pending schema migrations, then record the current plugin version.
 	 *
 	 * @return void
 	 */
@@ -37,22 +43,19 @@ final class UpgradeManager implements Registerable {
 			''
 		);
 		$installed_schema = (string) get_option(
-			'argentwolf_post_notifier_schema_version',
-			''
+			SchemaMigrator::SCHEMA_OPTION,
+			'0'
 		);
+
+		if ( Version::SCHEMA !== $installed_schema ) {
+			$migrator = $this->schema_migrator ?? new SchemaMigrator();
+			$migrator->migrate();
+		}
 
 		if ( Version::PLUGIN !== $installed_plugin ) {
 			update_option(
 				'argentwolf_post_notifier_version',
 				Version::PLUGIN,
-				false
-			);
-		}
-
-		if ( Version::SCHEMA !== $installed_schema ) {
-			update_option(
-				'argentwolf_post_notifier_schema_version',
-				Version::SCHEMA,
 				false
 			);
 		}

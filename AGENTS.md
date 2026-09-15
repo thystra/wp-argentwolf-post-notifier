@@ -38,9 +38,9 @@ in this file take precedence for this project.
 - Do not read companion private `_wrav_ev_*` metadata from this plugin
 - Never treat `wp_mail()` success as proof of email verification
 
-The repository is currently a design and development scaffold. Do not describe
-a feature as implemented, released, installed, or deployed until repository,
-package, and production evidence support that statement.
+The repository is under active alpha development. Do not describe a feature as
+implemented, released, installed, or deployed until repository, package, and
+production evidence support that statement.
 
 ## Communication and operator workflow
 
@@ -192,6 +192,35 @@ The companion plugin is published on WordPress.org under the approved
 pre-publish eligibility warnings because dependency metadata does not prove the
 loaded provider API is healthy or compatible.
 
+## Development and release lifecycle
+
+ArgentWolf Post Notifier follows a feature-development and release-candidate
+model. Alpha version numbers are development checkpoints, not automatic public
+releases.
+
+- Implement substantial capabilities on focused `feature/...` branches.
+- Use `0.1.0-alpha.x` numbers to identify coherent development milestones.
+- Annotated tags are appropriate at major alpha checkpoints when preserving an
+  exact source boundary is useful.
+- Completing an alpha milestone does **not** by itself authorize a Forgejo or
+  GitHub Release object or imply that the plugin is ready for operators.
+- Continue alpha development until the intended initial feature set is
+  substantially complete and the normal automated test battery is green.
+- Before the first release candidate, qualify the assembled plugin in a clean
+  disposable VM/runtime environment, including fresh install, upgrade,
+  activation/deactivation, uninstall/data-retention behavior, and realistic
+  WordPress workflows.
+- Enter `0.1.0-rcN` only after feature development and pre-RC VM qualification
+  are complete enough for operational testing. RCs are the normal point for
+  public Forgejo prerelease artifacts and downstream GitHub prerelease mirrors.
+- Use the RC phase for operational, failure/recovery, upgrade, packaging, and
+  any approved live-site acceptance testing.
+- Publish stable `0.1.0` only after the RC acceptance criteria are satisfied.
+
+Forgejo remains the canonical source and release authority throughout. GitHub
+is downstream. Do not create a public release merely because a version was
+tagged.
+
 ## WordPress.org distribution target
 
 The intended public distribution channel is the WordPress.org Plugin Directory
@@ -256,7 +285,9 @@ pass.
 - REST routes require explicit permission callbacks. Public routes must expose
   only the minimum information needed.
 - Use `$wpdb->prepare()` for dynamic SQL.
-- Define schema changes through versioned migrations.
+- Define schema changes through versioned migrations. Once a tagged checkpoint has
+  shipped a schema version, treat that migration as immutable upgrade history;
+  make subsequent schema changes in a new numbered migration.
 - Use UTC for stored timestamps and convert only for display.
 - Normalize email addresses consistently in one service.
 - Use an HMAC or keyed hash where deterministic email hashes are required.
