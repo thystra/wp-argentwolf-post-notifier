@@ -39,6 +39,15 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 		$inspector   = new SchemaInspector( $wpdb );
 		$uninstaller = new DestructiveUninstaller( $wpdb );
 
+		/*
+		 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+		 * TEMPORARY equivalents inside each test transaction. This test must
+		 * exercise the production DDL against the plugin's permanent tables.
+		 */
+		self::commit_transaction();
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+
 		update_option( DestructiveUninstaller::DELETE_DATA_OPTION, '1', false );
 		update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
 		EmailIdentity::ensure_hash_key();
@@ -47,7 +56,10 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 			$uninstaller->run();
 
 			foreach ( $tables->all() as $table ) {
-				self::assertFalse( $inspector->table_exists( $table ) );
+				self::assertFalse(
+					$inspector->table_exists( $table ),
+					'Table should have been removed: ' . $table
+				);
 			}
 			self::assertFalse( get_option( 'argentwolf_post_notifier_version', false ) );
 			self::assertFalse( get_option( SchemaMigrator::SCHEMA_OPTION, false ) );
@@ -56,8 +68,13 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 				get_option( DestructiveUninstaller::DELETE_DATA_OPTION, false )
 			);
 		} finally {
-			( new SchemaMigrator( $wpdb ) )->migrate();
-			update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
+			try {
+				( new SchemaMigrator( $wpdb ) )->migrate();
+				update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
+				self::commit_transaction();
+			} finally {
+				$this->start_transaction();
+			}
 		}
 
 		foreach ( $tables->all() as $table ) {
