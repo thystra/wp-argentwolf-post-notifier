@@ -1,7 +1,7 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-alpha.2 — Unreleased
+## 0.1.0-alpha.2 — 2026-09-15
 
 - Add a typed registered-user verification-provider contract.
 - Integrate with the released ArgentWolf Email Verification 0.3.4 public API.

@@ -41,8 +41,7 @@ Target: `0.1.0-alpha.1`
 
 Implemented candidate scope: bootstrap, lifecycle handlers, service container,
 dependency definitions, tests, CI, JavaScript tooling, and package validation.
-Implementation boxes are complete; acceptance gates remain open until the
-committed checkout passes CI and minimum-version activation testing.
+Implementation and acceptance gates are complete for the development skeleton.
 
 - [x] Select and document the minimum supported WordPress version: 7.0.
 - [x] Select and document the minimum supported PHP version: 8.4.
@@ -65,7 +64,7 @@ committed checkout passes CI and minimum-version activation testing.
 Acceptance criteria:
 
 - [x] A clean checkout installs dependencies and runs all empty/skeleton suites.
-- [ ] Plugin activates and deactivates without warnings on the selected minimum
+- [x] Plugin activates and deactivates without warnings on the selected minimum
       WordPress/PHP combination and WordPress 7.x.
 - [x] Distribution archive contains only expected files.
 - [x] No application feature is falsely described as complete.
@@ -129,7 +128,7 @@ Acceptance criteria:
 - [x] Pending and unknown users retain distinct aggregate skip reasons
       (`unverified` and `verification_unknown`).
 - [x] Invalid alternate-provider filter results fail closed.
-- [ ] Administrator health warnings are silent for a healthy provider and do
+- [x] Administrator health warnings are silent for a healthy provider and do
       not expose provider exception details.
 
 Audience-resolution and pre-send enforcement are acceptance criteria of the
