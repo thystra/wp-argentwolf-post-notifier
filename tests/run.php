@@ -29,7 +29,10 @@ use ArgentWolf\PostNotifier\Verification\VerificationStatus;
 $main   = file_get_contents( $root . '/argentwolf-post-notifier.php' );
 $readme = file_get_contents( $root . '/readme.txt' );
 $installer = file_get_contents( $root . '/bin/install-wp-tests.sh' );
-$workflow  = file_get_contents( $root . '/.github/workflows/ci.yml' );
+$workflow_path = $root . '/.forgejo/workflows/ci.yml';
+$workflow      = is_readable( $workflow_path )
+	? file_get_contents( $workflow_path )
+	: '';
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -54,6 +57,14 @@ $assert(
 	'WordPress test installer must return its real child-process status.'
 );
 $assert(
+	is_readable( $workflow_path ),
+	'Forgejo CI workflow must exist.'
+);
+$assert(
+	str_contains( (string) $workflow, 'runs-on: forgejo-workstation' ),
+	'Forgejo CI must target the forgejo-workstation runner label.'
+);
+$assert(
 	str_contains(
 		(string) $workflow,
 		'test -r "${WP_TESTS_DIR}/includes/functions.php"'
@@ -61,7 +72,7 @@ $assert(
 	'CI must verify the installed WordPress test-library path.'
 );
 $assert(
-	str_contains( (string) $workflow, 'sudo apt-get install --yes subversion' ),
+	str_contains( (string) $workflow, 'apt-get install --yes subversion' ),
 	'CI must install the Subversion dependency explicitly.'
 );
 $assert(
