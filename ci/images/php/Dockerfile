@@ -2,8 +2,10 @@
 
 ARG PHP_BASE_IMAGE=php:8.4-cli-bookworm
 ARG COMPOSER_BASE_IMAGE=composer:2
+ARG NODE_BASE_IMAGE=node:24-bookworm
 
 FROM ${COMPOSER_BASE_IMAGE} AS composer
+FROM ${NODE_BASE_IMAGE} AS node_toolchain
 
 FROM ${PHP_BASE_IMAGE}
 
@@ -11,6 +13,7 @@ ARG EXPECTED_PHP_MINOR=8.4
 ARG SOURCE_REVISION=unknown
 ARG PHP_BASE_IMAGE_REFERENCE=unknown
 ARG COMPOSER_BASE_IMAGE_REFERENCE=unknown
+ARG NODE_BASE_IMAGE_REFERENCE=unknown
 
 LABEL org.opencontainers.image.source="https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier" \
       org.opencontainers.image.title="ArgentWolf shared PHP CI" \
@@ -18,6 +21,7 @@ LABEL org.opencontainers.image.source="https://forgejo.argentwolf.org/alan/wp-pl
       org.opencontainers.image.revision="${SOURCE_REVISION}" \
       org.opencontainers.image.base.name="${PHP_BASE_IMAGE_REFERENCE}" \
       org.argentwolf.ci.composer-base="${COMPOSER_BASE_IMAGE_REFERENCE}" \
+      org.argentwolf.ci.node-base="${NODE_BASE_IMAGE_REFERENCE}" \
       org.argentwolf.ci.php-minor="${EXPECTED_PHP_MINOR}"
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -46,6 +50,9 @@ RUN apt-get update \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
+# Forgejo JavaScript actions such as checkout execute with Node inside the job
+# container. Copy only the Node runtime; routine PHP jobs do not need npm.
+COPY --from=node_toolchain /usr/local/bin/node /usr/local/bin/node
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY ci/images/php/verify-image.sh /usr/local/bin/argentwolf-verify-php-ci-image
 

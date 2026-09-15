@@ -9,7 +9,7 @@ if [[ "$actual" != "$expected" ]]; then
     exit 1
 fi
 
-for command in php composer git curl svn rsync unzip zip; do
+for command in php composer node git curl svn rsync unzip zip; do
     if ! command -v "$command" >/dev/null 2>&1; then
         printf 'ERROR: required CI command is missing: %s\n' "$command" >&2
         exit 1
@@ -39,5 +39,6 @@ done
 
 php --version
 composer --version
+node --version
 svn --version --quiet
 printf 'ArgentWolf shared PHP CI image verification passed for PHP %s.\n' "$actual"

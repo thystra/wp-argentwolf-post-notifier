@@ -16,6 +16,7 @@ and contain:
 
 - PHP CLI for the selected minor release;
 - Composer 2;
+- Node 24 runtime for Forgejo JavaScript actions such as checkout;
 - PHP extensions commonly required by WordPress/PHPUnit/plugin projects:
   `curl`, `dom`, `intl`, `mbstring`, `mysqli`, `pdo_mysql`, `simplexml`, `xml`,
   `xmlwriter`, and `zip`;
@@ -30,8 +31,8 @@ these shared images.
 The first immutable discovery tags are:
 
 ```text
-forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.4-bookworm-v1
-forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.5-bookworm-v1
+forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.4-bookworm-v2
+forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.5-bookworm-v2
 ```
 
 Versioned tags are publish-once discovery names. Never overwrite one. Change the
@@ -41,6 +42,12 @@ registry `@sha256:...` digest after qualification, not the mutable tag.
 The packages must remain anonymously pullable so any Forgejo repository can use
 them without embedding registry credentials in normal CI jobs.
 
+The published `bookworm-v1` images passed their PHP/toolchain self-tests but were
+not promoted to routine Forgejo workflow authority: they omitted the Node runtime
+required by JavaScript actions such as `actions/checkout`. `bookworm-v2` adds that
+runner compatibility requirement without baking project dependencies into the
+image.
+
 ## Build and qualify
 
 Build from a clean committed checkout on a trusted Docker host:
@@ -49,7 +56,7 @@ Build from a clean committed checkout on a trusted Docker host:
 bash scripts/build-ci-php-images.sh
 ```
 
-The helper resolves the PHP and Composer base tags to immutable registry
+The helper resolves the PHP, Composer, and Node base tags to immutable registry
 digests, records those references plus the exact source revision in OCI labels,
 builds both PHP versions, and runs `argentwolf-verify-php-ci-image` inside each
 finished image.

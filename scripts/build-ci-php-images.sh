@@ -13,9 +13,11 @@ Environment overrides:
   ARGENTWOLF_CI_PHP_REPOSITORY
       default: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php
   ARGENTWOLF_CI_PHP_TAG_SUFFIX
-      default: bookworm-v1
+      default: bookworm-v2
   ARGENTWOLF_CI_COMPOSER_BASE_IMAGE
       default: composer:2
+  ARGENTWOLF_CI_NODE_BASE_IMAGE
+      default: node:24-bookworm
   DOCKER
       default: docker
 USAGE
@@ -54,8 +56,9 @@ command -v "$docker_bin" >/dev/null 2>&1 || {
 }
 
 repository="${ARGENTWOLF_CI_PHP_REPOSITORY:-forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php}"
-tag_suffix="${ARGENTWOLF_CI_PHP_TAG_SUFFIX:-bookworm-v1}"
+tag_suffix="${ARGENTWOLF_CI_PHP_TAG_SUFFIX:-bookworm-v2}"
 composer_base_tag="${ARGENTWOLF_CI_COMPOSER_BASE_IMAGE:-composer:2}"
+node_base_tag="${ARGENTWOLF_CI_NODE_BASE_IMAGE:-node:24-bookworm}"
 versions=(8.4 8.5)
 
 resolve_repo_digest() {
@@ -80,6 +83,10 @@ printf '\n===== RESOLVE COMPOSER BASE =====\n'
 composer_base_ref="$(resolve_repo_digest "$composer_base_tag")"
 printf 'composer_base=%s\n' "$composer_base_ref"
 
+printf '\n===== RESOLVE NODE BASE =====\n'
+node_base_ref="$(resolve_repo_digest "$node_base_tag")"
+printf 'node_base=%s\n' "$node_base_ref"
+
 for version in "${versions[@]}"; do
     printf '\n===== PHP %s BASE =====\n' "$version"
     php_base_tag="php:${version}-cli-bookworm"
@@ -94,10 +101,12 @@ for version in "${versions[@]}"; do
         --file ci/images/php/Dockerfile \
         --build-arg "PHP_BASE_IMAGE=${php_base_ref}" \
         --build-arg "COMPOSER_BASE_IMAGE=${composer_base_ref}" \
+        --build-arg "NODE_BASE_IMAGE=${node_base_ref}" \
         --build-arg "EXPECTED_PHP_MINOR=${version}" \
         --build-arg "SOURCE_REVISION=${source_revision}" \
         --build-arg "PHP_BASE_IMAGE_REFERENCE=${php_base_ref}" \
         --build-arg "COMPOSER_BASE_IMAGE_REFERENCE=${composer_base_ref}" \
+        --build-arg "NODE_BASE_IMAGE_REFERENCE=${node_base_ref}" \
         --tag "$image_tag" \
         .
 
