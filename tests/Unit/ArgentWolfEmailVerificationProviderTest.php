@@ -47,6 +47,20 @@ final class ArgentWolfEmailVerificationProviderTest extends TestCase {
 		);
 	}
 
+	public function test_unknown_provider_version_fails_closed(): void {
+		$provider = new ArgentWolfEmailVerificationProvider(
+			static fn (): string => 'verified',
+			static fn (): bool => true,
+			static fn (): ?string => null
+		);
+
+		self::assertSame( 'unknown_version', $provider->health()->code() );
+		self::assertSame(
+			VerificationStatus::Unknown,
+			$provider->status_for_user( 10 )
+		);
+	}
+
 	public function test_obsolete_provider_fails_closed(): void {
 		$provider = new ArgentWolfEmailVerificationProvider(
 			static fn (): string => 'verified',

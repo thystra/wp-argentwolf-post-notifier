@@ -381,6 +381,12 @@ invalid, obsolete, or failing providers resolve to `unknown`, so registered-user
 delivery fails closed. A successful `wp_mail()` call is transport evidence only
 and is never verification evidence.
 
+The `0.1.0-alpha.2` implementation boundary ends at this provider contract,
+health reporting, administrator warning, and reusable registered-user eligibility
+policy. It does not yet resolve campaign audiences or send campaign mail. The
+audience resolver and queue milestones consume this policy later and are where
+per-recipient resolution and pre-send rechecks become executable behavior.
+
 ### 4.7 Content extraction and rendering
 
 Content cutoff precedence:

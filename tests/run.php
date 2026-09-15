@@ -28,6 +28,8 @@ use ArgentWolf\PostNotifier\Verification\VerificationStatus;
 
 $main   = file_get_contents( $root . '/argentwolf-post-notifier.php' );
 $readme = file_get_contents( $root . '/readme.txt' );
+$todo         = file_get_contents( $root . '/TODO.md' );
+$architecture = file_get_contents( $root . '/ARCHITECTURE.md' );
 $installer = file_get_contents( $root . '/bin/install-wp-tests.sh' );
 $workflow_path = $root . '/.forgejo/workflows/ci.yml';
 $workflow      = is_readable( $workflow_path )
@@ -58,6 +60,27 @@ $assert( Version::PLUGIN === ( $stable[1] ?? null ), 'Plugin version and readme 
 $assert( '7.0' === ( $wordpress[1] ?? null ), 'Requires at least must be WordPress 7.0.' );
 $assert( '8.4' === ( $php[1] ?? null ), 'Requires PHP must be 8.4.' );
 $assert( '7.1' === ( $tested_up_to[1] ?? null ), 'readme Tested up to must be WordPress 7.1.' );
+$assert(
+	str_contains(
+		(string) $todo,
+		"## Milestone 2 — Verification-provider contract\n\nTarget: `0.1.0-alpha.2`"
+	),
+	'Alpha.2 must remain the verification-provider contract milestone.'
+);
+$assert(
+	str_contains(
+		(string) $todo,
+		"## Milestone 3 — Database schema and migrations\n\nTarget: `0.1.0-alpha.3`"
+	),
+	'Database schema work must remain outside the alpha.2 release boundary.'
+);
+$assert(
+	str_contains(
+		(string) $architecture,
+		'The `0.1.0-alpha.2` implementation boundary ends at this provider contract'
+	),
+	'Architecture must state the alpha.2 implementation boundary explicitly.'
+);
 $editor_source = file_get_contents( $root . '/assets/src/editor.js' );
 $assert(
 	! str_contains( (string) $editor_source, 'SCAFFOLD_VERSION' ),
