@@ -45,8 +45,17 @@ jobs:
         run: composer test
 
   wordpress:
-    name: WordPress 7.0.2 integration
+    name: WordPress ${{ matrix.wordpress }} / Email Verification ${{ matrix.verification }}
     runs-on: forgejo-workstation
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress:
+          - '7.0.4'
+          - '7.1'
+        verification:
+          - '0.3.4'
+          - '1.0.2'
     container:
       image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
     services:
@@ -74,11 +83,10 @@ jobs:
         run: composer install --no-interaction --prefer-dist
 
       - name: Install released verification companion
-        run: |
-          curl --fail --location --silent --show-error \
-            https://raw.githubusercontent.com/thystra/wp-argentwolf-email-verification/v0.3.4/argentwolf-email-verification.php \
-            --output /tmp/argentwolf-email-verification-0.3.4.php
-          grep -Fq ' * Version: 0.3.4' /tmp/argentwolf-email-verification-0.3.4.php
+        run: >-
+          bash bin/install-verification-companion.sh
+          "${{ matrix.verification }}"
+          /tmp/argentwolf-email-verification.php
 
       - name: Install WordPress test environment
         env:
@@ -90,7 +98,7 @@ jobs:
             root \
             '' \
             mysql:3306 \
-            7.0.2
+            "${{ matrix.wordpress }}"
           test -r "${WP_TESTS_DIR}/includes/functions.php"
           test -r "${WP_TESTS_DIR}/includes/bootstrap.php"
           test -r "${WP_TESTS_DIR}/wp-tests-config.php"
@@ -100,7 +108,7 @@ jobs:
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
-          ARGENTWOLF_EMAIL_VERIFICATION_FILE: /tmp/argentwolf-email-verification-0.3.4.php
+          ARGENTWOLF_EMAIL_VERIFICATION_FILE: /tmp/argentwolf-email-verification.php
         run: composer test:integration
 
   javascript:
@@ -137,6 +145,8 @@ jobs:
       - php
       - wordpress
       - javascript
+    container:
+      image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
 
     steps:
       - name: Check out repository
@@ -144,24 +154,30 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install packaging tools
-        run: |
-          apt-get update
-          apt-get install --yes zip
+      - name: Verify shared PHP CI image
+        run: argentwolf-verify-php-ci-image
 
       - name: Build package
-        run: bash build/build-plugin.sh 0.1.0-alpha.2
+        run: composer build
 
-      - name: Verify checksum
+      - name: Verify reproducible package and checksum
         run: |
+          VERSION="$(php -r "require 'src/Version.php'; echo \\ArgentWolf\\PostNotifier\\Version::PLUGIN;")"
+          ARCHIVE="dist/argentwolf-post-notifier-${VERSION}.zip"
+          FIRST_SHA256="$(sha256sum "${ARCHIVE}" | awk '{print $1}')"
+          composer build
+          SECOND_SHA256="$(sha256sum "${ARCHIVE}" | awk '{print $1}')"
+          test "${FIRST_SHA256}" = "${SECOND_SHA256}"
           cd dist
           sha256sum -c SHA256SUMS
 
       - name: Upload package
         uses: https://code.forgejo.org/actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5
         with:
-          name: argentwolf-post-notifier-0.1.0-alpha.2
+          name: argentwolf-post-notifier-package
           path: |
-            dist/argentwolf-post-notifier-0.1.0-alpha.2.zip
+            dist/argentwolf-post-notifier-*.zip
             dist/SHA256SUMS
           if-no-files-found: error
+
+# EOF: .forgejo/workflows/ci.yml

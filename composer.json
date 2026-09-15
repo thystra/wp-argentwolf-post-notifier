@@ -44,10 +44,10 @@
       "@test:unit",
       "@test:dependency-free"
     ],
-    "build": "bash build/build-plugin.sh 0.1.0-alpha.2"
+    "build": "bash build/build-plugin.sh"
   },
   "support": {
-    "issues": "https://github.com/thystra/wp-argentwolf-post-notifier/issues",
-    "source": "https://github.com/thystra/wp-argentwolf-post-notifier"
+    "issues": "https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/issues",
+    "source": "https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier"
   }
 }

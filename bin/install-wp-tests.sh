@@ -8,7 +8,7 @@ main() {
 	local db_user="${2:-root}"
 	local db_pass="${3:-}"
 	local db_host="${4:-127.0.0.1}"
-	local wp_version="${5:-7.0.2}"
+	local wp_version="${5:-7.0.4}"
 	local tests_dir="${WP_TESTS_DIR:-/tmp/wordpress-tests-lib}"
 	local core_dir="${WP_CORE_DIR:-/tmp/wordpress}"
 

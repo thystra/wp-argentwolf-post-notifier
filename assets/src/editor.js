@@ -7,6 +7,5 @@
 import './editor.scss';
 
 export const PLUGIN_SLUG = 'argentwolf-post-notifier';
-export const SCAFFOLD_VERSION = '0.1.0-alpha.1';
 
 // EOF: assets/src/editor.js

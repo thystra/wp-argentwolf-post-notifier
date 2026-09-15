@@ -59,6 +59,6 @@ main() {
 	return 0
 }
 
-main "$@" || true
+main "$@"
 
 # EOF: tests/package-manifest.sh

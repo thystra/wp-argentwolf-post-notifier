@@ -5,7 +5,7 @@ ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
 verified, unsubscribe-capable email notifications when posts are actually
 published.
 
-The project now contains the `0.1.0-alpha.1` development skeleton: plugin
+The project now contains the `0.1.0-alpha.2` development skeleton: plugin
 bootstrap, lifecycle handlers, namespaced service registration, automated
 quality-gate configuration, and deterministic packaging. Campaign creation,
 subscriber collection, delivery, unsubscribe handling, and statistics are not
@@ -15,9 +15,9 @@ complete and operational, is the WordPress.org Plugin Directory.
 ## Development requirements
 
 - WordPress 7.0 or newer;
-- PHP 8.2 or newer;
+- PHP 8.4 or newer;
 - Composer 2 for PHP development dependencies;
-- Node.js 20 or newer and npm 9 or newer for editor tooling.
+- Node.js 20.19 or newer (or 22.13 or newer) and npm 10.2.3 or newer for editor tooling.
 
 The source tree includes a verified project-local Composer installer helper.
 The runtime package has no third-party PHP dependency in this alpha and retains
@@ -55,17 +55,17 @@ is never sent early merely because the editor selected a future date.
 
 Registered WordPress account verification remains a separate companion plugin:
 
-[ArgentWolf Email Verification](https://github.com/thystra/wp-argentwolf-email-verification)
+[ArgentWolf Email Verification](https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification)
 
 The notifier will use the companion plugin's canonical
 `argentwolf_email_verification_...` public API and will fail closed for
 registered-user recipients when no authoritative verification provider is
 available.
 
-The preferred WordPress.org release sequence is to publish and obtain approval
-for ArgentWolf Email Verification first, then declare the approved
-`argentwolf-email-verification` slug through the notifier's `Requires Plugins`
-header.
+ArgentWolf Email Verification is now published on WordPress.org under the
+`argentwolf-email-verification` slug. The notifier declares that formal
+`Requires Plugins` dependency while retaining runtime health checks so missing,
+obsolete, or failing verification APIs still fail closed.
 
 Standalone subscribers are maintained by the notifier and must complete a
 double-opt-in confirmation before they are eligible for post notifications.
@@ -100,7 +100,7 @@ A conventional local checkout is:
 ```bash
 mkdir -p ~/src
 cd ~/src
-git clone https://github.com/thystra/wp-argentwolf-post-notifier.git
+git clone https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier.git wp-argentwolf-post-notifier
 cd ~/src/wp-argentwolf-post-notifier
 ```
 
@@ -126,7 +126,7 @@ version 2 or later. See [LICENSE](LICENSE).
 
 ## Support the project
 
-Development is supported through the repository's GitHub funding links:
+Development is supported through these project funding links:
 
 - [GitHub Sponsors](https://github.com/sponsors/thystra)
 - [Ko-fi](https://ko-fi.com/thewolfandtheraven)

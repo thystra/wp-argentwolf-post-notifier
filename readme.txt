@@ -2,7 +2,7 @@
 Contributors: thystra
 Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.4
 Stable tag: 0.1.0-alpha.2
 License: GPLv2 or later
@@ -16,9 +16,10 @@ ArgentWolf Post Notifier is currently an alpha development scaffold.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
-integration, and distribution packaging. Registered-user verification now
-integrates with ArgentWolf Email Verification 0.3.4 or a filtered alternate
-provider and fails closed when no authoritative provider is healthy. Campaign
+integration, and distribution packaging. Registered-user verification supports
+the public API introduced in ArgentWolf Email Verification 0.3.4 and is tested
+against the current 1.0.2 release; it fails closed when no authoritative provider
+is healthy. Campaign
 creation, subscriber collection, email delivery, unsubscribe handling, and
 statistics are not implemented in this alpha.
 
@@ -26,9 +27,10 @@ The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
 email.
 
-Registered-user verification remains a runtime integration with the separately
-developed ArgentWolf Email Verification plugin. The formal Requires Plugins
-header will be added only after the companion WordPress.org slug is approved.
+Registered-user verification remains implemented by the separately developed
+ArgentWolf Email Verification plugin. That companion is published on WordPress.org
+under the `argentwolf-email-verification` slug, and this plugin declares it through
+the formal `Requires Plugins` header. Runtime health checks remain fail-closed.
 
 Development source and architecture documentation are available at the Plugin
 URI.
@@ -57,9 +59,9 @@ publication, never merely because a future publication time was selected.
 
 = Is ArgentWolf Email Verification required? =
 
-It is the planned authoritative provider for registered-user verification.
-During development, integration is discovered at runtime. A formal WordPress.org
-dependency will be added only after the companion plugin is approved there.
+Yes. It is the authoritative provider for registered-user verification and is
+now available from WordPress.org. This plugin declares the dependency while still
+checking provider health and API compatibility at runtime.
 
 == Changelog ==
 
