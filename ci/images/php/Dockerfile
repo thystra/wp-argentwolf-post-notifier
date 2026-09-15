@@ -24,30 +24,25 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMPOSER_ALLOW_SUPERUSER=1 \
     ARGENTWOLF_CI_PHP_VERSION=${EXPECTED_PHP_MINOR}
 
+# The official PHP CLI images already provide curl, DOM, mbstring, SimpleXML,
+# XML, and XMLWriter. Rebuilding those bundled extensions is unnecessary and,
+# on PHP 8.5, breaks DOM because its bundled Lexbor sources are not present in
+# the extension-only rebuild tree. Compile only the additional CI requirements.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         ca-certificates \
         curl \
         git \
-        libcurl4-openssl-dev \
         libicu-dev \
-        libonig-dev \
-        libxml2-dev \
         libzip-dev \
         rsync \
         subversion \
         unzip \
         zip \
     && docker-php-ext-install -j"$(nproc)" \
-        curl \
-        dom \
         intl \
-        mbstring \
         mysqli \
         pdo_mysql \
-        simplexml \
-        xml \
-        xmlwriter \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
