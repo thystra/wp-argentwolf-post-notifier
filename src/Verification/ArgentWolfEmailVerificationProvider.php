@@ -86,7 +86,11 @@ final class ArgentWolfEmailVerificationProvider implements VerificationProvider 
 	 * @return bool
 	 */
 	public function is_available(): bool {
-		return (bool) ( $this->availability_resolver )();
+		try {
+			return (bool) ( $this->availability_resolver )();
+		} catch ( Throwable ) {
+			return false;
+		}
 	}
 
 	/**
@@ -138,7 +142,19 @@ final class ArgentWolfEmailVerificationProvider implements VerificationProvider 
 			);
 		}
 
-		$version = ( $this->version_resolver )();
+		try {
+			$version = ( $this->version_resolver )();
+		} catch ( Throwable ) {
+			return new VerificationProviderHealth(
+				'argentwolf-email-verification',
+				$this->description(),
+				true,
+				false,
+				null,
+				'provider_health_failed',
+				'The verification provider health check could not be completed.'
+			);
+		}
 		if ( null === $version || '' === $version ) {
 			return new VerificationProviderHealth(
 				'argentwolf-email-verification',
