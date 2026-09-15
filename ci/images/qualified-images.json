@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "images": {
+    "php84": {
+      "phpMinor": "8.4",
+      "tag": "forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.4-bookworm-v2",
+      "indexDigest": "sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95",
+      "linuxAmd64ManifestDigest": "sha256:42546274ac98968ce674838ad7f2009ac2eecd28465c64d34fe282f9bb504e6d",
+      "reference": "forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95"
+    },
+    "php85": {
+      "phpMinor": "8.5",
+      "tag": "forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php:8.5-bookworm-v2",
+      "indexDigest": "sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace",
+      "linuxAmd64ManifestDigest": "sha256:207268bfdb8dd00b9eceb316ec714a2a50f981dbf3ac1c9cd24d799216d2ea7f",
+      "reference": "forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace"
+    }
+  }
+}
