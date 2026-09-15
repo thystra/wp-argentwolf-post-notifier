@@ -165,6 +165,13 @@ $assert(
 	'WordPress integration CI must cover the minimum and current companion releases.'
 );
 $assert(
+	str_contains(
+		(string) $workflow,
+		'ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION: ${{ matrix.verification }}'
+	),
+	'WordPress integration CI must pass the selected companion version to integration tests.'
+);
+$assert(
 	! str_contains( (string) $workflow, '7.0.2' ),
 	'CI must not remain pinned to obsolete WordPress 7.0.2.'
 );
