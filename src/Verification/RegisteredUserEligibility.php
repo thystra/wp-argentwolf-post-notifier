@@ -7,6 +7,8 @@
 
 namespace ArgentWolf\PostNotifier\Verification;
 
+use Throwable;
+
 /**
  * Fail-closed registered-user verification eligibility policy.
  */
@@ -26,7 +28,19 @@ final class RegisteredUserEligibility {
 	 * @return VerificationStatus
 	 */
 	public function status_for_user( int $user_id ): VerificationStatus {
-		return $this->provider->status_for_user( $user_id );
+		if ( $user_id <= 0 ) {
+			return VerificationStatus::Unknown;
+		}
+
+		try {
+			if ( ! $this->provider->health()->is_healthy() ) {
+				return VerificationStatus::Unknown;
+			}
+
+			return $this->provider->status_for_user( $user_id );
+		} catch ( Throwable ) {
+			return VerificationStatus::Unknown;
+		}
 	}
 
 	/**

@@ -1,4 +1,4 @@
-# File: .github/workflows/ci.yml
+# File: .forgejo/workflows/ci.yml
 name: CI
 
 on:
@@ -14,7 +14,7 @@ permissions:
 jobs:
   php:
     name: PHP ${{ matrix.php }}
-    runs-on: ubuntu-latest
+    runs-on: forgejo-workstation
     strategy:
       fail-fast: false
       matrix:
@@ -23,10 +23,13 @@ jobs:
           - '8.5'
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out repository
+        uses: https://data.forgejo.org/actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: https://github.com/shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
         with:
           php-version: ${{ matrix.php }}
           coverage: none
@@ -43,15 +46,13 @@ jobs:
 
   wordpress:
     name: WordPress 7.0.2 integration
-    runs-on: ubuntu-latest
+    runs-on: forgejo-workstation
     services:
       mysql:
         image: mysql:8.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
           MYSQL_DATABASE: wordpress_test
-        ports:
-          - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
@@ -59,13 +60,17 @@ jobs:
           --health-retries=10
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out repository
+        uses: https://data.forgejo.org/actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: https://github.com/shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
         with:
           php-version: '8.4'
           coverage: none
+          extensions: mysqli
           tools: composer:v2
 
       - name: Install dependencies
@@ -73,8 +78,8 @@ jobs:
 
       - name: Install Subversion
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes subversion
+          apt-get update
+          apt-get install --yes subversion
 
       - name: Install released verification companion
         run: |
@@ -92,7 +97,7 @@ jobs:
             wordpress_test \
             root \
             '' \
-            127.0.0.1:3306 \
+            mysql:3306 \
             7.0.2
           test -r "${WP_TESTS_DIR}/includes/functions.php"
           test -r "${WP_TESTS_DIR}/includes/bootstrap.php"
@@ -108,16 +113,18 @@ jobs:
 
   javascript:
     name: JavaScript
-    runs-on: ubuntu-latest
+    runs-on: forgejo-workstation
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out repository
+        uses: https://data.forgejo.org/actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: https://data.forgejo.org/actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
-          cache: npm
 
       - name: Install JavaScript dependencies
         run: npm ci
@@ -133,10 +140,22 @@ jobs:
 
   package:
     name: Distribution package
-    runs-on: ubuntu-latest
+    runs-on: forgejo-workstation
+    needs:
+      - php
+      - wordpress
+      - javascript
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out repository
+        uses: https://data.forgejo.org/actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+
+      - name: Install packaging tools
+        run: |
+          apt-get update
+          apt-get install --yes zip
 
       - name: Build package
         run: bash build/build-plugin.sh 0.1.0-alpha.2
@@ -147,9 +166,10 @@ jobs:
           sha256sum -c SHA256SUMS
 
       - name: Upload package
-        uses: actions/upload-artifact@v6
+        uses: https://code.forgejo.org/actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5
         with:
           name: argentwolf-post-notifier-0.1.0-alpha.2
           path: |
             dist/argentwolf-post-notifier-0.1.0-alpha.2.zip
             dist/SHA256SUMS
+          if-no-files-found: error

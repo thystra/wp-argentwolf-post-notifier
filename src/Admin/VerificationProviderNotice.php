@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Verification\VerificationProvider;
 use Closure;
+use Throwable;
 
 /**
  * Warn administrators when registered-user verification is unavailable.
@@ -53,25 +54,35 @@ final class VerificationProviderNotice implements Registerable {
 			return;
 		}
 
-		$provider = ( $this->provider_resolver )();
-		if ( ! $provider instanceof VerificationProvider ) {
-			return;
-		}
-
-		$health = $provider->health();
-		if ( $health->is_healthy() ) {
-			return;
-		}
-
-		$message = sprintf(
-			/* translators: 1: provider description, 2: provider health message. */
-			__(
-				'Registered-user delivery is disabled: %1$s. %2$s',
-				'argentwolf-post-notifier'
-			),
-			$health->description(),
-			$health->message()
+		$message = __(
+			'Registered-user delivery is disabled because verification could not be checked.',
+			'argentwolf-post-notifier'
 		);
+
+		try {
+			$provider = ( $this->provider_resolver )();
+			if ( $provider instanceof VerificationProvider ) {
+				$health = $provider->health();
+				if ( $health->is_healthy() ) {
+					return;
+				}
+
+				$message = sprintf(
+					/* translators: 1: provider description, 2: provider health message. */
+					__(
+						'Registered-user delivery is disabled: %1$s. %2$s',
+						'argentwolf-post-notifier'
+					),
+					$health->description(),
+					$health->message()
+				);
+			}
+		} catch ( Throwable ) {
+			$message = __(
+				'Registered-user delivery is disabled because verification could not be checked.',
+				'argentwolf-post-notifier'
+			);
+		}
 
 		echo '<div class="notice notice-warning"><p>';
 		echo esc_html( $message );

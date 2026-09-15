@@ -61,6 +61,41 @@ final class ArgentWolfEmailVerificationProviderTest extends TestCase {
 		);
 	}
 
+	public function test_availability_resolver_exception_fails_closed(): void {
+		$provider = new ArgentWolfEmailVerificationProvider(
+			static fn (): string => 'verified',
+			static function (): never {
+				throw new RuntimeException( 'Availability failure.' );
+			},
+			static fn (): string => '0.3.4'
+		);
+
+		self::assertFalse( $provider->is_available() );
+		self::assertSame(
+			VerificationStatus::Unknown,
+			$provider->status_for_user( 10 )
+		);
+	}
+
+	public function test_version_resolver_exception_fails_closed(): void {
+		$provider = new ArgentWolfEmailVerificationProvider(
+			static fn (): string => 'verified',
+			static fn (): bool => true,
+			static function (): never {
+				throw new RuntimeException( 'Version failure.' );
+			}
+		);
+
+		$health = $provider->health();
+
+		self::assertSame( 'provider_health_failed', $health->code() );
+		self::assertFalse( $health->is_healthy() );
+		self::assertSame(
+			VerificationStatus::Unknown,
+			$provider->status_for_user( 10 )
+		);
+	}
+
 	public function test_provider_exception_fails_closed(): void {
 		$provider = new ArgentWolfEmailVerificationProvider(
 			static function (): never {
