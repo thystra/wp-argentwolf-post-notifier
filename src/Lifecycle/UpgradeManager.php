@@ -47,7 +47,10 @@ final class UpgradeManager implements Registerable {
 			'0'
 		);
 
-		if ( Version::SCHEMA !== $installed_schema ) {
+		if (
+			Version::SCHEMA !== $installed_schema
+			|| Version::PLUGIN !== $installed_plugin
+		) {
 			$migrator = $this->schema_migrator ?? new SchemaMigrator();
 			$migrator->migrate();
 		}

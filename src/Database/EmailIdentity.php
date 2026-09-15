@@ -76,7 +76,7 @@ final class EmailIdentity {
 	public static function ensure_hash_key(): void {
 		$existing = get_option( self::HASH_KEY_OPTION, '' );
 		if ( is_string( $existing ) && '' !== $existing ) {
-			self::decode_key( $existing );
+			self::validate_hash_key();
 			return;
 		}
 
@@ -93,6 +93,21 @@ final class EmailIdentity {
 		}
 
 		self::decode_key( $existing );
+	}
+
+	/**
+	 * Validate the persisted keyed-hash secret without changing it.
+	 *
+	 * @return void
+	 * @throws RuntimeException When the persisted hash key is missing or malformed.
+	 */
+	public static function validate_hash_key(): void {
+		$encoded = get_option( self::HASH_KEY_OPTION, '' );
+		if ( ! is_string( $encoded ) || '' === $encoded ) {
+			throw new RuntimeException( 'Email hash key is unavailable.' );
+		}
+
+		self::decode_key( $encoded );
 	}
 
 	/**

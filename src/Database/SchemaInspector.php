@@ -41,6 +41,31 @@ final class SchemaInspector {
 	}
 
 	/**
+	 * Return column metadata keyed by field name.
+	 *
+	 * @param string $table Table name from TableNames.
+	 * @return array<string,array<string,mixed>>
+	 */
+	public function columns( string $table ): array {
+		// Table names come only from the internal TableNames resolver.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery
+		// phpcs:disable WordPress.DB.PreparedSQL
+		$rows = $this->database->get_results(
+			"SHOW FULL COLUMNS FROM `{$table}`",
+			ARRAY_A
+		);
+		// phpcs:enable
+		$columns = array();
+		foreach ( (array) $rows as $row ) {
+			if ( isset( $row['Field'] ) ) {
+				$columns[ (string) $row['Field'] ] = $row;
+			}
+		}
+
+		return $columns;
+	}
+
+	/**
 	 * Return index names defined for a table.
 	 *
 	 * @param string $table Table name from TableNames.

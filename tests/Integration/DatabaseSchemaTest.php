@@ -12,6 +12,7 @@ use ArgentWolf\PostNotifier\Database\MigrationLock;
 use ArgentWolf\PostNotifier\Database\SchemaInspector;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Version;
 use WP_UnitTestCase;
 
@@ -27,7 +28,15 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 
 		$this->assert_indexes(
 			$tables->campaigns(),
-			array( 'PRIMARY', 'uuid', 'campaign_key', 'post_id', 'status', 'created_at_gmt' )
+			array(
+				'PRIMARY',
+				'uuid',
+				'campaign_key',
+				'post_id',
+				'status',
+				'created_at_gmt',
+				'completed_at_gmt',
+			)
 		);
 		$this->assert_indexes(
 			$tables->campaign_recipients(),
@@ -35,9 +44,12 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 				'PRIMARY',
 				'recipient_uuid',
 				'campaign_email',
+				'unsubscribe_token_hash',
+				'click_token_hash',
 				'campaign_status',
 				'queue_ready',
 				'lease_expires_at_gmt',
+				'personal_data_erased_at_gmt',
 				'user_id',
 				'subscriber_id',
 			)
@@ -48,6 +60,8 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 				'PRIMARY',
 				'uuid',
 				'email_hash',
+				'confirmation_token_hash',
+				'manage_token_hash',
 				'status',
 				'confirmation_expires_at_gmt',
 				'source_post_id',
@@ -69,6 +83,11 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 			$tables->clicks(),
 			array( 'PRIMARY', 'campaign_recipient_id', 'clicked_at_gmt' )
 		);
+
+		$recipient_columns = $inspector->columns( $tables->campaign_recipients() );
+		self::assertSame( 'YES', $recipient_columns['email_snapshot']['Null'] ?? null );
+		self::assertSame( 'YES', $recipient_columns['email_hash']['Null'] ?? null );
+		self::assertArrayHasKey( 'personal_data_erased_at_gmt', $recipient_columns );
 	}
 
 	public function test_migration_from_schema_zero_is_idempotent(): void {
@@ -88,7 +107,7 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 		}
 	}
 
-	public function test_failed_migration_does_not_advance_schema_version(): void {
+	public function test_failed_migration_does_not_advance_and_can_retry_after_repair(): void {
 		global $wpdb;
 
 		update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
@@ -103,6 +122,83 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 
 		self::assertInstanceOf( \RuntimeException::class, $caught );
 		self::assertSame( '0', get_option( SchemaMigrator::SCHEMA_OPTION ) );
+
+		delete_option( EmailIdentity::HASH_KEY_OPTION );
+		( new SchemaMigrator( $wpdb ) )->migrate();
+		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+		EmailIdentity::validate_hash_key();
+	}
+
+	public function test_current_schema_drift_is_repaired_without_version_advance(): void {
+		global $wpdb;
+
+		$tables = TableNames::from_database( $wpdb );
+		$table  = $tables->campaigns();
+
+		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `completed_at_gmt`" );
+		self::assertNotContains(
+			'completed_at_gmt',
+			( new SchemaInspector( $wpdb ) )->indexes( $table )
+		);
+		update_option( SchemaMigrator::SCHEMA_OPTION, Version::SCHEMA, false );
+
+		( new SchemaMigrator( $wpdb ) )->migrate();
+
+		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+		self::assertContains(
+			'completed_at_gmt',
+			( new SchemaInspector( $wpdb ) )->indexes( $table )
+		);
+	}
+
+	public function test_released_schema_zero_checkpoint_upgrades_to_schema_one(): void {
+		global $wpdb;
+
+		update_option( 'argentwolf_post_notifier_version', '0.1.0-alpha.2', false );
+		update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
+
+		( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+
+		self::assertSame( Version::PLUGIN, get_option( 'argentwolf_post_notifier_version' ) );
+		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+		foreach ( TableNames::from_database( $wpdb )->all() as $table ) {
+			self::assertTrue( ( new SchemaInspector( $wpdb ) )->table_exists( $table ) );
+		}
+	}
+
+	public function test_plugin_upgrade_revalidates_schema_even_when_schema_version_is_current(): void {
+		global $wpdb;
+
+		$tables = TableNames::from_database( $wpdb );
+		$table  = $tables->campaign_recipients();
+		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `personal_data_erased_at_gmt`" );
+		update_option( SchemaMigrator::SCHEMA_OPTION, Version::SCHEMA, false );
+		update_option( 'argentwolf_post_notifier_version', '0.1.0-alpha.2', false );
+
+		( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+
+		self::assertContains(
+			'personal_data_erased_at_gmt',
+			( new SchemaInspector( $wpdb ) )->indexes( $table )
+		);
+		self::assertSame(
+			Version::PLUGIN,
+			get_option( 'argentwolf_post_notifier_version' )
+		);
+	}
+
+	public function test_newer_database_schema_is_refused(): void {
+		global $wpdb;
+
+		update_option( SchemaMigrator::SCHEMA_OPTION, '2', false );
+
+		try {
+			$this->expectException( \RuntimeException::class );
+			$this->expectExceptionMessage( 'newer than this plugin code' );
+			( new SchemaMigrator( $wpdb ) )->migrate();
+		} finally {
+			update_option( SchemaMigrator::SCHEMA_OPTION, Version::SCHEMA, false );
+		}
 	}
 
 	public function test_email_identity_is_normalized_and_keyed(): void {

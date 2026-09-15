@@ -615,9 +615,19 @@ There is no automatic schema downgrade. Before an operator deliberately runs
 older code against a newer schema, restore a compatible database backup or use a
 documented forward recovery migration. Failed migrations do not advance the
 stored schema version, so the same code can retry after the underlying fault is
-corrected. Schema 1 remains provisional while alpha.3 is under development. Once
-a tagged checkpoint ships schema 1, its migration becomes immutable upgrade
-history; later structural changes require schema 2 or newer.
+corrected. Re-running the current idempotent migration under the advisory lock is
+also the supported repair path for recoverable table/index drift. Plugin-version
+upgrades revalidate the current schema even when the numeric schema version has
+not changed. A database claiming a schema newer than the running code fails
+closed rather than attempting a downgrade.
+
+All plugin-owned `*_at_gmt` values are persisted through the canonical UTC
+conversion helper. Persistence code must not depend on the PHP default timezone
+or the site's display timezone.
+
+Schema 1 remains provisional while alpha.3 is under development. Once a tagged
+checkpoint ships schema 1, its migration becomes immutable upgrade history;
+later structural changes require schema 2 or newer.
 
 ### 8.1 `argentwolf_pn_campaigns`
 
@@ -666,8 +676,10 @@ recipient_uuid
 recipient_type            user|subscriber
 user_id                   nullable
 subscriber_id             nullable
-email_snapshot
-email_hash
+email_snapshot             nullable after retention redaction
+email_hash                 nullable after retention redaction
+unsubscribe_token_hash
+click_token_hash
 display_name_snapshot
 status                    queued|claimed|submitted|failed|skipped
 skip_reason
@@ -682,12 +694,16 @@ last_clicked_at_gmt
 click_count
 last_error_code
 last_error_message
+personal_data_erased_at_gmt
 UNIQUE campaign_id,email_hash
 ```
 
 The email snapshot is needed so a frozen campaign does not silently change
-destination when a profile is edited after campaign creation. Privacy erasure
-and retention rules control its lifetime.
+destination when a profile is edited after campaign creation. After a completed
+campaign crosses the configured retention boundary, bounded cleanup can clear
+the user/subscriber identifiers, email snapshot, keyed email hash, public-link
+token hashes, and display name while retaining aggregate delivery/click state. The erasure timestamp keeps
+that maintenance operation idempotent.
 
 ### 8.3 `argentwolf_pn_subscribers`
 
@@ -700,9 +716,9 @@ email
 email_hash                UNIQUE
 display_name
 status
-confirmation_token_hash
+confirmation_token_hash      UNIQUE when present
 confirmation_expires_at_gmt
-manage_token_hash
+manage_token_hash            UNIQUE when present
 created_at_gmt
 confirmed_at_gmt
 unsubscribed_at_gmt
@@ -925,6 +941,9 @@ The plugin supplies:
 - configurable retention for completed campaign recipient details;
 - configurable retention for click events;
 - cleanup for expired pending subscribers and tokens;
+- bounded cleanup primitives with a hard per-operation batch ceiling; the
+  database layer accepts caller-selected cutoffs and never silently chooses a
+  retention period;
 - user-deletion and post-deletion handling;
 - documented uninstall choices; and
 - no external telemetry by default.
