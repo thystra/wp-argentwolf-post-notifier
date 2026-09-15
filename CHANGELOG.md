@@ -13,6 +13,17 @@
   stored schema version only after each migration completes.
 - Preserve plugin data on uninstall by default and remove plugin-owned tables and
   the keyed hash secret only when destructive uninstall is explicitly enabled.
+- Add canonical UTC datetime persistence helpers and bounded cleanup primitives
+  for expired pending subscribers, retained click events, and completed-campaign
+  recipient identity.
+- Add unique hashed-token lookup constraints needed by future confirmation,
+  manage-subscription, click, and unsubscribe flows before schema 1 is frozen.
+- Make completed-recipient identity fields redactable while retaining aggregate
+  campaign state, with supporting cleanup indexes in provisional schema 1.
+- Revalidate and repair recoverable current-schema table/index drift during
+  activation and plugin-version upgrades; refuse automatic schema downgrades.
+- Centralize destructive uninstall and add isolated qualification that removes
+  and then reconstructs all plugin-owned persistence.
 - Document the alpha-development/RC release lifecycle; alpha checkpoints no
   longer imply public prerelease publication.
 

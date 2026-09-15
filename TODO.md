@@ -149,30 +149,33 @@ Implementation is split into reviewable tranches. The first tranche establishes
 the migration engine, schema version 1, core table/index layout, keyed email
 identity, and safe preserve-by-default uninstall behavior. Cleanup and
 concurrency/recovery qualification remain separate acceptance work within this
-milestone.
+milestone. Tranche 1 passed the Forgejo WordPress/MySQL matrix in CI 12. Tranche
+2 adds UTC persistence helpers, bounded privacy/retention operations, same-schema
+repair, explicit destructive-uninstall qualification, and released-schema upgrade
+coverage before schema 1 is frozen.
 
-- [ ] Implement versioned schema migrations.
-- [ ] Create campaigns table.
-- [ ] Create campaign recipients table.
-- [ ] Create standalone subscribers table.
-- [ ] Create named lists table.
-- [ ] Create typed list-members table.
-- [ ] Create global suppression table.
-- [ ] Create click-events table.
-- [ ] Add unique campaign-key constraint.
-- [ ] Add unique campaign/email recipient constraint.
-- [ ] Add normalized email and keyed email-hash service.
+- [x] Implement versioned schema migrations.
+- [x] Create campaigns table.
+- [x] Create campaign recipients table.
+- [x] Create standalone subscribers table.
+- [x] Create named lists table.
+- [x] Create typed list-members table.
+- [x] Create global suppression table.
+- [x] Create click-events table.
+- [x] Add unique campaign-key constraint.
+- [x] Add unique campaign/email recipient constraint.
+- [x] Add normalized email and keyed email-hash service.
 - [ ] Store timestamps in UTC.
-- [ ] Add migration locking and idempotency.
-- [ ] Add rollback/recovery documentation.
+- [x] Add migration locking and idempotency.
+- [x] Add rollback/recovery documentation.
 - [ ] Add bounded cleanup routines.
-- [ ] Define uninstall choices: preserve data or remove data.
+- [x] Define uninstall choices: preserve data or remove data.
 
 Acceptance criteria:
 
-- [ ] Repeated activation and migration runs are harmless.
-- [ ] Concurrent migration attempts do not corrupt schema.
-- [ ] All required indexes exist.
+- [x] Repeated activation and migration runs are harmless.
+- [x] Concurrent migration attempts do not corrupt schema.
+- [x] All required indexes exist.
 - [ ] Upgrade tests pass from every released schema version.
 
 ## Milestone 4 — Standalone subscribers and mailing-list block

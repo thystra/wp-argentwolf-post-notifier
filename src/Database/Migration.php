@@ -17,6 +17,13 @@ interface Migration {
 	 * @return void
 	 */
 	public function up(): void;
+
+	/**
+	 * Verify the migration's resulting schema without advancing state.
+	 *
+	 * @return void
+	 */
+	public function verify(): void;
 }
 
 // EOF: src/Database/Migration.php.

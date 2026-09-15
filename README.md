@@ -8,10 +8,11 @@ published.
 The project is now in `0.1.0-alpha.3` development. The verification-provider
 contract, lifecycle/tooling foundation, and initial versioned database schema are
 present. The schema establishes storage for future campaigns, recipients,
-subscribers, lists, suppressions, and click events, but the workflows that use
-those records are not implemented yet. The intended public distribution channel,
-once the plugin is complete and operational, is the WordPress.org Plugin
-Directory.
+subscribers, lists, suppressions, and click events. Alpha.3 also provides
+recovery-aware migrations, canonical UTC persistence, and bounded retention
+primitives, but the workflows that use those records are not implemented yet.
+The intended public distribution channel, once the plugin is complete and
+operational, is the WordPress.org Plugin Directory.
 
 ## Development requirements
 

@@ -70,6 +70,7 @@ checking provider health and API compatibility at runtime.
 * Begin versioned schema migrations and create the initial plugin-owned tables.
 * Add canonical normalized email identity with a persistent keyed SHA-256 hash.
 * Add migration locking and preserve-by-default uninstall handling for the new data foundation.
+* Add UTC persistence helpers, bounded cleanup primitives, same-schema repair, and qualified destructive uninstall handling.
 
 = 0.1.0-alpha.2 =
 * Add the registered-user verification-provider contract and typed statuses.

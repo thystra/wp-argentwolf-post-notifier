@@ -288,7 +288,17 @@ pass.
 - Define schema changes through versioned migrations. Once a tagged checkpoint has
   shipped a schema version, treat that migration as immutable upgrade history;
   make subsequent schema changes in a new numbered migration.
-- Use UTC for stored timestamps and convert only for display.
+- Persist plugin-owned datetime values in UTC through the canonical database UTC
+  helper rather than relying on the PHP or WordPress local timezone.
+- Retention and privacy cleanup must operate in explicit bounded batches. Do not
+  add an unbounded DELETE/UPDATE maintenance query or silently choose a retention
+  period inside the database layer.
+- Preserve plugin data on uninstall unless the site owner explicitly opts into
+  destructive deletion. Keep destructive removal centralized and integration
+  tested so new plugin-owned persistence cannot be forgotten.
+- A same-version activation or plugin-version upgrade may re-run the current
+  idempotent migration to repair recoverable table/index drift. Never advance a
+  schema option until the resulting schema has been verified.
 - Normalize email addresses consistently in one service.
 - Use an HMAC or keyed hash where deterministic email hashes are required.
 - Avoid logging full recipient addresses or tokens.

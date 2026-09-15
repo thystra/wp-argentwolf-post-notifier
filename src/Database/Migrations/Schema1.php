@@ -53,8 +53,18 @@ final class Schema1 implements Migration {
 			dbDelta( $statement );
 		}
 
-		$this->assert_schema( $tables );
 		EmailIdentity::ensure_hash_key();
+	}
+
+	/**
+	 * Verify the initial schema and keyed email identity state.
+	 *
+	 * @return void
+	 * @throws RuntimeException When required schema or keyed identity state is invalid.
+	 */
+	public function verify(): void {
+		$this->assert_schema( TableNames::from_database( $this->database ) );
+		EmailIdentity::validate_hash_key();
 	}
 
 	/**
@@ -75,14 +85,18 @@ final class Schema1 implements Migration {
 				'post_id',
 				'status',
 				'created_at_gmt',
+				'completed_at_gmt',
 			),
 			$tables->campaign_recipients() => array(
 				'PRIMARY',
 				'recipient_uuid',
 				'campaign_email',
+				'unsubscribe_token_hash',
+				'click_token_hash',
 				'campaign_status',
 				'queue_ready',
 				'lease_expires_at_gmt',
+				'personal_data_erased_at_gmt',
 				'user_id',
 				'subscriber_id',
 			),
@@ -90,6 +104,8 @@ final class Schema1 implements Migration {
 				'PRIMARY',
 				'uuid',
 				'email_hash',
+				'confirmation_token_hash',
+				'manage_token_hash',
 				'status',
 				'confirmation_expires_at_gmt',
 				'source_post_id',
@@ -182,7 +198,8 @@ final class Schema1 implements Migration {
 			UNIQUE KEY campaign_key (campaign_key),
 			KEY post_id (post_id),
 			KEY status (status),
-			KEY created_at_gmt (created_at_gmt)
+			KEY created_at_gmt (created_at_gmt),
+			KEY completed_at_gmt (completed_at_gmt)
 		) {$charset_collate};";
 	}
 
@@ -201,8 +218,10 @@ final class Schema1 implements Migration {
 			recipient_type varchar(20) NOT NULL,
 			user_id bigint(20) unsigned DEFAULT NULL,
 			subscriber_id bigint(20) unsigned DEFAULT NULL,
-			email_snapshot varchar(320) NOT NULL,
-			email_hash char(64) NOT NULL,
+			email_snapshot varchar(320) DEFAULT NULL,
+			email_hash char(64) DEFAULT NULL,
+			unsubscribe_token_hash char(64) DEFAULT NULL,
+			click_token_hash char(64) DEFAULT NULL,
 			display_name_snapshot varchar(191) DEFAULT NULL,
 			status varchar(32) NOT NULL,
 			skip_reason varchar(64) DEFAULT NULL,
@@ -214,15 +233,19 @@ final class Schema1 implements Migration {
 			failed_at_gmt datetime DEFAULT NULL,
 			first_clicked_at_gmt datetime DEFAULT NULL,
 			last_clicked_at_gmt datetime DEFAULT NULL,
+			personal_data_erased_at_gmt datetime DEFAULT NULL,
 			click_count bigint(20) unsigned NOT NULL DEFAULT 0,
 			last_error_code varchar(191) DEFAULT NULL,
 			last_error_message text NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY recipient_uuid (recipient_uuid),
 			UNIQUE KEY campaign_email (campaign_id,email_hash),
+			UNIQUE KEY unsubscribe_token_hash (unsubscribe_token_hash),
+			UNIQUE KEY click_token_hash (click_token_hash),
 			KEY campaign_status (campaign_id,status),
 			KEY queue_ready (status,next_attempt_at_gmt),
 			KEY lease_expires_at_gmt (lease_expires_at_gmt),
+			KEY personal_data_erased_at_gmt (personal_data_erased_at_gmt),
 			KEY user_id (user_id),
 			KEY subscriber_id (subscriber_id)
 		) {$charset_collate};";
@@ -257,6 +280,8 @@ final class Schema1 implements Migration {
 			PRIMARY KEY  (id),
 			UNIQUE KEY uuid (uuid),
 			UNIQUE KEY email_hash (email_hash),
+			UNIQUE KEY confirmation_token_hash (confirmation_token_hash),
+			UNIQUE KEY manage_token_hash (manage_token_hash),
 			KEY status (status),
 			KEY confirmation_expires_at_gmt (confirmation_expires_at_gmt),
 			KEY source_post_id (source_post_id)

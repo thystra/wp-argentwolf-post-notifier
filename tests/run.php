@@ -18,6 +18,7 @@ require_once $root . '/autoload.php';
 
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Support\Container;
@@ -52,6 +53,11 @@ $package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.
 $schema_one_source = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
 $activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
 $uninstall_source = file_get_contents( $root . '/uninstall.php' );
+$cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
+$destructive_uninstaller_source = file_get_contents(
+	$root . '/src/Database/DestructiveUninstaller.php'
+);
+$migrator_source = file_get_contents( $root . '/src/Database/SchemaMigrator.php' );
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -108,6 +114,8 @@ $assert(
 	'Alpha.3 must remain the database schema and migrations milestone.'
 );
 $database_files = array(
+	'src/Database/DataCleanup.php',
+	'src/Database/DestructiveUninstaller.php',
 	'src/Database/EmailIdentity.php',
 	'src/Database/Migration.php',
 	'src/Database/MigrationLock.php',
@@ -115,6 +123,7 @@ $database_files = array(
 	'src/Database/SchemaInspector.php',
 	'src/Database/SchemaMigrator.php',
 	'src/Database/TableNames.php',
+	'src/Database/UtcDateTime.php',
 );
 foreach ( $database_files as $database_file ) {
 	$assert(
@@ -133,8 +142,19 @@ foreach ( $table_names->all() as $table_name ) {
 $assert(
 	str_contains( (string) $schema_one_source, 'UNIQUE KEY campaign_key (campaign_key)' )
 		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY campaign_email (campaign_id,email_hash)' )
-		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY email_hash (email_hash)' ),
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY email_hash (email_hash)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY confirmation_token_hash (confirmation_token_hash)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY manage_token_hash (manage_token_hash)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY unsubscribe_token_hash (unsubscribe_token_hash)' )
+		&& str_contains( (string) $schema_one_source, 'UNIQUE KEY click_token_hash (click_token_hash)' ),
 	'Schema one must retain campaign, campaign-recipient, and email uniqueness constraints.'
+);
+$assert(
+	str_contains( (string) $schema_one_source, 'email_snapshot varchar(320) DEFAULT NULL' )
+		&& str_contains( (string) $schema_one_source, 'email_hash char(64) DEFAULT NULL' )
+		&& str_contains( (string) $schema_one_source, 'personal_data_erased_at_gmt datetime DEFAULT NULL' )
+		&& str_contains( (string) $schema_one_source, 'KEY completed_at_gmt (completed_at_gmt)' ),
+	'Schema one must support bounded recipient privacy redaction.'
 );
 $identity = new EmailIdentity( str_repeat( "\x31", 32 ) );
 $assert(
@@ -145,14 +165,36 @@ $assert(
 	$identity->hash( 'Person@Example.COM' ) === $identity->hash( 'person@example.com' ),
 	'Email hashing must operate on the canonical normalized identity.'
 );
+$utc_probe = new DateTimeImmutable(
+	'2026-09-15 08:30:00',
+	new DateTimeZone( 'America/New_York' )
+);
+$assert(
+	'2026-09-15 12:30:00' === UtcDateTime::format( $utc_probe ),
+	'Database datetime persistence must use canonical UTC conversion.'
+);
 $assert(
 	str_contains( (string) $activator_source, '( new SchemaMigrator() )->migrate();' ),
 	'Activation must run versioned database migrations before recording the plugin version.'
 );
 $assert(
-	str_contains( (string) $uninstall_source, 'TableNames::from_database' )
-		&& str_contains( (string) $uninstall_source, 'EmailIdentity::HASH_KEY_OPTION' ),
-	'Destructive uninstall must remove plugin-owned tables and keyed email identity state.'
+	str_contains( (string) $uninstall_source, 'DestructiveUninstaller::is_enabled()' )
+		&& str_contains( (string) $uninstall_source, 'new DestructiveUninstaller()' )
+		&& str_contains( (string) $destructive_uninstaller_source, 'TableNames::from_database' )
+		&& str_contains( (string) $destructive_uninstaller_source, 'EmailIdentity::HASH_KEY_OPTION' ),
+	'Destructive uninstall must be explicit, centralized, and remove all plugin-owned state.'
+);
+$assert(
+	str_contains( (string) $cleanup_source, 'MAX_BATCH_SIZE = 500' )
+		&& str_contains( (string) $cleanup_source, 'delete_expired_pending_subscribers' )
+		&& str_contains( (string) $cleanup_source, 'delete_click_events_before' )
+		&& str_contains( (string) $cleanup_source, 'redact_completed_campaign_recipients' ),
+	'Data cleanup primitives must remain explicitly bounded and cover planned retention classes.'
+);
+$assert(
+	str_contains( (string) $migrator_source, 'migration->verify()' )
+		&& str_contains( (string) $migrator_source, 'current === $target' ),
+	'Migration coordination must verify and repair recoverable current-schema drift.'
 );
 $editor_source = file_get_contents( $root . '/assets/src/editor.js' );
 $assert(

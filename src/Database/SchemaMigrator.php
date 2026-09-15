@@ -64,14 +64,15 @@ final class SchemaMigrator {
 	 * @throws RuntimeException When migration cannot proceed safely.
 	 */
 	public function migrate(): void {
-		$target = $this->target_version();
-		if ( $this->installed_version() > $target ) {
+		$target  = $this->target_version();
+		$current = $this->installed_version();
+		if ( $current > $target ) {
 			throw new RuntimeException(
 				'Installed database schema is newer than this plugin code.'
 			);
 		}
 
-		if ( $this->installed_version() === $target ) {
+		if ( 0 === $target ) {
 			return;
 		}
 
@@ -88,16 +89,19 @@ final class SchemaMigrator {
 				);
 			}
 
-			for ( $version = $current + 1; $version <= $target; ++$version ) {
-				$migration_class = self::MIGRATIONS[ $version ] ?? null;
-				if ( null === $migration_class ) {
-					throw new RuntimeException(
-						sprintf( 'Database migration %d is not registered.', $version )
-					);
-				}
-
-				$migration = new $migration_class( $this->database );
+			if ( $current === $target ) {
+				// Re-applying the current idempotent migration repairs recoverable
+				// table/index drift before the schema is considered healthy.
+				$migration = $this->migration_for( $target );
 				$migration->up();
+				$migration->verify();
+				return;
+			}
+
+			for ( $version = $current + 1; $version <= $target; ++$version ) {
+				$migration = $this->migration_for( $version );
+				$migration->up();
+				$migration->verify();
 				update_option( self::SCHEMA_OPTION, (string) $version, false );
 			}
 		} finally {
@@ -118,6 +122,27 @@ final class SchemaMigrator {
 		}
 
 		return (int) $installed;
+	}
+
+	/**
+	 * Instantiate a registered migration.
+	 *
+	 * @param int $version Resulting schema version.
+	 * @return Migration
+	 * @throws RuntimeException When the migration is not registered.
+	 */
+	private function migration_for( int $version ): Migration {
+		$migration_class = self::MIGRATIONS[ $version ] ?? null;
+		if ( null === $migration_class ) {
+			// Internal exception text is not rendered output; version is a typed integer.
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			throw new RuntimeException(
+				sprintf( 'Database migration %d is not registered.', $version )
+			);
+			// phpcs:enable
+		}
+
+		return new $migration_class( $this->database );
 	}
 
 	/**
