@@ -29,7 +29,7 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository contains the `0.1.0-alpha.1` development skeleton. It defines
+The repository contains the `0.1.0-alpha.2` development skeleton. It defines
 bootstrap, lifecycle, service-registration, test, CI, and packaging boundaries,
 but it does not implement campaigns, subscribers, delivery, unsubscribe, or
 statistics. Implementation remains tracked in `TODO.md`.
@@ -81,7 +81,7 @@ operation.
 
 Registered WordPress account verification remains in the companion project:
 
-`https://github.com/thystra/wp-argentwolf-email-verification`
+`https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification`
 
 The notifier does not absorb account activation, login blocking, Application
 Password blocking, or pending-account cleanup. Those responsibilities remain
@@ -140,32 +140,24 @@ covered by compatibility tests, and scheduled for removal.
 During development, integration is discovered at runtime through the
 verification adapter so either plugin can be developed and tested independently.
 
-For WordPress.org distribution, the preferred final relationship is a formal
-dependency on the separately published **ArgentWolf Email Verification**
-plugin:
+For WordPress.org distribution, the notifier has a formal dependency on the
+separately published **ArgentWolf Email Verification** plugin:
 
 ```text
 Requires Plugins: argentwolf-email-verification
 ```
 
-WordPress resolves `Requires Plugins` through WordPress.org-formatted slugs.
-Therefore:
-
-1. the companion plugin must use the canonical display name and slug;
-2. its public API must use the
-   `argentwolf_email_verification_...` prefix;
-3. it must be accepted into the WordPress.org Plugin Directory first; and
-4. the notifier must not be submitted with a hard dependency that WordPress.org
-   cannot resolve.
-
-If the companion plugin is not available from WordPress.org, the notifier may
-continue development with runtime health checks, but WordPress.org submission is
-blocked unless registered-user verification is made self-contained.
+The companion is now published in the WordPress.org Plugin Directory under that
+slug. Its public API uses the `argentwolf_email_verification_...` prefix, so the
+dependency is resolvable through normal WordPress plugin-dependency handling.
+Runtime health checks remain mandatory because installation metadata cannot prove
+that a loaded provider is current, callable, or operational.
 
 ### 3.5 WordPress.org distribution architecture
 
-GitHub is the development and issue-tracking repository. WordPress.org SVN is a
-release repository and receives only reviewed release artifacts.
+Forgejo is the authoritative development and issue-tracking repository. Any
+GitHub repository is a downstream mirror. WordPress.org SVN is a directory release
+repository and receives only reviewed release artifacts.
 
 The release pipeline must produce a deterministic directory package that:
 
@@ -378,7 +370,9 @@ is ineligible by default.
 The initial adapter requires the canonical public functions released by
 ArgentWolf Email Verification 0.3.4. It detects the companion version from the
 file that defines the public status function and reports distinct health codes
-for a missing API, unknown version, obsolete API, and healthy provider.
+for a missing API, failed provider health check, unknown version, obsolete API,
+and healthy provider (`missing_api`, `provider_health_failed`, `unknown_version`,
+`obsolete_api`, and `healthy`).
 
 No private `_wrav_ev_*` metadata compatibility adapter is included. The
 `argentwolf_post_notifier_verification_provider` filter may replace the default
@@ -961,8 +955,8 @@ Deferred unless separately approved:
 
 ## 18. WordPress.org release model
 
-The Git repository remains the authoritative development history. A GitHub tag
-and release archive are not, by themselves, a WordPress.org release.
+The Forgejo Git repository remains the authoritative development history. A
+Forgejo tag and release archive are not, by themselves, a WordPress.org release.
 
 Before initial submission:
 

@@ -18,9 +18,14 @@ final class VerificationProviderTest extends WP_UnitTestCase {
 			VerificationProvider::class
 		);
 
+		$expected_version = getenv( 'ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION' );
+		$health           = $provider->health();
+
 		self::assertInstanceOf( VerificationProvider::class, $provider );
-		self::assertTrue( $provider->health()->is_healthy() );
-		self::assertSame( '0.3.4', $provider->health()->version() );
+		self::assertIsString( $expected_version );
+		self::assertNotSame( '', $expected_version );
+		self::assertTrue( $health->is_healthy() );
+		self::assertSame( $expected_version, $health->version() );
 	}
 
 	public function test_companion_statuses_are_mapped_without_private_adapter(): void {

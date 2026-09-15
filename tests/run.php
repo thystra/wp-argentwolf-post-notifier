@@ -41,19 +41,41 @@ $image_verifier_path = $root . '/ci/images/php/verify-image.sh';
 $image_verifier      = is_readable( $image_verifier_path )
 	? file_get_contents( $image_verifier_path )
 	: '';
+$build_script = file_get_contents( $root . '/build/build-plugin.sh' );
+$package_manifest_script = file_get_contents( $root . '/tests/package-manifest.sh' );
+$companion_installer = file_get_contents( $root . '/bin/install-verification-companion.sh' );
+$package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
+$package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
 preg_match( '/^[\h]*\*[\h]+Requires at least:[\h]*(\S+)[\h]*$/m', (string) $main, $wordpress );
 preg_match( '/^[\h]*\*[\h]+Requires PHP:[\h]*(\S+)[\h]*$/m', (string) $main, $php );
+preg_match( '/^Tested up to:[\h]*(\S+)[\h]*$/m', (string) $readme, $tested_up_to );
 
 $assert( Version::PLUGIN === ( $header[1] ?? null ), 'Plugin header and Version::PLUGIN must match.' );
 $assert( Version::PLUGIN === ( $stable[1] ?? null ), 'Plugin version and readme Stable Tag must match.' );
 $assert( '7.0' === ( $wordpress[1] ?? null ), 'Requires at least must be WordPress 7.0.' );
 $assert( '8.4' === ( $php[1] ?? null ), 'Requires PHP must be 8.4.' );
+$assert( '7.1' === ( $tested_up_to[1] ?? null ), 'readme Tested up to must be WordPress 7.1.' );
+$editor_source = file_get_contents( $root . '/assets/src/editor.js' );
 $assert(
-	! str_contains( (string) $main, 'Requires Plugins:' ),
-	'The unresolved companion dependency must not be declared yet.'
+	! str_contains( (string) $editor_source, 'SCAFFOLD_VERSION' ),
+	'Editor scaffold must not maintain a duplicate plugin-version constant.'
+);
+$assert(
+	str_contains(
+		(string) $main,
+		'Requires Plugins: argentwolf-email-verification'
+	),
+	'The approved companion must be declared through Requires Plugins.'
+);
+$assert(
+	str_contains(
+		(string) $main,
+		'Plugin URI: https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier'
+	),
+	'Plugin URI must point to the authoritative Forgejo repository.'
 );
 
 $assert(
@@ -133,6 +155,34 @@ $assert(
 	'Forgejo WordPress CI must use Subversion from the qualified shared image.'
 );
 $assert(
+	str_contains( (string) $workflow, "- '7.0.4'" )
+		&& str_contains( (string) $workflow, "- '7.1'" ),
+	'WordPress integration CI must cover the maintained minimum branch and current stable release.'
+);
+$assert(
+	str_contains( (string) $workflow, "- '0.3.4'" )
+		&& str_contains( (string) $workflow, "- '1.0.2'" ),
+	'WordPress integration CI must cover the minimum and current companion releases.'
+);
+$assert(
+	str_contains(
+		(string) $workflow,
+		'ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION: ${{ matrix.verification }}'
+	),
+	'WordPress integration CI must pass the selected companion version to integration tests.'
+);
+$assert(
+	! str_contains( (string) $workflow, '7.0.2' ),
+	'CI must not remain pinned to obsolete WordPress 7.0.2.'
+);
+$assert(
+	str_contains(
+		(string) $companion_installer,
+		'https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification'
+	),
+	'Companion integration fixtures must use the authoritative Forgejo project.'
+);
+$assert(
 	! str_contains(
 		(string) $installer,
 		'mkdir -p "${tests_dir}" "${core_dir}"'
@@ -168,7 +218,7 @@ $assert(
 	'^9.6.16' === (
 		$composer_manifest['require-dev']['phpunit/phpunit'] ?? null
 	),
-	'WordPress 7.0 integration tests must use PHPUnit 9.6.'
+	'Supported WordPress integration tests must use PHPUnit 9.6.'
 );
 $assert(
 	str_contains(
@@ -202,6 +252,40 @@ $assert(
 		$composer_manifest['config']['platform']['php'] ?? null
 	),
 	'Composer dependency resolution must target the PHP 8.4 floor.'
+);
+$assert(
+	Version::PLUGIN === ( $package_manifest['version'] ?? null ),
+	'package.json version must match Version::PLUGIN.'
+);
+$assert(
+	Version::PLUGIN === ( $package_lock['version'] ?? null )
+		&& Version::PLUGIN === ( $package_lock['packages']['']['version'] ?? null ),
+	'package-lock.json root versions must match Version::PLUGIN.'
+);
+$assert(
+	'bash build/build-plugin.sh' === ( $composer_manifest['scripts']['build'] ?? null ),
+	'Composer build must derive the package version instead of hard-coding a release number.'
+);
+$assert(
+	! str_contains( (string) $build_script, 'main "$@" || true' )
+		&& str_contains( (string) $build_script, 'main "$@"' ),
+	'Package build failures must propagate to callers.'
+);
+$assert(
+	! str_contains( (string) $package_manifest_script, 'main "$@" || true' )
+		&& str_contains( (string) $package_manifest_script, 'main "$@"' ),
+	'Package manifest failures must propagate to callers.'
+);
+$assert(
+	str_contains( (string) $build_script, 'SOURCE_DATE_EPOCH' )
+		&& str_contains( (string) $build_script, 'TZ=UTC' ),
+	'Package builds must normalize archive timestamps from a reproducible source epoch.'
+);
+$assert(
+	'https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier' === (
+		$composer_manifest['support']['source'] ?? null
+	),
+	'Composer source metadata must point to the authoritative Forgejo repository.'
 );
 $verification_files = array(
 	'src/Verification/VerificationProvider.php',

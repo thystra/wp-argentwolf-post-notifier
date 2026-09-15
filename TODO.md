@@ -53,7 +53,7 @@ committed checkout passes CI and minimum-version activation testing.
 - [x] Add PHPUnit and the WordPress test environment.
 - [x] Add JavaScript build tooling for editor and blocks.
 - [x] Add lint commands for PHP, JavaScript, CSS, and Markdown as appropriate.
-- [x] Add GitHub Actions for syntax, PHPCS, PHPUnit, and JavaScript tests.
+- [x] Add Forgejo Actions for syntax, PHPCS, PHPUnit, and JavaScript tests.
 - [x] Add `.gitattributes`, `.gitignore`, and distribution exclusions.
 - [x] Add `readme.txt` for the WordPress plugin package.
 - [x] Add activation, deactivation, upgrade, and uninstall skeletons.
@@ -81,7 +81,7 @@ canonical public API and deliberately omits a private-meta adapter.
 ### Companion plugin work
 
 Repository:
-`https://github.com/thystra/wp-argentwolf-email-verification`
+`https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification`
 
 - [x] Standardize the companion display name on
       `ArgentWolf Email Verification`.
@@ -101,9 +101,9 @@ Repository:
       successful verification paths, including administrative verification if
       desired.
 - [x] Release and tag the companion API version.
-- [ ] Prepare the companion plugin for WordPress.org review.
-- [ ] Confirm the requested `argentwolf-email-verification` slug.
-- [ ] Submit and obtain WordPress.org approval before declaring it as a hard
+- [x] Prepare the companion plugin for WordPress.org review.
+- [x] Confirm the approved `argentwolf-email-verification` slug.
+- [x] Publish the companion through WordPress.org before declaring it as a hard
       dependency of ArgentWolf Post Notifier.
 
 ### Notifier work
@@ -485,7 +485,7 @@ Target: `0.1.0`
 - [ ] Push `main`.
 - [ ] Create annotated `v0.1.0` tag.
 - [ ] Push tag.
-- [ ] Publish the GitHub release archive and checksum.
+- [ ] Publish the Forgejo release archive and checksum.
 - [ ] Separately validate any production deployment.
 
 Acceptance criteria:
@@ -506,16 +506,14 @@ Target: after operational `0.1.0` validation
 
 ### Dependency readiness
 
-- [ ] Complete WordPress.org review of ArgentWolf Email Verification first if
-      it remains a hard dependency.
-- [ ] Plan the two submissions sequentially; WordPress.org generally permits
-      only one active plugin submission per developer at a time.
-- [ ] Confirm its approved slug is exactly
+- [x] Complete WordPress.org review and publication of ArgentWolf Email
+      Verification.
+- [x] Confirm its approved slug is exactly
       `argentwolf-email-verification`.
-- [ ] Add `Requires Plugins: argentwolf-email-verification` only after the
+- [x] Add `Requires Plugins: argentwolf-email-verification` now that the
       dependency is resolvable through WordPress.org.
-- [ ] Otherwise make registered-user verification self-contained before
-      submitting the notifier.
+- [ ] Treat the notifier's own WordPress.org submission as a separate later
+      release gate after operational validation.
 
 ### Naming and metadata
 
@@ -539,7 +537,7 @@ Target: after operational `0.1.0` validation
       and any external mail transport assumptions.
 - [ ] Add directory icon, banner, and screenshot assets after UI stabilization.
 - [ ] Ensure each screenshot entry matches an uploaded screenshot asset.
-- [ ] Remove any GitHub/custom update checker from the directory build.
+- [ ] Remove any Forgejo/GitHub custom update checker from the directory build.
 - [ ] Verify no remote executable code, undisclosed telemetry, or unnecessary
       external requests exist.
 - [ ] Use WordPress-provided libraries where available.

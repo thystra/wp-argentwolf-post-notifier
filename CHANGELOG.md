@@ -9,6 +9,14 @@
 - Add the alternate-provider filter and an administrator health warning.
 - Add unit and companion-backed WordPress integration tests.
 - Deliberately omit private companion metadata access and mail-success inference.
+- Move repository and issue authority to Forgejo while retaining GitHub only as a mirror.
+- Declare the now-resolvable WordPress.org dependency on ArgentWolf Email Verification.
+- Test the minimum 0.3.4 verification API and current 1.0.2 companion release against
+  WordPress 7.0.4 and 7.1.
+- Make package version selection derive from the canonical PHP version constant and
+  make packaging failures propagate to callers.
+- Normalize archive timestamps from the source revision so repeated clean builds are
+  reproducible.
 
 ## 0.1.0-alpha.1 — 2026-07-29
 

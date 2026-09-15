@@ -9,7 +9,8 @@ in this file take precedence for this project.
 ## Project identity
 
 - Project: ArgentWolf Post Notifier
-- Repository: `https://github.com/thystra/wp-argentwolf-post-notifier`
+- Authoritative repository: `https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier`
+- GitHub, when present, is a downstream mirror rather than release authority
 - Conventional local checkout: `~/src/wp-argentwolf-post-notifier`
 - Plugin slug: `argentwolf-post-notifier`
 - Text domain: `argentwolf-post-notifier`
@@ -25,8 +26,10 @@ in this file take precedence for this project.
 - Development and release testing must also cover the current stable WordPress
   and supported PHP branches
 - Companion project:
-  `https://github.com/thystra/wp-argentwolf-email-verification`
+  `https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification`
 - Minimum companion public API version: ArgentWolf Email Verification 0.3.4
+- Current qualified companion release: ArgentWolf Email Verification 1.0.2
+- Formal WordPress.org dependency slug: `argentwolf-email-verification`
 - Registered-user verification must fail closed when no healthy authoritative
   provider is available
 - Alternate providers use the
@@ -56,7 +59,7 @@ package, and production evidence support that statement.
 - Never confuse a ChatGPT sandbox path such as `/mnt/data/...` with a path on
   an operator's computer.
 - Put backups outside the repository working tree, normally below
-  `/home/alan/src/backups/wp-argentwolf-post-notifier-backups/`.
+  `~/src/backups/wp-argentwolf-post-notifier-backups/`.
 - Preserve local work. Stop on an unexpected file, manifest, anchor, dirty
   worktree, or repository state rather than guessing.
 - Prefer versioned applicator scripts for multi-file changes.
@@ -183,19 +186,21 @@ logic to private class methods. Any temporary compatibility read of private
 user-meta keys must be isolated, documented, tested, and removed after the
 public API is released.
 
-Because the companion plugin is distributed from GitHub rather than currently
-being a WordPress.org dependency, do not assume the `Requires Plugins` header
-can install or resolve it correctly. Provide runtime health checks, clear admin
-notices, and pre-publish eligibility warnings.
+The companion plugin is published on WordPress.org under the approved
+`argentwolf-email-verification` slug, so the notifier declares it through
+`Requires Plugins`. Keep runtime health checks, clear admin notices, and
+pre-publish eligibility warnings because dependency metadata does not prove the
+loaded provider API is healthy or compatible.
 
 ## WordPress.org distribution target
 
 The intended public distribution channel is the WordPress.org Plugin Directory
 after the plugin is complete and operational.
 
-- Treat GitHub as the development repository and WordPress.org SVN as a release
-  repository.
-- Do not add a custom GitHub update checker to a WordPress.org package.
+- Treat Forgejo as the authoritative development and release-source repository;
+  WordPress.org SVN remains the directory release repository after approval.
+- Do not add a custom Forgejo or GitHub update checker to a WordPress.org
+  package.
 - Keep the directory package production-ready and exclude tests, caches,
   backups, local configuration, and unnecessary development artifacts.
 - Include or clearly link human-readable source and build instructions for any
@@ -209,18 +214,15 @@ after the plugin is complete and operational.
   documentation; compliance is determined from the finished code and exact
   submitted archive.
 
-If ArgentWolf Email Verification remains a hard dependency, submit and obtain
-approval for that plugin under the intended
-`argentwolf-email-verification` WordPress.org slug before submitting this
-plugin. Only then add:
+ArgentWolf Email Verification has been approved and published on WordPress.org
+under the `argentwolf-email-verification` slug. Keep this header in the notifier:
 
 ```text
 Requires Plugins: argentwolf-email-verification
 ```
 
-Until the dependency is available from WordPress.org, use runtime integration
-during development and treat WordPress.org submission of the notifier as
-blocked.
+The notifier's own WordPress.org submission remains a later release gate; the
+companion dependency is no longer the blocker.
 
 ## Intended architecture
 
