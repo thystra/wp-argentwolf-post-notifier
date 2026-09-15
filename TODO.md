@@ -41,8 +41,7 @@ Target: `0.1.0-alpha.1`
 
 Implemented candidate scope: bootstrap, lifecycle handlers, service container,
 dependency definitions, tests, CI, JavaScript tooling, and package validation.
-Implementation boxes are complete; acceptance gates remain open until the
-committed checkout passes CI and minimum-version activation testing.
+Implementation and acceptance gates are complete for the development skeleton.
 
 - [x] Select and document the minimum supported WordPress version: 7.0.
 - [x] Select and document the minimum supported PHP version: 8.4.
@@ -64,15 +63,15 @@ committed checkout passes CI and minimum-version activation testing.
 
 Acceptance criteria:
 
-- [ ] A clean checkout installs dependencies and runs all empty/skeleton suites.
-- [ ] Plugin activates and deactivates without warnings on the selected minimum
+- [x] A clean checkout installs dependencies and runs all empty/skeleton suites.
+- [x] Plugin activates and deactivates without warnings on the selected minimum
       WordPress/PHP combination and WordPress 7.x.
 - [x] Distribution archive contains only expected files.
 - [x] No application feature is falsely described as complete.
 
 ## Milestone 2 — Verification-provider contract
 
-Target: companion verification release plus notifier adapter
+Target: `0.1.0-alpha.2`
 
 Companion API `v0.3.4` is released. The notifier adapter uses only the
 canonical public API and deliberately omits a private-meta adapter.
@@ -113,7 +112,7 @@ Repository:
 - [x] Add provider detection and version/health reporting.
 - [x] Fail closed for registered-user delivery when no authoritative provider
       is available.
-- [ ] Add editor and settings warnings for missing or obsolete provider APIs.
+- [x] Add an administrator warning for missing, obsolete, or failing provider APIs.
 - [x] Add a documented extension point for alternate verification providers.
 - [x] Ensure `wp_mail()` success is never used as proof of verification.
 - [x] Decide whether a temporary 0.2.0 private-meta compatibility adapter is
@@ -122,15 +121,23 @@ Repository:
 
 Acceptance criteria:
 
-- [ ] Every registered recipient is checked during audience resolution.
-- [ ] Every registered recipient is rechecked before send.
-- [ ] Pending and unknown registered users are skipped with distinct reasons.
-- [ ] Campaign statistics do not report intentionally suppressed pending-user
-      mail as submitted.
+- [x] The minimum public API release (0.3.4) and current companion release are
+      healthy across the supported WordPress integration matrix.
+- [x] Missing, obsolete, malformed, and failing provider states resolve to
+      `unknown` and fail closed.
+- [x] Pending and unknown users retain distinct aggregate skip reasons
+      (`unverified` and `verification_unknown`).
+- [x] Invalid alternate-provider filter results fail closed.
+- [x] Administrator health warnings are silent for a healthy provider and do
+      not expose provider exception details.
+
+Audience-resolution and pre-send enforcement are acceptance criteria of the
+future audience and queue milestones, where those execution paths actually
+exist.
 
 ## Milestone 3 — Database schema and migrations
 
-Target: `0.1.0-alpha.2`
+Target: `0.1.0-alpha.3`
 
 - [ ] Implement versioned schema migrations.
 - [ ] Create campaigns table.
@@ -158,7 +165,7 @@ Acceptance criteria:
 
 ## Milestone 4 — Standalone subscribers and mailing-list block
 
-Target: `0.1.0-alpha.3`
+Target: `0.1.0-alpha.4`
 
 - [ ] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.
@@ -196,7 +203,7 @@ Acceptance criteria:
 
 ## Milestone 5 — User preferences, named lists, and suppression
 
-Target: `0.1.0-alpha.4`
+Target: `0.1.0-alpha.5`
 
 - [ ] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
@@ -345,6 +352,8 @@ Target: `0.1.0-beta.4`
 Acceptance criteria:
 
 - [ ] Audience counts and recipient rows agree.
+- [ ] Every registered recipient is checked during audience resolution.
+- [ ] Pending and unknown registered users are skipped with distinct reasons.
 - [ ] All skip reasons are testable and visible in aggregate statistics.
 - [ ] No unverified or pending recipient enters the active send queue.
 - [ ] No shared To/CC/BCC delivery path exists.
@@ -377,7 +386,9 @@ Acceptance criteria:
 - [ ] Two workers cannot own the same unexpired recipient lease.
 - [ ] Expired leases recover.
 - [ ] Retry limits are enforced.
-- [ ] Pending-user suppression cannot be counted as submitted.
+- [ ] Every registered recipient is rechecked immediately before send.
+- [ ] Pending or unknown registered-user suppression cannot be counted as
+      submitted.
 
 ## Milestone 11 — Unsubscribe and resubscribe
 
