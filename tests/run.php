@@ -14,6 +14,10 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 	}
 };
 
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', $root . '/' );
+}
+
 require_once $root . '/autoload.php';
 
 use ArgentWolf\PostNotifier\Database\EmailIdentity;

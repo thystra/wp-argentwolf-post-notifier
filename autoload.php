@@ -11,6 +11,10 @@
  * @package ArgentWolf\PostNotifier
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	return;
+}
+
 spl_autoload_register(
 	static function ( string $class_name ): void {
 		$prefix = 'ArgentWolf\\PostNotifier\\';

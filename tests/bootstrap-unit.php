@@ -5,6 +5,10 @@
  * @package ArgentWolf\PostNotifier\Tests
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+}
+
 $composer = dirname( __DIR__ ) . '/vendor/autoload.php';
 
 if ( is_readable( $composer ) ) {
