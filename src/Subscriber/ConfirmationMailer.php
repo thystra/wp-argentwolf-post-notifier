@@ -38,7 +38,7 @@ final class ConfirmationMailer {
 		$site_name = '' === trim( $this->site_name )
 			? __( 'this site', 'argentwolf-post-notifier' )
 			: $this->site_name;
-		$subject = sprintf(
+		$subject   = sprintf(
 			/* translators: %s: site name. */
 			__( 'Confirm your subscription to %s', 'argentwolf-post-notifier' ),
 			$site_name
