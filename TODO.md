@@ -154,7 +154,8 @@ milestone. Tranche 1 passed the Forgejo WordPress/MySQL matrix in CI 12. Tranche
 repair, explicit destructive-uninstall qualification, and released-schema upgrade
 coverage before schema 1 is frozen. Tranche 3 freezes the reviewed schema-1
 migration by source digest and makes later structural changes start a new numbered
-migration instead of editing upgrade history.
+migration instead of editing upgrade history. The schema-freeze and released
+upgrade qualification passed the Forgejo WordPress/MySQL matrix in CI 23.
 
 - [x] Implement versioned schema migrations.
 - [x] Create campaigns table.
@@ -172,14 +173,14 @@ migration instead of editing upgrade history.
 - [x] Add rollback/recovery documentation.
 - [x] Add bounded cleanup routines.
 - [x] Define uninstall choices: preserve data or remove data.
-- [ ] Freeze schema 1 as immutable upgrade history after qualification.
+- [x] Freeze schema 1 as immutable upgrade history after qualification.
 
 Acceptance criteria:
 
 - [x] Repeated activation and migration runs are harmless.
 - [x] Concurrent migration attempts do not corrupt schema.
 - [x] All required indexes exist.
-- [ ] Upgrade tests pass from every released schema version.
+- [x] Upgrade tests pass from every released schema version.
 
 ## Milestone 4 — Standalone subscribers and mailing-list block
 
