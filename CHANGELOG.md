@@ -12,6 +12,12 @@
   tokens after 24 hours, and enforce a 15-minute resend cooldown.
 - Add explicit unexpired-token confirmation that promotes only pending records and
   clears the reusable confirmation hash after successful promotion.
+- Add a generic public-signup coordinator that does not expose existing subscriber,
+  cooldown, honeypot, rate-limit, or mail-submission state.
+- Add transient local signup limits keyed by canonical email identity and HMACed
+  network indicators without retaining raw IP addresses or user-agent strings.
+- Add a transport-neutral mail message/result contract, WordPress `wp_mail()`
+  transport, and standalone confirmation-message composition.
 
 ## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 

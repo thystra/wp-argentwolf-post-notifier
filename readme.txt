@@ -21,8 +21,9 @@ Registered-user verification supports the public API introduced in ArgentWolf
 Email Verification 0.3.4 and is tested against the current 1.0.2 release; it
 fails closed when no authoritative provider is healthy. Alpha.4 begins the
 standalone-subscriber workflow with secure pending records, hashed confirmation
-tokens, expiry, resend cooldown, and explicit confirmation promotion. The public
-subscription block and confirmation mail/HTTP flow remain under development.
+tokens, expiry, resend cooldown, generic signup responses, keyed local rate limits,
+and confirmation-message submission through a transport abstraction. The public
+subscription block and intentional-POST confirmation flow remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -67,6 +68,7 @@ checking provider health and API compatibility at runtime.
 == Changelog ==
 
 = 0.1.0-alpha.4 =
+* Add generic standalone-signup coordination, local keyed rate limits, and confirmation mail transport.
 * Begin the standalone-subscriber lifecycle and persistence foundation.
 * Add secure hashed confirmation tokens with 24-hour expiry and a 15-minute resend cooldown.
 * Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
