@@ -46,7 +46,7 @@ main() {
 
 	prohibited="$(
 		printf '%s\n' "${listing}" |
-			grep -E '/(\.git|\.github|tests|build|bin|node_modules|vendor)/|/(AGENTS|ARCHITECTURE|CHANGELOG|TODO)\.md$|/(composer|package|phpcs|phpunit)' ||
+			grep -E '/(\.git|\.github|\.forgejo|ci|tests|build|bin|scripts|node_modules|vendor)/|/(AGENTS|ARCHITECTURE|CHANGELOG|TODO)\.md$|/(composer|package|phpcs|phpunit)' ||
 			true
 	)"
 

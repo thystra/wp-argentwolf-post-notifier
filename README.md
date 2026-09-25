@@ -119,6 +119,16 @@ WordPress.org submission is a separate release gate after operational testing.
 The exact submitted ZIP must pass Plugin Check, package inspection, privacy and
 license review, and the full supported-version test matrix.
 
+Forgejo CI uses qualified PHP 8.4 and 8.5 images by immutable digest. The
+integration matrix exercises the maintained WordPress 7.0 patch release and the
+current WordPress 7.1 patch release against the minimum and current qualified
+ArgentWolf Email Verification releases. After source and integration checks pass,
+CI builds one deterministic installable ZIP, installs that exact ZIP into a
+disposable WordPress site with the qualified verification companion, verifies
+the installed tree against the package bytes, and runs pinned Plugin Check 2.1.0
+in static/new, runtime/new, and runtime/update modes. Plugin Check findings and
+notifier-specific `WP_DEBUG_LOG` findings are blocking.
+
 See [TODO.md](TODO.md) for acceptance criteria and release planning.
 
 ## License

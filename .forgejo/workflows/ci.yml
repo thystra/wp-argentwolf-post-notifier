@@ -11,10 +11,21 @@ on:
 permissions:
   contents: read
 
+env:
+  PLUGIN_SLUG: argentwolf-post-notifier
+  WORDPRESS_PACKAGE_VERSION: '7.1.2'
+  PLUGIN_CHECK_VERSION: '2.1.0'
+  PLUGIN_CHECK_SHA256: '6ff4bd2145f3befcf907df158cc466b1649dafed5686de8369907403c3013fc4'
+  WP_CLI_VERSION: '2.12.0'
+  WP_CLI_SHA512: 'be928f6b8ca1e8dfb9d2f4b75a13aa4aee0896f8a9a0a1c45cd5d2c98605e6172e6d014dda2e27f88c98befc16c040cbb2bd1bfa121510ea5cdf5f6a30fe8832'
+  VERIFICATION_VERSION: '1.0.2'
+  VERIFICATION_SHA256: 'e5ee91ce1d4514eee8f7a5deb98211ed544c801e40f350ffed7031d83c460ca8'
+
 jobs:
   php:
     name: PHP ${{ matrix.php }}
     runs-on: forgejo-workstation
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -47,12 +58,13 @@ jobs:
   wordpress:
     name: WordPress ${{ matrix.wordpress }} / Email Verification ${{ matrix.verification }}
     runs-on: forgejo-workstation
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         wordpress:
-          - '7.0.4'
-          - '7.1'
+          - '7.0.6'
+          - '7.1.2'
         verification:
           - '0.3.4'
           - '1.0.2'
@@ -115,6 +127,7 @@ jobs:
   javascript:
     name: JavaScript
     runs-on: forgejo-workstation
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -140,14 +153,28 @@ jobs:
           npm run build
 
   package:
-    name: Distribution package
+    name: Distribution package / Plugin Check
     runs-on: forgejo-workstation
+    timeout-minutes: 30
     needs:
       - php
       - wordpress
       - javascript
     container:
       image: forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier/ci-php@sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: wordpress_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      WP_CLI_ALLOW_ROOT: '1'
 
     steps:
       - name: Check out repository
@@ -158,11 +185,33 @@ jobs:
       - name: Verify shared PHP CI image
         run: argentwolf-verify-php-ci-image
 
+      - name: Validate shell helpers
+        run: >-
+          bash -n
+          build/build-plugin.sh
+          bin/install-wp-tests.sh
+          bin/install-verification-companion.sh
+          scripts/build-ci-php-images.sh
+          scripts/run-plugin-check.sh
+          tests/package-manifest.sh
+
+      - name: Install pinned WP-CLI
+        run: |
+          set -euo pipefail
+          WP_CLI_PHAR="$RUNNER_TEMP/wp-cli-${WP_CLI_VERSION}.phar"
+          curl --fail --location --silent --show-error \
+            "https://github.com/wp-cli/wp-cli/releases/download/v${WP_CLI_VERSION}/wp-cli-${WP_CLI_VERSION}.phar" \
+            --output "$WP_CLI_PHAR"
+          printf '%s  %s\n' "$WP_CLI_SHA512" "$WP_CLI_PHAR" | sha512sum -c -
+          install -m 0755 "$WP_CLI_PHAR" /usr/local/bin/wp
+          test "$(wp cli version | awk '{print $2}')" = "$WP_CLI_VERSION"
+
       - name: Build package
         run: composer build
 
       - name: Verify reproducible package and checksum
         run: |
+          set -euo pipefail
           VERSION="$(php -r "require 'src/Version.php'; echo \\ArgentWolf\\PostNotifier\\Version::PLUGIN;")"
           ARCHIVE="dist/argentwolf-post-notifier-${VERSION}.zip"
           FIRST_SHA256="$(sha256sum "${ARCHIVE}" | awk '{print $1}')"
@@ -172,13 +221,128 @@ jobs:
           cd dist
           sha256sum -c SHA256SUMS
 
-      - name: Upload package
+      - name: Install WordPress runtime
+        env:
+          WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          mkdir -p "$WP_ROOT" "$WP_CLI_CACHE_DIR"
+          wp core download \
+            --path="$WP_ROOT" \
+            --version="$WORDPRESS_PACKAGE_VERSION" \
+            --force
+          wp config create \
+            --path="$WP_ROOT" \
+            --dbname=wordpress_test \
+            --dbuser=root \
+            --dbpass='' \
+            --dbhost=mysql:3306 \
+            --skip-check
+          wp core install \
+            --path="$WP_ROOT" \
+            --url='http://post-notifier-ci.invalid' \
+            --title='Post Notifier CI' \
+            --admin_user=ci-admin \
+            --admin_password='ci-only-password-not-a-secret' \
+            --admin_email='ci@example.invalid' \
+            --skip-email
+          wp config set WP_DEBUG true --raw --path="$WP_ROOT"
+          wp config set WP_DEBUG_LOG true --raw --path="$WP_ROOT"
+          wp config set WP_DEBUG_DISPLAY false --raw --path="$WP_ROOT"
+          test "$(wp core version --path="$WP_ROOT")" = "$WORDPRESS_PACKAGE_VERSION"
+
+      - name: Install qualified verification companion
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          COMPANION_ZIP="$RUNNER_TEMP/argentwolf-email-verification-${VERIFICATION_VERSION}.zip"
+          curl --fail --location --silent --show-error \
+            "https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification/releases/download/v${VERIFICATION_VERSION}/argentwolf-email-verification-${VERIFICATION_VERSION}.zip" \
+            --output "$COMPANION_ZIP"
+          printf '%s  %s\n' "$VERIFICATION_SHA256" "$COMPANION_ZIP" | sha256sum -c -
+          wp plugin install "$COMPANION_ZIP" --activate --path="$WP_ROOT"
+          test "$(wp plugin get argentwolf-email-verification --field=version --path="$WP_ROOT")" = "$VERIFICATION_VERSION"
+          wp plugin is-active argentwolf-email-verification --path="$WP_ROOT"
+
+      - name: Install exact package candidate
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          VERSION="$(php -r "require 'src/Version.php'; echo \\ArgentWolf\\PostNotifier\\Version::PLUGIN;")"
+          ZIP="$FORGEJO_WORKSPACE/dist/${PLUGIN_SLUG}-${VERSION}.zip"
+          wp plugin install "$ZIP" --activate --path="$WP_ROOT"
+          test "$(wp plugin get "$PLUGIN_SLUG" --field=version --path="$WP_ROOT")" = "$VERSION"
+          wp plugin is-active "$PLUGIN_SLUG" --path="$WP_ROOT"
+
+          EXTRACTED="$RUNNER_TEMP/package-extracted"
+          rm -rf "$EXTRACTED"
+          mkdir -p "$EXTRACTED"
+          unzip -q "$ZIP" -d "$EXTRACTED"
+          diff -qr "$EXTRACTED/$PLUGIN_SLUG" "$WP_ROOT/wp-content/plugins/$PLUGIN_SLUG"
+          echo 'INSTALLED_PACKAGE_BYTE_IDENTITY=PASS'
+
+      - name: Install pinned Plugin Check
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          PCP_ZIP="$RUNNER_TEMP/plugin-check-${PLUGIN_CHECK_VERSION}.zip"
+          curl --fail --location --silent --show-error \
+            "https://downloads.wordpress.org/plugin/plugin-check.${PLUGIN_CHECK_VERSION}.zip" \
+            --output "$PCP_ZIP"
+          printf '%s  %s\n' "$PLUGIN_CHECK_SHA256" "$PCP_ZIP" | sha256sum -c -
+          wp plugin install "$PCP_ZIP" --activate --path="$WP_ROOT"
+          test "$(wp plugin get plugin-check --field=version --path="$WP_ROOT")" = "$PLUGIN_CHECK_VERSION"
+
+      - name: Run Plugin Check gates
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          REPORT_DIR="$FORGEJO_WORKSPACE/build/plugin-check"
+          rm -f "$WP_ROOT/wp-content/debug.log"
+          bash scripts/run-plugin-check.sh "$WP_ROOT" "$REPORT_DIR"
+
+      - name: WP_DEBUG gate
+        if: always()
+        run: |
+          set -euo pipefail
+          WP_ROOT="$RUNNER_TEMP/wordpress"
+          DEBUG_LOG="$WP_ROOT/wp-content/debug.log"
+          REPORT_DIR="$FORGEJO_WORKSPACE/build/plugin-check"
+          mkdir -p "$REPORT_DIR"
+          if [[ -f "$DEBUG_LOG" ]]; then
+            cp "$DEBUG_LOG" "$REPORT_DIR/wp-debug.log"
+            if grep -Ei \
+              'PHP (Fatal error|Parse error|Warning|Deprecated|Notice)|WordPress database error|Uncaught' \
+              "$DEBUG_LOG" \
+              | grep -F "/wp-content/plugins/${PLUGIN_SLUG}/" \
+              > "$REPORT_DIR/post-notifier-debug-findings.txt"; then
+              cat "$REPORT_DIR/post-notifier-debug-findings.txt"
+              exit 1
+            fi
+          else
+            printf 'debug.log absent\n' > "$REPORT_DIR/wp-debug.log"
+          fi
+          echo 'POST_NOTIFIER_WP_DEBUG_GATE=PASS'
+
+      - name: Reverify package checksum
+        run: |
+          set -euo pipefail
+          (
+            cd dist
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Upload qualified CI package
+        if: always()
         uses: https://code.forgejo.org/actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5
         with:
-          name: argentwolf-post-notifier-package
+          name: argentwolf-post-notifier-ci-${{ forgejo.sha }}
           path: |
             dist/argentwolf-post-notifier-*.zip
             dist/SHA256SUMS
+            build/plugin-check/*.txt
+            build/plugin-check/*.log
           if-no-files-found: error
 
 # EOF: .forgejo/workflows/ci.yml

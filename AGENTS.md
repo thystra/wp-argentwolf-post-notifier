@@ -354,8 +354,20 @@ Before presenting a change as ready:
 9. Build from a clean checkout or clean package staging directory.
 10. Inspect the generated archive manifest and verify no development-only,
     secret, backup, or generated cache files are included.
+11. In Forgejo CI, install the exact built ZIP into a disposable WordPress site,
+    verify the installed tree is byte-identical to the extracted ZIP, and run
+    pinned Plugin Check static/new, runtime/new, and runtime/update gates.
+12. Treat Plugin Check `ERROR` or `WARNING` findings and notifier-specific
+    `WP_DEBUG_LOG` findings as blocking CI failures.
 
 Do not claim success until command output confirms it.
+
+Forgejo CI should use the qualified shared PHP images by immutable digest rather
+than provisioning PHP dynamically. For the current PHP support range, exercise
+PHP 8.4 and 8.5 source checks, the maintained WordPress 7.0 patch release and
+current WordPress 7.1 patch release, and the minimum/current verification
+companion releases. The exact-package lane may install pinned WP-CLI inside the
+shared PHP image when runtime WordPress setup is required.
 
 ## Commit and release workflow
 

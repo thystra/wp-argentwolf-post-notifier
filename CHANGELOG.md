@@ -26,6 +26,10 @@
   and then reconstructs all plugin-owned persistence.
 - Document the alpha-development/RC release lifecycle; alpha checkpoints no
   longer imply public prerelease publication.
+- Normalize Forgejo CI around the qualified PHP 8.4/8.5 images, maintained
+  WordPress patch releases, exact-package installation, pinned Plugin Check
+  static/runtime gates, package byte-identity verification, and a notifier-
+  specific `WP_DEBUG_LOG` gate.
 
 ## 0.1.0-alpha.2 — 2026-09-15
 
