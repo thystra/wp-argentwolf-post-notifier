@@ -16,6 +16,9 @@ use wpdb;
 
 /**
  * Initial custom-table schema.
+ *
+ * Schema one is frozen upgrade history. Do not modify this migration for later
+ * schema changes; add a new numbered migration instead.
  */
 final class Schema1 implements Migration {
 	/**

@@ -24,6 +24,9 @@
   activation and plugin-version upgrades; refuse automatic schema downgrades.
 - Centralize destructive uninstall and add isolated qualification that removes
   and then reconstructs all plugin-owned persistence.
+- Freeze the reviewed schema-1 migration by source digest and exercise both
+  tagged schema-zero releases as explicit upgrade origins before later schema
+  changes move to a new numbered migration.
 - Document the alpha-development/RC release lifecycle; alpha checkpoints no
   longer imply public prerelease publication.
 - Normalize Forgejo CI around the qualified PHP 8.4/8.5 images, maintained

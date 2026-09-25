@@ -10,7 +10,9 @@ contract, lifecycle/tooling foundation, and initial versioned database schema ar
 present. The schema establishes storage for future campaigns, recipients,
 subscribers, lists, suppressions, and click events. Alpha.3 also provides
 recovery-aware migrations, canonical UTC persistence, and bounded retention
-primitives, but the workflows that use those records are not implemented yet.
+primitives. Schema 1 is frozen as immutable upgrade history; later structural
+database changes start a new numbered migration. The workflows that use those
+records are not implemented yet.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

@@ -71,6 +71,7 @@ checking provider health and API compatibility at runtime.
 * Add canonical normalized email identity with a persistent keyed SHA-256 hash.
 * Add migration locking and preserve-by-default uninstall handling for the new data foundation.
 * Add UTC persistence helpers, bounded cleanup primitives, same-schema repair, and qualified destructive uninstall handling.
+* Freeze schema 1 as immutable upgrade history and qualify upgrades from both tagged schema-zero releases.
 * Add exact-package Forgejo CI qualification with pinned Plugin Check static/runtime gates and WP_DEBUG review.
 
 = 0.1.0-alpha.2 =

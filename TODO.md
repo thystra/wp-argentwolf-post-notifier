@@ -152,7 +152,9 @@ concurrency/recovery qualification remain separate acceptance work within this
 milestone. Tranche 1 passed the Forgejo WordPress/MySQL matrix in CI 12. Tranche
 2 adds UTC persistence helpers, bounded privacy/retention operations, same-schema
 repair, explicit destructive-uninstall qualification, and released-schema upgrade
-coverage before schema 1 is frozen.
+coverage before schema 1 is frozen. Tranche 3 freezes the reviewed schema-1
+migration by source digest and makes later structural changes start a new numbered
+migration instead of editing upgrade history.
 
 - [x] Implement versioned schema migrations.
 - [x] Create campaigns table.
@@ -165,11 +167,12 @@ coverage before schema 1 is frozen.
 - [x] Add unique campaign-key constraint.
 - [x] Add unique campaign/email recipient constraint.
 - [x] Add normalized email and keyed email-hash service.
-- [ ] Store timestamps in UTC.
+- [x] Store timestamps in UTC.
 - [x] Add migration locking and idempotency.
 - [x] Add rollback/recovery documentation.
-- [ ] Add bounded cleanup routines.
+- [x] Add bounded cleanup routines.
 - [x] Define uninstall choices: preserve data or remove data.
+- [ ] Freeze schema 1 as immutable upgrade history after qualification.
 
 Acceptance criteria:
 
