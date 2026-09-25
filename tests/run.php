@@ -56,6 +56,10 @@ $companion_installer = file_get_contents( $root . '/bin/install-verification-com
 $package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
 $package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
 $schema_one_source = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
+$schema_one_digest_path = $root . '/tests/fixtures/schema-1.sha256';
+$schema_one_digest      = is_readable( $schema_one_digest_path )
+	? trim( (string) file_get_contents( $schema_one_digest_path ) )
+	: '';
 $activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
 $uninstall_source = file_get_contents( $root . '/uninstall.php' );
 $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
@@ -160,6 +164,11 @@ $assert(
 		&& str_contains( (string) $schema_one_source, 'personal_data_erased_at_gmt datetime DEFAULT NULL' )
 		&& str_contains( (string) $schema_one_source, 'KEY completed_at_gmt (completed_at_gmt)' ),
 	'Schema one must support bounded recipient privacy redaction.'
+);
+$assert(
+	1 === preg_match( '/^[a-f0-9]{64}$/', $schema_one_digest )
+		&& hash( 'sha256', (string) $schema_one_source ) === $schema_one_digest,
+	'Schema one is frozen upgrade history; create a new numbered migration instead of changing Schema1.'
 );
 $identity = new EmailIdentity( str_repeat( "\x31", 32 ) );
 $assert(

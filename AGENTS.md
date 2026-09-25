@@ -288,6 +288,10 @@ pass.
 - Define schema changes through versioned migrations. Once a tagged checkpoint has
   shipped a schema version, treat that migration as immutable upgrade history;
   make subsequent schema changes in a new numbered migration.
+- Schema 1 is frozen by `tests/fixtures/schema-1.sha256`. Do not update
+  `Schema1.php` and its digest for ordinary feature work. A structural change
+  after this freeze belongs in `Schema2.php` (or the next numbered migration)
+  with explicit upgrade coverage.
 - Persist plugin-owned datetime values in UTC through the canonical database UTC
   helper rather than relying on the PHP or WordPress local timezone.
 - Retention and privacy cleanup must operate in explicit bounded batches. Do not

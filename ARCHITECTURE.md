@@ -625,9 +625,11 @@ All plugin-owned `*_at_gmt` values are persisted through the canonical UTC
 conversion helper. Persistence code must not depend on the PHP default timezone
 or the site's display timezone.
 
-Schema 1 remains provisional while alpha.3 is under development. Once a tagged
-checkpoint ships schema 1, its migration becomes immutable upgrade history;
-later structural changes require schema 2 or newer.
+Schema 1 is frozen as the reviewed alpha.3 database contract. Its migration is
+protected by a committed source digest so accidental edits fail the dependency-
+free project checks. Later structural changes require schema 2 or newer; they do
+not rewrite schema 1. Tagged alpha.1 and alpha.2 checkpoints both represent
+schema 0 and are exercised as released upgrade origins before schema 1.
 
 ### 8.1 `argentwolf_pn_campaigns`
 

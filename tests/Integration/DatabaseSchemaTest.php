@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Database\DestructiveUninstaller;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\MigrationLock;
 use ArgentWolf\PostNotifier\Database\SchemaInspector;
@@ -151,19 +152,75 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_released_schema_zero_checkpoint_upgrades_to_schema_one(): void {
+	/**
+	 * Verify each tagged schema-zero checkpoint upgrades from an actually empty
+	 * plugin-owned database state.
+	 *
+	 * @dataProvider released_schema_zero_checkpoints
+	 *
+	 * @param string $plugin_version Released plugin version.
+	 * @return void
+	 */
+	public function test_released_schema_zero_checkpoint_upgrades_to_schema_one( string $plugin_version ): void {
 		global $wpdb;
 
-		update_option( 'argentwolf_post_notifier_version', '0.1.0-alpha.2', false );
-		update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
+		$tables    = TableNames::from_database( $wpdb );
+		$inspector = new SchemaInspector( $wpdb );
 
-		( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+		/*
+		 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+		 * TEMPORARY equivalents inside each test transaction. Released-version
+		 * qualification must exercise the production DDL against permanent tables.
+		 */
+		self::commit_transaction();
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 
-		self::assertSame( Version::PLUGIN, get_option( 'argentwolf_post_notifier_version' ) );
-		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
-		foreach ( TableNames::from_database( $wpdb )->all() as $table ) {
-			self::assertTrue( ( new SchemaInspector( $wpdb ) )->table_exists( $table ) );
+		try {
+			update_option( DestructiveUninstaller::DELETE_DATA_OPTION, true, false );
+			( new DestructiveUninstaller( $wpdb ) )->run();
+
+			foreach ( $tables->all() as $table ) {
+				self::assertFalse(
+					$inspector->table_exists( $table ),
+					'Table should be absent before released-version upgrade: ' . $table
+				);
+			}
+
+			update_option( 'argentwolf_post_notifier_version', $plugin_version, false );
+			update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
+
+			( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+
+			self::assertSame( Version::PLUGIN, get_option( 'argentwolf_post_notifier_version' ) );
+			self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+			foreach ( $tables->all() as $table ) {
+				self::assertTrue(
+					$inspector->table_exists( $table ),
+					'Table should exist after released-version upgrade: ' . $table
+				);
+			}
+		} finally {
+			try {
+				( new SchemaMigrator( $wpdb ) )->migrate();
+				update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
+				self::commit_transaction();
+			} finally {
+				$this->start_transaction();
+			}
 		}
+	}
+
+	/**
+	 * Tagged releases that shipped before plugin-owned tables existed.
+	 *
+	 * @return array<string,array{0:string}>
+	 */
+	public static function released_schema_zero_checkpoints(): array {
+		return array(
+			'alpha.1' => array( '0.1.0-alpha.1' ),
+			'alpha.2' => array( '0.1.0-alpha.2' ),
+		);
 	}
 
 	public function test_plugin_upgrade_revalidates_schema_even_when_schema_version_is_current(): void {
