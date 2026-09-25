@@ -164,18 +164,50 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 	public function test_released_schema_zero_checkpoint_upgrades_to_schema_one( string $plugin_version ): void {
 		global $wpdb;
 
-		update_option( DestructiveUninstaller::DELETE_DATA_OPTION, true, false );
-		( new DestructiveUninstaller( $wpdb ) )->run();
+		$tables    = TableNames::from_database( $wpdb );
+		$inspector = new SchemaInspector( $wpdb );
 
-		update_option( 'argentwolf_post_notifier_version', $plugin_version, false );
-		update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
+		/*
+		 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+		 * TEMPORARY equivalents inside each test transaction. Released-version
+		 * qualification must exercise the production DDL against permanent tables.
+		 */
+		self::commit_transaction();
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 
-		( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+		try {
+			update_option( DestructiveUninstaller::DELETE_DATA_OPTION, true, false );
+			( new DestructiveUninstaller( $wpdb ) )->run();
 
-		self::assertSame( Version::PLUGIN, get_option( 'argentwolf_post_notifier_version' ) );
-		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
-		foreach ( TableNames::from_database( $wpdb )->all() as $table ) {
-			self::assertTrue( ( new SchemaInspector( $wpdb ) )->table_exists( $table ) );
+			foreach ( $tables->all() as $table ) {
+				self::assertFalse(
+					$inspector->table_exists( $table ),
+					'Table should be absent before released-version upgrade: ' . $table
+				);
+			}
+
+			update_option( 'argentwolf_post_notifier_version', $plugin_version, false );
+			update_option( SchemaMigrator::SCHEMA_OPTION, '0', false );
+
+			( new UpgradeManager( new SchemaMigrator( $wpdb ) ) )->maybe_upgrade();
+
+			self::assertSame( Version::PLUGIN, get_option( 'argentwolf_post_notifier_version' ) );
+			self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+			foreach ( $tables->all() as $table ) {
+				self::assertTrue(
+					$inspector->table_exists( $table ),
+					'Table should exist after released-version upgrade: ' . $table
+				);
+			}
+		} finally {
+			try {
+				( new SchemaMigrator( $wpdb ) )->migrate();
+				update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
+				self::commit_transaction();
+			} finally {
+				$this->start_transaction();
+			}
 		}
 	}
 
