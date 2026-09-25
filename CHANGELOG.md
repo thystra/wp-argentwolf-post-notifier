@@ -1,7 +1,19 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-alpha.3 — Unreleased
+## 0.1.0-alpha.4 — Unreleased
+
+- Begin the standalone-subscriber domain foundation on frozen schema 1.
+- Add typed pending, subscribed, unsubscribed, and suppressed subscriber states.
+- Normalize public-signup email identity through the existing keyed identity service.
+- Create or refresh pending subscriber records without reactivating subscribed,
+  unsubscribed, or suppressed addresses.
+- Generate 256-bit confirmation secrets, persist only SHA-256 token hashes, expire
+  tokens after 24 hours, and enforce a 15-minute resend cooldown.
+- Add explicit unexpired-token confirmation that promotes only pending records and
+  clears the reusable confirmation hash after successful promotion.
+
+## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 
 - Begin the versioned database-migration foundation with schema version 1.
 - Add campaigns, campaign recipients, standalone subscribers, named lists, typed
