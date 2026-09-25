@@ -154,6 +154,7 @@ $subscriber_files = array(
 	'src/Mail/MailMessage.php',
 	'src/Mail/MailTransport.php',
 	'src/Mail/WpMailTransport.php',
+	'src/Subscriber/ConfirmationController.php',
 	'src/Subscriber/ConfirmationLinkFactory.php',
 	'src/Subscriber/ConfirmationMailer.php',
 	'src/Subscriber/ConfirmationToken.php',
@@ -232,6 +233,7 @@ $assert(
 $rate_limiter_source = file_get_contents( $root . '/src/Subscriber/SignupRateLimiter.php' );
 $signup_processor_source = file_get_contents( $root . '/src/Subscriber/PublicSignupProcessor.php' );
 $mail_transport_source = file_get_contents( $root . '/src/Mail/WpMailTransport.php' );
+$confirmation_controller_source = file_get_contents( $root . '/src/Subscriber/ConfirmationController.php' );
 $assert(
 	false !== $rate_limiter_source
 		&& str_contains( $rate_limiter_source, 'hash_hmac( \'sha256\', $packed' )
@@ -249,6 +251,13 @@ $assert(
 		&& str_contains( $mail_transport_source, 'DeliveryResult::submitted()' )
 		&& ! str_contains( $mail_transport_source, 'delivered' ),
 	'Mail transport success must be modeled as submitted rather than delivered.'
+);
+$assert(
+	false !== $confirmation_controller_source
+		&& str_contains( $confirmation_controller_source, '\'admin_post_nopriv_\' . $get_action' )
+		&& str_contains( $confirmation_controller_source, '\'admin_post_nopriv_\' . $post_action' )
+		&& str_contains( $confirmation_controller_source, '\'POST\' !== $this->request_method()' ),
+	'Confirmation routing must separate display-only GET from intentional POST confirmation.'
 );
 $utc_probe = new DateTimeImmutable(
 	'2026-09-15 08:30:00',

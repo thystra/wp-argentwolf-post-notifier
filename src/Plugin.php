@@ -14,6 +14,7 @@ use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
@@ -138,6 +139,17 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				ConfirmationController::class,
+				static function ( Container $services ): ConfirmationController {
+					$subscriber_service = $services->get( SubscriberService::class );
+					if ( ! $subscriber_service instanceof SubscriberService ) {
+						throw new LogicException( 'The subscriber service is invalid.' );
+					}
+
+					return new ConfirmationController( $subscriber_service );
+				}
+			);
+			$container->set(
 				PublicSignupProcessor::class,
 				static function ( Container $services ): PublicSignupProcessor {
 					$subscriber_service = $services->get( SubscriberService::class );
@@ -242,6 +254,7 @@ final class Plugin {
 
 		$services = array(
 			UpgradeManager::class,
+			ConfirmationController::class,
 			VerificationProviderNotice::class,
 		);
 		foreach ( $services as $service_id ) {

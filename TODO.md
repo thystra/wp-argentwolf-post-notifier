@@ -189,7 +189,8 @@ Target: `0.1.0-alpha.4`
 Implementation is split into reviewable tranches. The first tranche established
 the standalone-subscriber lifecycle and persistence contract. The second adds
 privacy-preserving signup coordination, local abuse controls, and confirmation
-mail transport before the public block and HTTP confirmation flow are wired.
+mail transport. The third tranche adds a display-only confirmation GET and a
+separate nonce-protected POST that owns the subscription state change.
 
 - [ ] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.
@@ -203,8 +204,8 @@ mail transport before the public block and HTTP confirmation flow are wired.
 - [x] Generate secure confirmation tokens and store only hashes.
 - [x] Add confirmation-token expiry and resend cooldown.
 - [x] Send confirmation email through the transport abstraction.
-- [ ] Make the confirmation link open a page that requires POST confirmation.
-- [ ] Promote only intentionally confirmed records to `subscribed`.
+- [x] Make the confirmation link open a page that requires POST confirmation.
+- [x] Promote only intentionally confirmed records to `subscribed`.
 - [ ] Add pending-record cleanup.
 - [ ] Add a frontend success/error experience that works without JavaScript.
 - [ ] Add accessible labels, focus handling, and status messages.
