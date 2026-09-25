@@ -203,7 +203,12 @@ jobs:
             "https://github.com/wp-cli/wp-cli/releases/download/v${WP_CLI_VERSION}/wp-cli-${WP_CLI_VERSION}.phar" \
             --output "$WP_CLI_PHAR"
           printf '%s  %s\n' "$WP_CLI_SHA512" "$WP_CLI_PHAR" | sha512sum -c -
-          install -m 0755 "$WP_CLI_PHAR" /usr/local/bin/wp
+          install -m 0644 "$WP_CLI_PHAR" /usr/local/lib/wp-cli.phar
+          cat > /usr/local/bin/wp <<'EOF'
+          #!/usr/bin/env bash
+          exec php -d memory_limit=512M /usr/local/lib/wp-cli.phar "$@"
+          EOF
+          chmod 0755 /usr/local/bin/wp
           test "$(wp cli version | awk '{print $2}')" = "$WP_CLI_VERSION"
 
       - name: Build package
