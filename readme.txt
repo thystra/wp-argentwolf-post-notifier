@@ -4,7 +4,7 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-alpha.3
+Stable tag: 0.1.0-alpha.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,13 +16,13 @@ ArgentWolf Post Notifier is currently an alpha development build.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
-integration, deterministic packaging, and initial versioned database schema.
+integration, deterministic packaging, and frozen initial database schema.
 Registered-user verification supports the public API introduced in ArgentWolf
 Email Verification 0.3.4 and is tested against the current 1.0.2 release; it
-fails closed when no authoritative provider is healthy. The database foundation
-now reserves durable storage for later campaign, recipient, subscriber, list,
-suppression, and click workflows. Those workflows, email delivery, unsubscribe
-handling, and statistics execution are not implemented in this alpha.
+fails closed when no authoritative provider is healthy. Alpha.4 begins the
+standalone-subscriber workflow with secure pending records, hashed confirmation
+tokens, expiry, resend cooldown, and explicit confirmation promotion. The public
+subscription block and confirmation mail/HTTP flow remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -65,6 +65,12 @@ now available from WordPress.org. This plugin declares the dependency while stil
 checking provider health and API compatibility at runtime.
 
 == Changelog ==
+
+= 0.1.0-alpha.4 =
+* Begin the standalone-subscriber lifecycle and persistence foundation.
+* Add secure hashed confirmation tokens with 24-hour expiry and a 15-minute resend cooldown.
+* Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
+* Add explicit pending-to-subscribed confirmation primitives; public POST routing and confirmation mail remain later work.
 
 = 0.1.0-alpha.3 =
 * Begin versioned schema migrations and create the initial plugin-owned tables.

@@ -12,6 +12,8 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
@@ -60,6 +62,25 @@ final class Plugin {
 			$container->set(
 				EmailIdentity::class,
 				static fn (): EmailIdentity => new EmailIdentity()
+			);
+			$container->set(
+				SubscriberRepository::class,
+				static fn (): SubscriberRepository => new SubscriberRepository()
+			);
+			$container->set(
+				SubscriberService::class,
+				static function ( Container $services ): SubscriberService {
+					$repository = $services->get( SubscriberRepository::class );
+					$identity   = $services->get( EmailIdentity::class );
+					if ( ! $repository instanceof SubscriberRepository ) {
+						throw new LogicException( 'The subscriber repository is invalid.' );
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+
+					return new SubscriberService( $repository, $identity );
+				}
 			);
 			$container->set(
 				UpgradeManager::class,

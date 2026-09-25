@@ -29,11 +29,13 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository is now in `0.1.0-alpha.3` development. Alpha.2 established the
-verification-provider contract; alpha.3 begins the persistent data foundation
-with versioned migrations and plugin-owned tables. Campaign creation, subscriber
-workflows, delivery, unsubscribe behavior, and statistics execution remain future
-milestones tracked in `TODO.md`.
+The repository is now in `0.1.0-alpha.4` development. Alpha.2 established the
+verification-provider contract and alpha.3 froze the persistent data foundation.
+Alpha.4 is implementing standalone subscriber double opt-in in reviewable
+tranches. The current tranche provides lifecycle states, pending persistence,
+secure hashed confirmation tokens, 24-hour token expiry, a 15-minute resend
+cooldown, and explicit confirmation promotion. The public block, rate limiting,
+mail transport, and POST confirmation route remain later Milestone-4 work.
 
 ## 2.1 Canonical naming
 
@@ -285,6 +287,12 @@ prevents link scanners from silently subscribing an address.
 A verified standalone subscriber has completed double opt-in. There is no
 separate state in which the email is verified but the subscription remains
 unconfirmed.
+
+The subscriber domain service never returns its internal signup outcome directly
+to a public requester. It may expose a plaintext confirmation token only to the
+mail layer when the resend cooldown permits a message; the database stores only
+the SHA-256 token hash. Repeated signup of an already subscribed, unsubscribed,
+or suppressed address does not move that record back to `pending`.
 
 Suggested states:
 

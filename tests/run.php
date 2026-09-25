@@ -25,6 +25,8 @@ use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Subscriber\ConfirmationToken;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Version;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
@@ -122,6 +124,13 @@ $assert(
 	),
 	'Alpha.3 must remain the database schema and migrations milestone.'
 );
+$assert(
+	str_contains(
+		(string) $todo,
+		"## Milestone 4 — Standalone subscribers and mailing-list block\n\nTarget: `0.1.0-alpha.4`"
+	),
+	'Alpha.4 must remain the standalone subscriber and mailing-list milestone.'
+);
 $database_files = array(
 	'src/Database/DataCleanup.php',
 	'src/Database/DestructiveUninstaller.php',
@@ -138,6 +147,19 @@ foreach ( $database_files as $database_file ) {
 	$assert(
 		is_readable( $root . '/' . $database_file ),
 		sprintf( 'Database foundation file must exist: %s.', $database_file )
+	);
+}
+$subscriber_files = array(
+	'src/Subscriber/ConfirmationToken.php',
+	'src/Subscriber/SignupResult.php',
+	'src/Subscriber/SubscriberRepository.php',
+	'src/Subscriber/SubscriberService.php',
+	'src/Subscriber/SubscriberStatus.php',
+);
+foreach ( $subscriber_files as $subscriber_file ) {
+	$assert(
+		is_readable( $root . '/' . $subscriber_file ),
+		sprintf( 'Subscriber foundation file must exist: %s.', $subscriber_file )
 	);
 }
 $table_names = new TableNames( 'wp_' );
@@ -178,6 +200,21 @@ $assert(
 $assert(
 	$identity->hash( 'Person@Example.COM' ) === $identity->hash( 'person@example.com' ),
 	'Email hashing must operate on the canonical normalized identity.'
+);
+$confirmation_token = ConfirmationToken::generate();
+$assert(
+	1 === preg_match( '/\A[a-f0-9]{64}\z/D', $confirmation_token->plaintext() )
+		&& ConfirmationToken::hash_plaintext( $confirmation_token->plaintext() )
+			=== $confirmation_token->hash()
+		&& $confirmation_token->plaintext() !== $confirmation_token->hash(),
+	'Confirmation tokens must be bearer values with a separate persistence hash.'
+);
+$assert(
+	SubscriberStatus::Subscribed->is_notification_eligible()
+		&& ! SubscriberStatus::Pending->is_notification_eligible()
+		&& ! SubscriberStatus::Unsubscribed->accepts_confirmation_refresh()
+		&& ! SubscriberStatus::Suppressed->accepts_confirmation_refresh(),
+	'Subscriber lifecycle rules must fail closed outside subscribed/pending states.'
 );
 $utc_probe = new DateTimeImmutable(
 	'2026-09-15 08:30:00',
