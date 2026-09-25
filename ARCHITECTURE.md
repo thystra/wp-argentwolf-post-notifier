@@ -32,10 +32,13 @@ components are implemented.
 The repository is now in `0.1.0-alpha.4` development. Alpha.2 established the
 verification-provider contract and alpha.3 froze the persistent data foundation.
 Alpha.4 is implementing standalone subscriber double opt-in in reviewable
-tranches. The current tranche provides lifecycle states, pending persistence,
+tranches. The first tranche established lifecycle states, pending persistence,
 secure hashed confirmation tokens, 24-hour token expiry, a 15-minute resend
-cooldown, and explicit confirmation promotion. The public block, rate limiting,
-mail transport, and POST confirmation route remain later Milestone-4 work.
+cooldown, and explicit confirmation promotion. The second tranche adds a generic
+public-signup coordinator, a honeypot gate, keyed transient rate limits that never
+persist raw network addresses or user-agent strings, and confirmation-message
+submission through a transport abstraction. The public block and intentional-POST
+confirmation route remain later Milestone-4 work.
 
 ## 2.1 Canonical naming
 

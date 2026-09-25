@@ -35,6 +35,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 
 		self::assertTrue( $result->should_send_confirmation() );
 		self::assertNotNull( $result->confirmation_token() );
+		self::assertSame( 'person@example.com', $result->normalized_email() );
 
 		$row = $this->subscriber_row( $result->subscriber_id() );
 		self::assertSame( 'person@example.com', $row['email'] );

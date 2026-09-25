@@ -150,11 +150,24 @@ foreach ( $database_files as $database_file ) {
 	);
 }
 $subscriber_files = array(
+	'src/Mail/DeliveryResult.php',
+	'src/Mail/MailMessage.php',
+	'src/Mail/MailTransport.php',
+	'src/Mail/WpMailTransport.php',
+	'src/Subscriber/ConfirmationLinkFactory.php',
+	'src/Subscriber/ConfirmationMailer.php',
 	'src/Subscriber/ConfirmationToken.php',
+	'src/Subscriber/PublicSignupProcessor.php',
+	'src/Subscriber/PublicSignupRequest.php',
+	'src/Subscriber/PublicSignupResponse.php',
+	'src/Subscriber/RateLimitStore.php',
+	'src/Subscriber/SignupRateLimiter.php',
 	'src/Subscriber/SignupResult.php',
 	'src/Subscriber/SubscriberRepository.php',
 	'src/Subscriber/SubscriberService.php',
 	'src/Subscriber/SubscriberStatus.php',
+	'src/Subscriber/WordPressConfirmationLinkFactory.php',
+	'src/Subscriber/WordPressRateLimitStore.php',
 );
 foreach ( $subscriber_files as $subscriber_file ) {
 	$assert(
@@ -215,6 +228,27 @@ $assert(
 		&& ! SubscriberStatus::Unsubscribed->accepts_confirmation_refresh()
 		&& ! SubscriberStatus::Suppressed->accepts_confirmation_refresh(),
 	'Subscriber lifecycle rules must fail closed outside subscribed/pending states.'
+);
+$rate_limiter_source = file_get_contents( $root . '/src/Subscriber/SignupRateLimiter.php' );
+$signup_processor_source = file_get_contents( $root . '/src/Subscriber/PublicSignupProcessor.php' );
+$mail_transport_source = file_get_contents( $root . '/src/Mail/WpMailTransport.php' );
+$assert(
+	false !== $rate_limiter_source
+		&& str_contains( $rate_limiter_source, 'hash_hmac( \'sha256\', $packed' )
+		&& ! str_contains( $rate_limiter_source, 'HTTP_USER_AGENT' ),
+	'Public signup rate limits must key network indicators without retaining user-agent data.'
+);
+$assert(
+	false !== $signup_processor_source
+		&& str_contains( $signup_processor_source, 'new PublicSignupResponse()' )
+		&& str_contains( $signup_processor_source, 'InvalidArgumentException' ),
+	'Public signup coordination must preserve one generic response across expected request outcomes.'
+);
+$assert(
+	false !== $mail_transport_source
+		&& str_contains( $mail_transport_source, 'DeliveryResult::submitted()' )
+		&& ! str_contains( $mail_transport_source, 'delivered' ),
+	'Mail transport success must be modeled as submitted rather than delivered.'
 );
 $utc_probe = new DateTimeImmutable(
 	'2026-09-15 08:30:00',

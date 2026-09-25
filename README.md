@@ -10,8 +10,10 @@ contract, lifecycle/tooling foundation, and frozen schema-1 data foundation are
 present. Alpha.4 begins the standalone-subscriber workflow with typed lifecycle
 states, canonical email identity, secure hashed confirmation tokens, pending
 record creation/refresh, token expiry, resend cooldown, and explicit confirmation
-promotion. The public block, rate limiting, confirmation mail transport, and HTTP
-confirmation flow are still being implemented in later Milestone-4 tranches.
+promotion. The second tranche adds generic non-enumerating signup coordination,
+keyed local rate limits that do not retain raw network addresses, honeypot handling,
+and confirmation-message submission through a transport abstraction. The public
+block and intentional-POST confirmation route remain later Milestone-4 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

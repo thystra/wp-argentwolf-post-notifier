@@ -113,6 +113,7 @@ final class SubscriberService {
 
 		return new SignupResult(
 			$result['subscriber_id'],
+			$normalized_email,
 			$result['token_rotated'] ? $token->plaintext() : null
 		);
 	}

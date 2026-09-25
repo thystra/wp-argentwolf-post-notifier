@@ -12,8 +12,17 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
+use ArgentWolf\PostNotifier\Mail\MailTransport;
+use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
+use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
+use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
+use ArgentWolf\PostNotifier\Subscriber\RateLimitStore;
+use ArgentWolf\PostNotifier\Subscriber\SignupRateLimiter;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
+use ArgentWolf\PostNotifier\Subscriber\WordPressConfirmationLinkFactory;
+use ArgentWolf\PostNotifier\Subscriber\WordPressRateLimitStore;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
@@ -80,6 +89,81 @@ final class Plugin {
 					}
 
 					return new SubscriberService( $repository, $identity );
+				}
+			);
+			$container->set(
+				RateLimitStore::class,
+				static fn (): RateLimitStore => new WordPressRateLimitStore()
+			);
+			$container->set(
+				SignupRateLimiter::class,
+				static function ( Container $services ): SignupRateLimiter {
+					$store    = $services->get( RateLimitStore::class );
+					$identity = $services->get( EmailIdentity::class );
+					if ( ! $store instanceof RateLimitStore ) {
+						throw new LogicException( 'The rate-limit store is invalid.' );
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+
+					return new SignupRateLimiter(
+						$store,
+						$identity,
+						wp_salt( 'nonce' )
+					);
+				}
+			);
+			$container->set(
+				MailTransport::class,
+				static fn (): MailTransport => new WpMailTransport()
+			);
+			$container->set(
+				ConfirmationLinkFactory::class,
+				static fn (): ConfirmationLinkFactory =>
+					new WordPressConfirmationLinkFactory()
+			);
+			$container->set(
+				ConfirmationMailer::class,
+				static function ( Container $services ): ConfirmationMailer {
+					$transport = $services->get( MailTransport::class );
+					if ( ! $transport instanceof MailTransport ) {
+						throw new LogicException( 'The mail transport is invalid.' );
+					}
+
+					return new ConfirmationMailer(
+						$transport,
+						wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES )
+					);
+				}
+			);
+			$container->set(
+				PublicSignupProcessor::class,
+				static function ( Container $services ): PublicSignupProcessor {
+					$subscriber_service = $services->get( SubscriberService::class );
+					$rate_limiter       = $services->get( SignupRateLimiter::class );
+					$links              = $services->get( ConfirmationLinkFactory::class );
+					$mailer             = $services->get( ConfirmationMailer::class );
+
+					if ( ! $subscriber_service instanceof SubscriberService ) {
+						throw new LogicException( 'The subscriber service is invalid.' );
+					}
+					if ( ! $rate_limiter instanceof SignupRateLimiter ) {
+						throw new LogicException( 'The signup rate limiter is invalid.' );
+					}
+					if ( ! $links instanceof ConfirmationLinkFactory ) {
+						throw new LogicException( 'The confirmation link factory is invalid.' );
+					}
+					if ( ! $mailer instanceof ConfirmationMailer ) {
+						throw new LogicException( 'The confirmation mailer is invalid.' );
+					}
+
+					return new PublicSignupProcessor(
+						$subscriber_service,
+						$rate_limiter,
+						$links,
+						$mailer
+					);
 				}
 			);
 			$container->set(
