@@ -87,25 +87,41 @@ final class ConfirmationController implements Registerable {
 
 		$message = sprintf(
 			/* translators: %s: site name. */
-			esc_html__( 'Confirm that you want to receive post notifications from %s.', 'argentwolf-post-notifier' ),
+			esc_html__(
+				'Confirm that you want to receive post notifications from %s.',
+				'argentwolf-post-notifier'
+			),
 			esc_html( $site_name )
 		);
-		$html    = '<h1>' . esc_html__( 'Confirm your subscription', 'argentwolf-post-notifier' ) . '</h1>';
-		$html   .= '<p>' . $message . '</p>';
-		$html   .= '<form method="post" action="' . esc_url( $action_url ) . '">';
-		$html   .= '<input type="hidden" name="action" value="' . esc_attr( self::POST_ACTION ) . '">';
-		$html   .= '<input type="hidden" name="' . esc_attr( self::TOKEN_FIELD ) . '" value="' . esc_attr( $token ) . '">';
-		$html   .= '<input type="hidden" name="' . esc_attr( self::NONCE_FIELD ) . '" value="' . esc_attr( $nonce ) . '">';
-		$html   .= '<p><button type="submit">';
-		$html   .= esc_html__( 'Confirm subscription', 'argentwolf-post-notifier' );
-		$html   .= '</button></p>';
-		$html   .= '</form>';
-		$html   .= '<p>';
-		$html   .= esc_html__(
+		$html  = '<h1>';
+		$html .= esc_html__( 'Confirm your subscription', 'argentwolf-post-notifier' );
+		$html .= '</h1>';
+		$html .= '<p>' . $message . '</p>';
+		$html .= '<form method="post" action="' . esc_url( $action_url ) . '">';
+		$html .= sprintf(
+			'<input type="hidden" name="action" value="%s">',
+			esc_attr( self::POST_ACTION )
+		);
+		$html .= sprintf(
+			'<input type="hidden" name="%1$s" value="%2$s">',
+			esc_attr( self::TOKEN_FIELD ),
+			esc_attr( $token )
+		);
+		$html .= sprintf(
+			'<input type="hidden" name="%1$s" value="%2$s">',
+			esc_attr( self::NONCE_FIELD ),
+			esc_attr( $nonce )
+		);
+		$html .= '<p><button type="submit">';
+		$html .= esc_html__( 'Confirm subscription', 'argentwolf-post-notifier' );
+		$html .= '</button></p>';
+		$html .= '</form>';
+		$html .= '<p>';
+		$html .= esc_html__(
 			'Nothing changes until you choose the confirmation button.',
 			'argentwolf-post-notifier'
 		);
-		$html   .= '</p>';
+		$html .= '</p>';
 
 		$this->render_page( $html, 200 );
 	}
@@ -154,10 +170,13 @@ final class ConfirmationController implements Registerable {
 	 * @return string
 	 */
 	private function request_method(): string {
-		$method = $_SERVER['REQUEST_METHOD'] ?? '';
-		return is_string( $method ) ? strtoupper( sanitize_text_field( wp_unslash( $method ) ) ) : '';
-	}
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) ) {
+			return '';
+		}
 
+		$method = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) );
+		return strtoupper( $method );
+	}
 
 	/**
 	 * Render the final confirmation result page.
@@ -168,15 +187,32 @@ final class ConfirmationController implements Registerable {
 	 */
 	private function render_result_page( bool $confirmed, int $response ): void {
 		if ( $confirmed ) {
-			$html  = '<h1>' . esc_html__( 'Subscription confirmed', 'argentwolf-post-notifier' ) . '</h1>';
-			$html .= '<p>' . esc_html__( 'You are now subscribed to post notifications.', 'argentwolf-post-notifier' ) . '</p>';
-		} else {
-			$html  = '<h1>' . esc_html__( 'Unable to confirm subscription', 'argentwolf-post-notifier' ) . '</h1>';
-			$message = esc_html__(
-				'This confirmation link is invalid, expired, or already used. Request a new confirmation message from the site.',
+			$html  = '<h1>';
+			$html .= esc_html__( 'Subscription confirmed', 'argentwolf-post-notifier' );
+			$html .= '</h1>';
+			$html .= '<p>';
+			$html .= esc_html__(
+				'You are now subscribed to post notifications.',
 				'argentwolf-post-notifier'
 			);
-			$html   .= '<p>' . $message . '</p>';
+			$html .= '</p>';
+		} else {
+			$html  = '<h1>';
+			$html .= esc_html__(
+				'Unable to confirm subscription',
+				'argentwolf-post-notifier'
+			);
+			$html .= '</h1>';
+			$html .= '<p>';
+			$html .= esc_html__(
+				'This confirmation link is invalid, expired, or already used. ',
+				'argentwolf-post-notifier'
+			);
+			$html .= esc_html__(
+				'Request a new confirmation message from the site.',
+				'argentwolf-post-notifier'
+			);
+			$html .= '</p>';
 		}
 
 		$this->render_page( $html, $response );
@@ -197,14 +233,36 @@ final class ConfirmationController implements Registerable {
 		}
 
 		wp_die(
-			// The HTML is assembled only from escaped plugin-owned strings and values.
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-			$html,
+			wp_kses( $html, $this->allowed_page_html() ),
 			esc_html__( 'Subscription confirmation', 'argentwolf-post-notifier' ),
 			array(
-				'response'  => $response,
+				'response'  => absint( $response ),
 				'back_link' => false,
 			)
+		);
+	}
+
+	/**
+	 * Return the HTML elements allowed on the standalone confirmation page.
+	 *
+	 * @return array<string,array<string,bool>>
+	 */
+	private function allowed_page_html(): array {
+		return array(
+			'h1'     => array(),
+			'p'      => array(),
+			'form'   => array(
+				'method' => true,
+				'action' => true,
+			),
+			'input'  => array(
+				'type'  => true,
+				'name'  => true,
+				'value' => true,
+			),
+			'button' => array(
+				'type' => true,
+			),
 		);
 	}
 }
