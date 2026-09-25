@@ -14,6 +14,10 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 	}
 };
 
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', $root . '/' );
+}
+
 require_once $root . '/autoload.php';
 
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -47,6 +51,7 @@ $image_verifier      = is_readable( $image_verifier_path )
 	: '';
 $build_script = file_get_contents( $root . '/build/build-plugin.sh' );
 $package_manifest_script = file_get_contents( $root . '/tests/package-manifest.sh' );
+$plugin_check_script = file_get_contents( $root . '/scripts/run-plugin-check.sh' );
 $companion_installer = file_get_contents( $root . '/bin/install-verification-companion.sh' );
 $package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
 $package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
@@ -293,8 +298,8 @@ $assert(
 	'Forgejo WordPress CI must use Subversion from the qualified shared image.'
 );
 $assert(
-	str_contains( (string) $workflow, "- '7.0.4'" )
-		&& str_contains( (string) $workflow, "- '7.1'" ),
+	str_contains( (string) $workflow, "- '7.0.6'" )
+		&& str_contains( (string) $workflow, "- '7.1.2'" ),
 	'WordPress integration CI must cover the maintained minimum branch and current stable release.'
 );
 $assert(
@@ -308,6 +313,36 @@ $assert(
 		'ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION: ${{ matrix.verification }}'
 	),
 	'WordPress integration CI must pass the selected companion version to integration tests.'
+);
+$assert(
+	str_contains( (string) $workflow, "PLUGIN_CHECK_VERSION: '2.1.0'" )
+		&& str_contains(
+			(string) $workflow,
+			"PLUGIN_CHECK_SHA256: '6ff4bd2145f3befcf907df158cc466b1649dafed5686de8369907403c3013fc4'"
+		),
+	'Forgejo package CI must pin Plugin Check 2.1.0 by SHA-256.'
+);
+$assert(
+	str_contains( (string) $workflow, "WORDPRESS_PACKAGE_VERSION: '7.1.2'" )
+		&& str_contains( (string) $workflow, 'INSTALLED_PACKAGE_BYTE_IDENTITY=PASS' ),
+	'Package CI must install the exact candidate ZIP on the current WordPress release and verify byte identity.'
+);
+$assert(
+	str_contains( (string) $workflow, "WP_CLI_VERSION: '2.12.0'" )
+		&& str_contains( (string) $workflow, 'WP_CLI_SHA512:' ),
+	'Package CI must pin and verify WP-CLI when using the shared PHP image.'
+);
+$assert(
+	str_contains( (string) $plugin_check_script, "run_check 'new-static' 'no' 'new'" )
+		&& str_contains( (string) $plugin_check_script, "run_check 'new-runtime' 'yes' 'new'" )
+		&& str_contains( (string) $plugin_check_script, "run_check 'update-runtime' 'yes' 'update'" )
+		&& str_contains( (string) $plugin_check_script, '--format=strict-table' ),
+	'Plugin Check helper must enforce static/new, runtime/new, and runtime/update strict gates.'
+);
+$assert(
+	str_contains( (string) $workflow, 'POST_NOTIFIER_WP_DEBUG_GATE=PASS' )
+		&& str_contains( (string) $workflow, '/wp-content/plugins/${PLUGIN_SLUG}/' ),
+	'Package CI must fail on notifier-specific WP_DEBUG findings.'
 );
 $assert(
 	! str_contains( (string) $workflow, '7.0.2' ),
