@@ -26,6 +26,7 @@ final class WordPressRateLimitStore implements RateLimitStore {
 	 * @param int    $window_seconds Window duration in seconds.
 	 * @param int    $now            Current Unix timestamp.
 	 * @return bool True when the request is allowed.
+	 * @throws InvalidArgumentException When rate-limit arguments are invalid.
 	 */
 	public function consume(
 		string $bucket,

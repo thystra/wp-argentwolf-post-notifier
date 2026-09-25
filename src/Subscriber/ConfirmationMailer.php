@@ -38,20 +38,20 @@ final class ConfirmationMailer {
 		$site_name = '' === trim( $this->site_name )
 			? __( 'this site', 'argentwolf-post-notifier' )
 			: $this->site_name;
-		$subject   = sprintf(
+		$subject = sprintf(
 			/* translators: %s: site name. */
 			__( 'Confirm your subscription to %s', 'argentwolf-post-notifier' ),
 			$site_name
 		);
-		$body      = sprintf(
+		$body = sprintf(
 			/* translators: 1: site name, 2: local confirmation URL. */
 			__(
-				"You requested email notifications from %1\$s.
+				'You requested email notifications from %1$s.
 
 Open this link and confirm the subscription on the site:
-%2\$s
+%2$s
 
-If you did not request this, you can ignore this message.",
+If you did not request this, you can ignore this message.',
 				'argentwolf-post-notifier'
 			),
 			$site_name,

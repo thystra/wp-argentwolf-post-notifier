@@ -28,6 +28,7 @@ final class SignupRateLimiter {
 	 * @param RateLimitStore $store          Ephemeral counter storage.
 	 * @param EmailIdentity  $identity       Canonical keyed email identity helper.
 	 * @param string         $network_secret Secret used to key network fingerprints.
+	 * @throws InvalidArgumentException When the network secret is shorter than 32 bytes.
 	 */
 	public function __construct(
 		private RateLimitStore $store,

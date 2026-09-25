@@ -20,6 +20,7 @@ final class MailMessage {
 	 * @param string        $subject   Message subject.
 	 * @param string        $body      Message body.
 	 * @param array<string> $headers   Additional mail headers.
+	 * @throws InvalidArgumentException When recipient, subject, or body is empty.
 	 */
 	public function __construct(
 		private string $recipient,

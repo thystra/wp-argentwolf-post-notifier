@@ -23,6 +23,7 @@ final class WordPressConfirmationLinkFactory implements ConfirmationLinkFactory 
 	 *
 	 * @param string $plaintext_token Plaintext confirmation token.
 	 * @return string
+	 * @throws InvalidArgumentException When the confirmation token is invalid.
 	 */
 	public function create( string $plaintext_token ): string {
 		if ( null === ConfirmationToken::hash_plaintext( $plaintext_token ) ) {

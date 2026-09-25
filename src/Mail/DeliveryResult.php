@@ -14,6 +14,11 @@ namespace ArgentWolf\PostNotifier\Mail;
  * it never claims inbox delivery.
  */
 final class DeliveryResult {
+	/**
+	 * Construct a delivery result.
+	 *
+	 * @param bool $submitted Whether the transport accepted the message for processing.
+	 */
 	private function __construct( private bool $submitted ) {
 	}
 

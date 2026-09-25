@@ -36,7 +36,7 @@ final class WpMailTransportTest extends WP_UnitTestCase {
 
 		self::assertTrue( $result->is_submitted() );
 		self::assertIsArray( $captured );
-		self::assertSame( 'person@example.com', $captured['to'] );
+		self::assertSame( array( 'person@example.com' ), $captured['to'] );
 		self::assertSame( 'Confirm', $captured['subject'] );
 		self::assertSame( 'Body', $captured['message'] );
 	}
