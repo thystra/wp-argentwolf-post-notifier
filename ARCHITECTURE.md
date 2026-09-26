@@ -32,11 +32,15 @@ components are implemented.
 The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
 verification-provider contract, alpha.3 froze the persistent data foundation, and
 alpha.4 completed the standalone-subscriber double-opt-in and administration
-milestone. The first alpha.5 tranche adds the registered-user preference contract
-and a self-service WordPress profile control. The canonical user-meta value remains
-one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed metadata
-resolves to `site_default` rather than silently opting the user in. A registered
-user's preference never bypasses verification or global suppression.
+milestone. Alpha.5 now includes registered-user preferences plus the global
+suppression and standalone management foundation. The canonical user-meta value
+remains one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed
+metadata resolves to `site_default` rather than silently opting the user in.
+Standalone confirmation issues a random management bearer while only its SHA-256
+hash is stored. Management GET requests are display-only, state changes require
+nonce-protected POST, and verified resubscription can remove only a suppression
+created by the same self-service source. Administrator suppression remains
+authoritative.
 
 ## 2.1 Canonical naming
 
@@ -907,6 +911,12 @@ Resubscription requires a verified management flow. It cannot be performed by
 an administrator merely re-adding the address to a list without an explicit
 override workflow and audit record.
 
+The alpha.5 standalone-management implementation uses a random 256-bit bearer
+created at successful confirmation and stores only its SHA-256 hash. The bearer
+may remove only a suppression whose recorded source is `subscriber_manage`. An
+administrator-created `subscriber_admin` suppression cannot be removed by the
+self-service management path.
+
 ## 12. Click tracking
 
 Tracked links contain an opaque random token mapped to:
@@ -953,12 +963,13 @@ Activation grants administrative capabilities to administrators. Editor
 capabilities are an explicit site decision. Sending does not imply permission
 to view all subscriber data or edit global templates.
 
-The initial alpha.4 subscriber administration screen is restricted to WordPress
-administrators through `manage_options`. The later capability-mapping milestone
-will replace that temporary bridge with `manage_post_notification_subscribers`
-without automatically granting subscriber access to editors or send-only roles.
-Administrative suppression is one-way at this stage; verified resubscription and
-global suppression semantics remain later milestones.
+The subscriber administration screen remains restricted to WordPress administrators
+through `manage_options`. The later capability-mapping milestone will replace that
+temporary bridge with `manage_post_notification_subscribers` without automatically
+granting subscriber access to editors or send-only roles. Its suppression action
+now writes both the canonical global suppression and the standalone row state.
+Self-service resubscription cannot remove an administrator-created suppression;
+operator override and suppression audit history remain later milestones.
 
 ## 14. Privacy and retention
 

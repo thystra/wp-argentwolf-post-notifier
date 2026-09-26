@@ -30,8 +30,12 @@ generic status messages.
 It also adds an administrator-only subscriber screen with search/status filters,
 one-way manual suppression, and filtered CSV export. Alpha.5 begins registered-user
 preference handling with `site_default`, `subscribed`, and `unsubscribed` states plus
-a self-service WordPress profile control. These preferences do not bypass email
-verification or global suppression.
+a self-service WordPress profile control. Alpha.5 also adds canonical global
+suppression and secure standalone subscription management. Successful confirmation
+issues a random management bearer while only its SHA-256 hash is stored; management
+GET requests are display-only and state changes require nonce-protected POST.
+Self-service resubscription can remove only a suppression created by the same source,
+so administrator suppression remains authoritative.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -80,6 +84,11 @@ checking provider health and API compatibility at runtime.
 * Add canonical `site_default`, `subscribed`, and `unsubscribed` user-meta preferences.
 * Add a self-service WordPress profile control without allowing administrator override of another user's preference.
 * Keep verification and global suppression authoritative over registered-user preference.
+* Add global email suppression using the frozen schema-1 suppression table.
+* Add hashed standalone management bearers and a display-only self-service management page.
+* Require nonce-protected POST for unsubscribe and verified resubscribe.
+* Keep administrator suppression authoritative over all self-service resubscribe paths.
+* Block suppressed addresses from public standalone signup and confirmation.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.

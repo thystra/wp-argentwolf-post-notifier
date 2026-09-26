@@ -23,6 +23,8 @@ use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
+use ArgentWolf\PostNotifier\Subscriber\ManageSubscriptionController;
+use ArgentWolf\PostNotifier\Subscriber\ManageSubscriptionLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupController;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
@@ -33,8 +35,11 @@ use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
 use ArgentWolf\PostNotifier\Subscriber\SubscribeBlock;
 use ArgentWolf\PostNotifier\Subscriber\WordPressConfirmationLinkFactory;
+use ArgentWolf\PostNotifier\Subscriber\WordPressManageSubscriptionLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\WordPressRateLimitStore;
 use ArgentWolf\PostNotifier\Support\Container;
+use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
+use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
 use ArgentWolf\PostNotifier\Verification\VerificationProvider;
@@ -84,6 +89,27 @@ final class Plugin {
 				static fn (): EmailIdentity => new EmailIdentity()
 			);
 			$container->set(
+				SuppressionRepository::class,
+				static fn (): SuppressionRepository => new SuppressionRepository()
+			);
+			$container->set(
+				SuppressionService::class,
+				static function ( Container $services ): SuppressionService {
+					$repository = $services->get( SuppressionRepository::class );
+					$identity   = $services->get( EmailIdentity::class );
+					if ( ! $repository instanceof SuppressionRepository ) {
+						throw new LogicException(
+							'The suppression repository is invalid.'
+						);
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+
+					return new SuppressionService( $repository, $identity );
+				}
+			);
+			$container->set(
 				DataCleanup::class,
 				static fn (): DataCleanup => new DataCleanup()
 			);
@@ -125,8 +151,9 @@ final class Plugin {
 			$container->set(
 				SubscriberAdminPage::class,
 				static function ( Container $services ): SubscriberAdminPage {
-					$repository = $services->get( SubscriberAdminRepository::class );
-					$exporter   = $services->get( SubscriberCsvExporter::class );
+					$repository  = $services->get( SubscriberAdminRepository::class );
+					$exporter    = $services->get( SubscriberCsvExporter::class );
+					$suppression = $services->get( SuppressionService::class );
 					if ( ! $repository instanceof SubscriberAdminRepository ) {
 						throw new LogicException(
 							'The subscriber administration repository is invalid.'
@@ -137,8 +164,17 @@ final class Plugin {
 							'The subscriber CSV exporter is invalid.'
 						);
 					}
+					if ( ! $suppression instanceof SuppressionService ) {
+						throw new LogicException(
+							'The suppression service is invalid.'
+						);
+					}
 
-					return new SubscriberAdminPage( $repository, $exporter );
+					return new SubscriberAdminPage(
+						$repository,
+						$exporter,
+						$suppression
+					);
 				}
 			);
 			$container->set(
@@ -159,16 +195,26 @@ final class Plugin {
 			$container->set(
 				SubscriberService::class,
 				static function ( Container $services ): SubscriberService {
-					$repository = $services->get( SubscriberRepository::class );
-					$identity   = $services->get( EmailIdentity::class );
+					$repository  = $services->get( SubscriberRepository::class );
+					$identity    = $services->get( EmailIdentity::class );
+					$suppression = $services->get( SuppressionService::class );
 					if ( ! $repository instanceof SubscriberRepository ) {
 						throw new LogicException( 'The subscriber repository is invalid.' );
 					}
 					if ( ! $identity instanceof EmailIdentity ) {
 						throw new LogicException( 'The email identity service is invalid.' );
 					}
+					if ( ! $suppression instanceof SuppressionService ) {
+						throw new LogicException(
+							'The suppression service is invalid.'
+						);
+					}
 
-					return new SubscriberService( $repository, $identity );
+					return new SubscriberService(
+						$repository,
+						$identity,
+						$suppression
+					);
 				}
 			);
 			$container->set(
@@ -204,6 +250,11 @@ final class Plugin {
 					new WordPressConfirmationLinkFactory()
 			);
 			$container->set(
+				ManageSubscriptionLinkFactory::class,
+				static fn (): ManageSubscriptionLinkFactory =>
+					new WordPressManageSubscriptionLinkFactory()
+			);
+			$container->set(
 				ConfirmationMailer::class,
 				static function ( Container $services ): ConfirmationMailer {
 					$transport = $services->get( MailTransport::class );
@@ -221,11 +272,42 @@ final class Plugin {
 				ConfirmationController::class,
 				static function ( Container $services ): ConfirmationController {
 					$subscriber_service = $services->get( SubscriberService::class );
+					$manage_links       = $services->get(
+						ManageSubscriptionLinkFactory::class
+					);
 					if ( ! $subscriber_service instanceof SubscriberService ) {
 						throw new LogicException( 'The subscriber service is invalid.' );
 					}
+					if ( ! $manage_links instanceof ManageSubscriptionLinkFactory ) {
+						throw new LogicException(
+							'The management link factory is invalid.'
+						);
+					}
 
-					return new ConfirmationController( $subscriber_service );
+					return new ConfirmationController(
+						$subscriber_service,
+						$manage_links
+					);
+				}
+			);
+			$container->set(
+				ManageSubscriptionController::class,
+				static function ( Container $services ): ManageSubscriptionController {
+					$subscriber_service = $services->get( SubscriberService::class );
+					$suppression        = $services->get( SuppressionService::class );
+					if ( ! $subscriber_service instanceof SubscriberService ) {
+						throw new LogicException( 'The subscriber service is invalid.' );
+					}
+					if ( ! $suppression instanceof SuppressionService ) {
+						throw new LogicException(
+							'The suppression service is invalid.'
+						);
+					}
+
+					return new ManageSubscriptionController(
+						$subscriber_service,
+						$suppression
+					);
 				}
 			);
 			$container->set(
@@ -365,6 +447,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				ConfirmationController::class,
+				ManageSubscriptionController::class,
 				SubscriberAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,

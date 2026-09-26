@@ -179,6 +179,33 @@ final class SubscriberAdminRepository {
 	}
 
 	/**
+	 * Resolve one subscriber email for a state-changing administration action.
+	 *
+	 * @param int $subscriber_id Subscriber row ID.
+	 * @return string|null
+	 */
+	public function email_for_id( int $subscriber_id ): ?string {
+		if ( $subscriber_id < 1 ) {
+			return null;
+		}
+
+		$query = $this->database->prepare(
+			'SELECT email FROM %i WHERE id = %d LIMIT 1',
+			$this->table,
+			$subscriber_id
+		);
+
+		// Plugin-owned administration reads intentionally query the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$email = $this->database->get_var( $query );
+		// phpcs:enable
+
+		return is_string( $email ) && '' !== $email ? $email : null;
+	}
+
+	/**
 	 * Move one standalone subscriber into the suppressed state.
 	 *
 	 * Suppression clears reusable management/confirmation bearer hashes. This is

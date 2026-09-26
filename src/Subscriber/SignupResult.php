@@ -18,7 +18,7 @@ final class SignupResult {
 	/**
 	 * Construct the result.
 	 *
-	 * @param int         $subscriber_id      Internal subscriber row ID.
+	 * @param int         $subscriber_id      Internal row ID, or zero when blocked.
 	 * @param string      $normalized_email   Canonical normalized email address.
 	 * @param string|null $confirmation_token Plaintext token when mail should be sent.
 	 */
@@ -30,7 +30,7 @@ final class SignupResult {
 	}
 
 	/**
-	 * Internal subscriber row ID.
+	 * Internal subscriber row ID, or zero when policy blocked persistence.
 	 *
 	 * @return int
 	 */
