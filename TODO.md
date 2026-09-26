@@ -191,7 +191,8 @@ the standalone-subscriber lifecycle and persistence contract. The second adds
 privacy-preserving signup coordination, local abuse controls, and confirmation
 mail transport. The third tranche adds a display-only confirmation GET and a
 separate nonce-protected POST that owns the subscription state change. The fourth
-adds the dynamic public block and accessible no-JavaScript signup form.
+adds the dynamic public block and accessible no-JavaScript signup form. The fifth
+adds scheduled cleanup for stale pending subscriber records.
 
 - [x] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.
@@ -207,7 +208,7 @@ adds the dynamic public block and accessible no-JavaScript signup form.
 - [x] Send confirmation email through the transport abstraction.
 - [x] Make the confirmation link open a page that requires POST confirmation.
 - [x] Promote only intentionally confirmed records to `subscribed`.
-- [ ] Add pending-record cleanup.
+- [x] Add pending-record cleanup.
 - [x] Add a frontend success/error experience that works without JavaScript.
 - [x] Add accessible labels, focus handling, and status messages.
 - [x] Handle an email that already belongs to a WordPress user without

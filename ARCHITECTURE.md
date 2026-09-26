@@ -965,7 +965,8 @@ The plugin supplies:
 - personal-data eraser;
 - configurable retention for completed campaign recipient details;
 - configurable retention for click events;
-- cleanup for expired pending subscribers and tokens;
+- daily cleanup for pending subscriber records after a seven-day post-expiry
+  grace period, limited to 250 rows per scheduled run;
 - bounded cleanup primitives with a hard per-operation batch ceiling; the
   database layer accepts caller-selected cutoffs and never silently chooses a
   retention period;

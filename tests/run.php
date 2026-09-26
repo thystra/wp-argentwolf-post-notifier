@@ -65,6 +65,10 @@ $schema_one_digest      = is_readable( $schema_one_digest_path )
 $activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
 $uninstall_source = file_get_contents( $root . '/uninstall.php' );
 $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
+$pending_cleanup_source = file_get_contents(
+	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
+);
+$deactivator_source = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
 $destructive_uninstaller_source = file_get_contents(
 	$root . '/src/Database/DestructiveUninstaller.php'
 );
@@ -339,6 +343,16 @@ $assert(
 		&& str_contains( (string) $cleanup_source, 'delete_click_events_before' )
 		&& str_contains( (string) $cleanup_source, 'redact_completed_campaign_recipients' ),
 	'Data cleanup primitives must remain explicitly bounded and cover planned retention classes.'
+);
+$assert(
+	str_contains( (string) $pending_cleanup_source, "EXPIRED_RETENTION = 'P7D'" )
+		&& str_contains( (string) $pending_cleanup_source, 'BATCH_SIZE = 250' )
+		&& str_contains( (string) $pending_cleanup_source, 'wp_next_scheduled' )
+		&& str_contains( (string) $pending_cleanup_source, 'wp_schedule_event' )
+		&& str_contains( (string) $pending_cleanup_source, 'delete_expired_pending_subscribers' )
+		&& str_contains( (string) $activator_source, 'PendingSubscriberCleanup::schedule();' )
+		&& str_contains( (string) $deactivator_source, 'PendingSubscriberCleanup::unschedule();' ),
+	'Pending subscriber cleanup must use a daily limited schedule and clear it on deactivation.'
 );
 $assert(
 	str_contains( (string) $migrator_source, 'migration->verify()' )

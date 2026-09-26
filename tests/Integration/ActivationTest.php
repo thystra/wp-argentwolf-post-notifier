@@ -9,10 +9,16 @@ namespace ArgentWolf\PostNotifier\Tests\Integration;
 
 use ArgentWolf\PostNotifier\Lifecycle\Activator;
 use ArgentWolf\PostNotifier\Lifecycle\Deactivator;
+use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
 use ArgentWolf\PostNotifier\Version;
 use WP_UnitTestCase;
 
 final class ActivationTest extends WP_UnitTestCase {
+	public function tear_down(): void {
+		PendingSubscriberCleanup::unschedule();
+		parent::tear_down();
+	}
+
 	public function test_activation_is_idempotent(): void {
 		Activator::activate();
 		Activator::activate();
@@ -25,6 +31,9 @@ final class ActivationTest extends WP_UnitTestCase {
 			Version::SCHEMA,
 			get_option( 'argentwolf_post_notifier_schema_version' )
 		);
+		$event = wp_get_scheduled_event( PendingSubscriberCleanup::HOOK );
+		self::assertNotFalse( $event );
+		self::assertSame( PendingSubscriberCleanup::RECURRENCE, $event->schedule );
 	}
 
 	public function test_deactivation_fires_scaffold_hook_without_removing_version_state(): void {
@@ -44,6 +53,7 @@ final class ActivationTest extends WP_UnitTestCase {
 			Version::PLUGIN,
 			get_option( 'argentwolf_post_notifier_version' )
 		);
+		self::assertFalse( wp_next_scheduled( PendingSubscriberCleanup::HOOK ) );
 	}
 }
 
