@@ -27,7 +27,7 @@ final class SignupFormContext {
 	 * @return array{context:string,signature:string}
 	 */
 	public function create( string $consent_text, ?int $source_post_id ): array {
-		$json = wp_json_encode(
+		$json    = wp_json_encode(
 			array(
 				'consent_text'   => $consent_text,
 				'source_post_id' => $source_post_id,

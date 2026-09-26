@@ -285,14 +285,39 @@ final class Plugin {
 			return;
 		}
 
-		$services = array(
-			UpgradeManager::class,
-			ConfirmationController::class,
-			PublicSignupController::class,
-			SubscribeBlock::class,
-			VerificationProviderNotice::class,
+		$this->register_services(
+			array(
+				UpgradeManager::class,
+				ConfirmationController::class,
+				VerificationProviderNotice::class,
+			)
 		);
-		foreach ( $services as $service_id ) {
+
+		add_action(
+			'plugins_loaded',
+			function (): void {
+				$this->register_services(
+					array(
+						PublicSignupController::class,
+						SubscribeBlock::class,
+					)
+				);
+			}
+		);
+
+		$this->registered = true;
+	}
+
+	/**
+	 * Resolve and register a set of container services.
+	 *
+	 * @param array<int,string> $service_ids Service identifiers.
+	 * @return void
+	 *
+	 * @throws LogicException When a configured service is not registerable.
+	 */
+	private function register_services( array $service_ids ): void {
+		foreach ( $service_ids as $service_id ) {
 			$service = $this->container->get( $service_id );
 
 			if ( ! $service instanceof Registerable ) {
@@ -303,8 +328,6 @@ final class Plugin {
 
 			$service->register();
 		}
-
-		$this->registered = true;
 	}
 
 	/**

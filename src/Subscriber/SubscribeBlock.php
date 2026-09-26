@@ -88,7 +88,7 @@ final class SubscribeBlock implements Registerable {
 		$name_id        = $form_id . '-name';
 		$consent_id     = $form_id . '-consent';
 
-		$html = '<div class="wp-block-argentwolf-post-notifier-subscribe">';
+		$html  = '<div class="wp-block-argentwolf-post-notifier-subscribe">';
 		$html .= $this->render_status();
 		$html .= '<h3>' . esc_html( $values['heading'] ) . '</h3>';
 		$html .= '<p>' . esc_html( $values['description'] ) . '</p>';
@@ -172,19 +172,19 @@ final class SubscribeBlock implements Registerable {
 	 */
 	private static function attribute_schema(): array {
 		return array(
-			'heading'      => array(
+			'heading'     => array(
 				'type'    => 'string',
 				'default' => 'Get new post notifications by email',
 			),
-			'description'  => array(
+			'description' => array(
 				'type'    => 'string',
 				'default' => 'Enter your email address and confirm the message we send you.',
 			),
-			'consentText'  => array(
+			'consentText' => array(
 				'type'    => 'string',
 				'default' => 'I agree to receive email notifications when new posts are published.',
 			),
-			'buttonLabel'  => array(
+			'buttonLabel' => array(
 				'type'    => 'string',
 				'default' => 'Subscribe',
 			),

@@ -59,7 +59,7 @@ final class PublicSignupController implements Registerable {
 	 * Construct the public signup endpoint.
 	 *
 	 * @param PublicSignupProcessor $processor Privacy-preserving signup coordinator.
-	 * @param SignupFormContext      $context   Signed rendered-form context.
+	 * @param SignupFormContext     $context   Signed rendered-form context.
 	 */
 	public function __construct(
 		private PublicSignupProcessor $processor,
@@ -147,12 +147,12 @@ final class PublicSignupController implements Registerable {
 	 */
 	private function posted_return_url(): string {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Local redirect only.
-		$value = $_POST[ self::RETURN_FIELD ] ?? '';
-		if ( ! is_string( $value ) ) {
+		$value = $this->request_value( $_POST, self::RETURN_FIELD );
+		if ( '' === $value ) {
 			return home_url( '/' );
 		}
 
-		$candidate = esc_url_raw( wp_unslash( $value ) );
+		$candidate = esc_url_raw( $value );
 		return wp_validate_redirect( $candidate, home_url( '/' ) );
 	}
 
@@ -192,7 +192,7 @@ final class PublicSignupController implements Registerable {
 	 * @return void
 	 */
 	private function redirect_with_result( string $return_url, string $result ): void {
-		$location = add_query_arg( self::RESULT_QUERY, $result, $return_url );
+		$location  = add_query_arg( self::RESULT_QUERY, $result, $return_url );
 		$location .= '#' . self::STATUS_ID;
 
 		wp_safe_redirect( $location, 303, 'ArgentWolf Post Notifier' );
