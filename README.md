@@ -17,7 +17,8 @@ adds a display-only emailed-link page and a separate nonce-protected POST action
 so fetching the confirmation URL alone cannot subscribe an address. The fourth
 tranche adds the dynamic public subscribe block, configurable consent/presentation
 text, signed render context, and a no-JavaScript post-redirect-get form with generic
-status messages.
+status messages. The fifth tranche adds daily limited cleanup for pending subscriber
+records after a seven-day post-expiry grace period.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

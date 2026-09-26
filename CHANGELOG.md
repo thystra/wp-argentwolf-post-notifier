@@ -26,6 +26,8 @@
   signed consent/source context, and same-site post-redirect-get handling.
 - Keep public signup responses non-enumerating when an address also belongs to a
   WordPress user, while still requiring explicit standalone double opt-in.
+- Add daily cleanup for pending subscriber records whose confirmation tokens have
+  been expired for seven days, limited to 250 rows per scheduled run.
 
 ## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 

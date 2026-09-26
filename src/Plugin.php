@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier;
 
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
@@ -17,6 +18,7 @@ use ArgentWolf\PostNotifier\Mail\WpMailTransport;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
+use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupController;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
 use ArgentWolf\PostNotifier\Subscriber\RateLimitStore;
@@ -77,8 +79,23 @@ final class Plugin {
 				static fn (): EmailIdentity => new EmailIdentity()
 			);
 			$container->set(
+				DataCleanup::class,
+				static fn (): DataCleanup => new DataCleanup()
+			);
+			$container->set(
 				SubscriberRepository::class,
 				static fn (): SubscriberRepository => new SubscriberRepository()
+			);
+			$container->set(
+				PendingSubscriberCleanup::class,
+				static function ( Container $services ): PendingSubscriberCleanup {
+					$cleanup = $services->get( DataCleanup::class );
+					if ( ! $cleanup instanceof DataCleanup ) {
+						throw new LogicException( 'The data cleanup service is invalid.' );
+					}
+
+					return new PendingSubscriberCleanup( $cleanup );
+				}
 			);
 			$container->set(
 				SubscriberService::class,
@@ -298,6 +315,7 @@ final class Plugin {
 			function (): void {
 				$this->register_services(
 					array(
+						PendingSubscriberCleanup::class,
 						PublicSignupController::class,
 						SubscribeBlock::class,
 					)

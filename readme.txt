@@ -78,6 +78,7 @@ checking provider health and API compatibility at runtime.
 * Add secure hashed confirmation tokens with 24-hour expiry and a 15-minute resend cooldown.
 * Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
 * Add explicit pending-to-subscribed confirmation primitives and qualified public POST routing.
+* Add daily limited cleanup for pending subscribers after a seven-day post-expiry grace period.
 
 = 0.1.0-alpha.3 =
 * Begin versioned schema migrations and create the initial plugin-owned tables.
