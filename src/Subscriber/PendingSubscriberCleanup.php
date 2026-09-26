@@ -99,7 +99,7 @@ final class PendingSubscriberCleanup implements Registerable {
 			: DateTimeImmutable::createFromInterface( $now )->setTimezone(
 				new DateTimeZone( 'UTC' )
 			);
-		$cutoff = $current->sub( new DateInterval( self::EXPIRED_RETENTION ) );
+		$cutoff  = $current->sub( new DateInterval( self::EXPIRED_RETENTION ) );
 
 		return $this->cleanup->delete_expired_pending_subscribers(
 			$cutoff,
