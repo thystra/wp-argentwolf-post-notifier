@@ -38,6 +38,7 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 		$this->request_method = $_SERVER['REQUEST_METHOD'] ?? null;
 		$_GET                 = array();
 		$_POST                = array();
+		$_REQUEST             = array();
 	}
 
 	/**
@@ -46,8 +47,9 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function tear_down(): void {
-		$_GET  = array();
-		$_POST = array();
+		$_GET     = array();
+		$_POST    = array();
+		$_REQUEST = array();
 		if ( null === $this->request_method ) {
 			unset( $_SERVER['REQUEST_METHOD'] );
 		} else {
@@ -137,6 +139,7 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 			'argentwolf_post_notifier_token' => $token,
 			'argentwolf_post_notifier_nonce' => $nonce,
 		);
+		$_REQUEST                    = $_POST;
 		$post_html                   = $this->capture_wp_die(
 			static fn () => ( new ConfirmationController( $service ) )->handle_post()
 		);
@@ -167,6 +170,7 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 			'argentwolf_post_notifier_token' => $token,
 			'argentwolf_post_notifier_nonce' => 'invalid',
 		);
+		$_REQUEST                  = $_POST;
 		$html                      = $this->capture_wp_die(
 			static fn () => ( new ConfirmationController( $service ) )->handle_post()
 		);
@@ -206,6 +210,7 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 			'argentwolf_post_notifier_token' => $token,
 			'argentwolf_post_notifier_nonce' => $nonce,
 		);
+		$_REQUEST                  = $_POST;
 		$post_html                 = $this->capture_wp_die(
 			static fn () => ( new ConfirmationController( $service ) )->handle_post()
 		);
