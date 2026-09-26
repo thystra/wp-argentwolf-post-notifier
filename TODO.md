@@ -186,15 +186,11 @@ Acceptance criteria:
 
 Target: `0.1.0-alpha.4`
 
-Implementation is split into reviewable tranches. The first tranche established
-the standalone-subscriber lifecycle and persistence contract. The second adds
-privacy-preserving signup coordination, local abuse controls, and confirmation
-mail transport. The third tranche adds a display-only confirmation GET and a
-separate nonce-protected POST that owns the subscription state change. The fourth
-adds the dynamic public block and accessible no-JavaScript signup form. The fifth
-adds scheduled cleanup for stale pending subscriber records. The sixth candidate
-adds administrator-only subscriber search/filter, manual suppression, and CSV
-export; its task boxes remain open until Forgejo qualification and review complete.
+Implementation was split into six reviewable tranches: subscriber lifecycle and
+persistence, privacy-preserving signup and confirmation mail, intentional POST
+confirmation, the dynamic public block and no-JavaScript form, stale-pending
+cleanup, and administrator subscriber management. All six tranches completed
+Forgejo qualification, ending with CI 45 for subscriber administration.
 
 - [x] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.
@@ -215,20 +211,23 @@ export; its task boxes remain open until Forgejo qualification and review comple
 - [x] Add accessible labels, focus handling, and status messages.
 - [x] Handle an email that already belongs to a WordPress user without
       revealing account existence.
-- [ ] Add subscriber administration screen.
-- [ ] Add search, filter, manual suppression, and export controls with
+- [x] Add subscriber administration screen.
+- [x] Add search, filter, manual suppression, and export controls with
       capabilities.
-- [ ] Add CSV import only as a later, separately approved double-opt-in flow;
-      do not import directly into `subscribed`.
 
 Acceptance criteria:
 
-- [ ] An unconfirmed address never receives a post notification.
-- [ ] A link scanner fetching the confirmation URL does not subscribe the
+- [x] Only the `subscribed` standalone-subscriber state is notification-eligible.
+      Milestone 9 must enforce that contract during audience resolution and
+      immediately before send.
+- [x] A link scanner fetching the confirmation URL does not subscribe the
       address.
-- [ ] Repeated signup does not reveal whether the address exists.
-- [ ] Token expiry, rotation, cooldown, and rate-limit tests pass.
-- [ ] Raw IP addresses and user-agent strings are not retained by default.
+- [x] Repeated signup does not reveal whether the address exists.
+- [x] Token expiry, rotation, cooldown, and rate-limit tests pass.
+- [x] Raw IP addresses and user-agent strings are not retained by default.
+
+Actual audience resolution and send-queue enforcement remain in Milestone 9,
+where those execution paths exist.
 
 ## Milestone 5 — User preferences, named lists, and suppression
 
@@ -238,6 +237,8 @@ Target: `0.1.0-alpha.5`
       `site_default`, `subscribed`, `unsubscribed`.
 - [ ] Add preference controls to user profile.
 - [ ] Add secure self-service manage-subscription page.
+- [ ] Add CSV import only as a separately approved double-opt-in intake flow;
+      never import contacts directly into `subscribed`.
 - [ ] Implement named lists.
 - [ ] Support typed list members: users and standalone subscribers.
 - [ ] Implement explicit include and exclude contacts.
