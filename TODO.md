@@ -190,13 +190,14 @@ Implementation is split into reviewable tranches. The first tranche established
 the standalone-subscriber lifecycle and persistence contract. The second adds
 privacy-preserving signup coordination, local abuse controls, and confirmation
 mail transport. The third tranche adds a display-only confirmation GET and a
-separate nonce-protected POST that owns the subscription state change.
+separate nonce-protected POST that owns the subscription state change. The fourth
+adds the dynamic public block and accessible no-JavaScript signup form.
 
-- [ ] Register dynamic block:
+- [x] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.
-- [ ] Add configurable heading, description, consent text, and button label.
-- [ ] Add required email field and optional name field.
-- [ ] Add consent checkbox.
+- [x] Add configurable heading, description, consent text, and button label.
+- [x] Add required email field and optional name field.
+- [x] Add consent checkbox.
 - [x] Add honeypot and local rate limiting.
 - [x] Normalize and validate submitted email.
 - [x] Return generic non-enumerating responses.
@@ -207,9 +208,9 @@ separate nonce-protected POST that owns the subscription state change.
 - [x] Make the confirmation link open a page that requires POST confirmation.
 - [x] Promote only intentionally confirmed records to `subscribed`.
 - [ ] Add pending-record cleanup.
-- [ ] Add a frontend success/error experience that works without JavaScript.
-- [ ] Add accessible labels, focus handling, and status messages.
-- [ ] Handle an email that already belongs to a WordPress user without
+- [x] Add a frontend success/error experience that works without JavaScript.
+- [x] Add accessible labels, focus handling, and status messages.
+- [x] Handle an email that already belongs to a WordPress user without
       revealing account existence.
 - [ ] Add subscriber administration screen.
 - [ ] Add search, filter, manual suppression, and export controls with

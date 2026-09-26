@@ -36,7 +36,9 @@ main() {
 		'argentwolf-post-notifier/readme.txt' \
 		'argentwolf-post-notifier/uninstall.php' \
 		'argentwolf-post-notifier/src/Plugin.php' \
-		'argentwolf-post-notifier/src/Version.php'
+		'argentwolf-post-notifier/src/Version.php' \
+		'argentwolf-post-notifier/assets/runtime/subscribe-editor.js' \
+		'argentwolf-post-notifier/blocks/subscribe/block.json'
 	do
 		if ! printf '%s\n' "${listing}" | grep -Fxq "${required}"; then
 			printf 'ERROR: required package path is missing: %s\n' "${required}" >&2
@@ -52,6 +54,11 @@ main() {
 
 	if [[ -n "${prohibited}" ]]; then
 		printf 'ERROR: development-only package paths found:\n%s\n' "${prohibited}" >&2
+		return 1
+	fi
+
+	if printf '%s\n' "${listing}" | grep -E '/assets/(src|build)/' >/dev/null; then
+		printf 'ERROR: development asset sources/build output found in package.\n' >&2
 		return 1
 	fi
 

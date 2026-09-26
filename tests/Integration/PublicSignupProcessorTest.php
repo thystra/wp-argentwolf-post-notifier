@@ -75,6 +75,21 @@ final class PublicSignupProcessorTest extends WP_UnitTestCase {
 		self::assertCount( 1, $transport->messages );
 	}
 
+	public function test_wordpress_user_email_still_requires_standalone_double_opt_in(): void {
+		$transport = new RecordingMailTransport();
+		$processor = $this->processor( $transport, true );
+		$user_id   = self::factory()->user->create(
+			array( 'user_email' => 'person@example.com' )
+		);
+
+		$response = $processor->process( $this->request( 'person@example.com' ) );
+
+		self::assertSame( PublicSignupResponse::CODE, $response->code() );
+		self::assertNotFalse( get_userdata( $user_id ) );
+		self::assertSame( 1, $this->subscriber_count( 'person@example.com' ) );
+		self::assertCount( 1, $transport->messages );
+	}
+
 	public function test_honeypot_and_rate_limit_fail_closed_to_same_public_response(): void {
 		$transport = new RecordingMailTransport();
 		$allowed   = $this->processor( $transport, true );

@@ -17,11 +17,14 @@ use ArgentWolf\PostNotifier\Mail\WpMailTransport;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
+use ArgentWolf\PostNotifier\Subscriber\PublicSignupController;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
 use ArgentWolf\PostNotifier\Subscriber\RateLimitStore;
+use ArgentWolf\PostNotifier\Subscriber\SignupFormContext;
 use ArgentWolf\PostNotifier\Subscriber\SignupRateLimiter;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
+use ArgentWolf\PostNotifier\Subscriber\SubscribeBlock;
 use ArgentWolf\PostNotifier\Subscriber\WordPressConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\WordPressRateLimitStore;
 use ArgentWolf\PostNotifier\Support\Container;
@@ -179,6 +182,36 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				SignupFormContext::class,
+				static fn (): SignupFormContext => new SignupFormContext( wp_salt( 'nonce' ) )
+			);
+			$container->set(
+				PublicSignupController::class,
+				static function ( Container $services ): PublicSignupController {
+					$processor = $services->get( PublicSignupProcessor::class );
+					$context   = $services->get( SignupFormContext::class );
+					if ( ! $processor instanceof PublicSignupProcessor ) {
+						throw new LogicException( 'The public signup processor is invalid.' );
+					}
+					if ( ! $context instanceof SignupFormContext ) {
+						throw new LogicException( 'The signup form context is invalid.' );
+					}
+
+					return new PublicSignupController( $processor, $context );
+				}
+			);
+			$container->set(
+				SubscribeBlock::class,
+				static function ( Container $services ): SubscribeBlock {
+					$context = $services->get( SignupFormContext::class );
+					if ( ! $context instanceof SignupFormContext ) {
+						throw new LogicException( 'The signup form context is invalid.' );
+					}
+
+					return new SubscribeBlock( $context );
+				}
+			);
+			$container->set(
 				UpgradeManager::class,
 				static function ( Container $services ): UpgradeManager {
 					$migrator = $services->get( SchemaMigrator::class );
@@ -255,6 +288,8 @@ final class Plugin {
 		$services = array(
 			UpgradeManager::class,
 			ConfirmationController::class,
+			PublicSignupController::class,
+			SubscribeBlock::class,
 			VerificationProviderNotice::class,
 		);
 		foreach ( $services as $service_id ) {

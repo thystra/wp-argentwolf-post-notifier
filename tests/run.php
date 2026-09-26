@@ -158,15 +158,18 @@ $subscriber_files = array(
 	'src/Subscriber/ConfirmationLinkFactory.php',
 	'src/Subscriber/ConfirmationMailer.php',
 	'src/Subscriber/ConfirmationToken.php',
+	'src/Subscriber/PublicSignupController.php',
 	'src/Subscriber/PublicSignupProcessor.php',
 	'src/Subscriber/PublicSignupRequest.php',
 	'src/Subscriber/PublicSignupResponse.php',
 	'src/Subscriber/RateLimitStore.php',
+	'src/Subscriber/SignupFormContext.php',
 	'src/Subscriber/SignupRateLimiter.php',
 	'src/Subscriber/SignupResult.php',
 	'src/Subscriber/SubscriberRepository.php',
 	'src/Subscriber/SubscriberService.php',
 	'src/Subscriber/SubscriberStatus.php',
+	'src/Subscriber/SubscribeBlock.php',
 	'src/Subscriber/WordPressConfirmationLinkFactory.php',
 	'src/Subscriber/WordPressRateLimitStore.php',
 );
@@ -234,6 +237,14 @@ $rate_limiter_source = file_get_contents( $root . '/src/Subscriber/SignupRateLim
 $signup_processor_source = file_get_contents( $root . '/src/Subscriber/PublicSignupProcessor.php' );
 $mail_transport_source = file_get_contents( $root . '/src/Mail/WpMailTransport.php' );
 $confirmation_controller_source = file_get_contents( $root . '/src/Subscriber/ConfirmationController.php' );
+$public_signup_controller_source = file_get_contents( $root . '/src/Subscriber/PublicSignupController.php' );
+$signup_form_context_source = file_get_contents( $root . '/src/Subscriber/SignupFormContext.php' );
+$subscribe_block_source = file_get_contents( $root . '/src/Subscriber/SubscribeBlock.php' );
+$subscribe_editor_source = file_get_contents( $root . '/assets/runtime/subscribe-editor.js' );
+$subscribe_block_metadata = json_decode(
+	(string) file_get_contents( $root . '/blocks/subscribe/block.json' ),
+	true
+);
 $assert(
 	false !== $rate_limiter_source
 		&& str_contains( $rate_limiter_source, 'hash_hmac( \'sha256\', $packed' )
@@ -258,6 +269,50 @@ $assert(
 		&& str_contains( $confirmation_controller_source, '\'admin_post_nopriv_\' . $post_action' )
 		&& str_contains( $confirmation_controller_source, '\'POST\' !== $this->request_method()' ),
 	'Confirmation routing must separate display-only GET from intentional POST confirmation.'
+);
+$assert(
+	false !== $subscribe_block_source
+		&& str_contains( $subscribe_block_source, "'argentwolf-post-notifier/subscribe'" )
+		&& str_contains( $subscribe_block_source, 'register_block_type' )
+		&& str_contains( $subscribe_block_source, 'PublicSignupController::POST_ACTION' ),
+	'Subscribe block runtime must use the canonical dynamic block and public action.'
+);
+$assert(
+	false !== $public_signup_controller_source
+		&& str_contains( $public_signup_controller_source, 'wp_verify_nonce' )
+		&& str_contains( $public_signup_controller_source, 'wp_validate_redirect' )
+		&& str_contains( $public_signup_controller_source, 'PublicSignupRequest' )
+		&& str_contains( $public_signup_controller_source, 'RESULT_RECEIVED' ),
+	'Public signup POST routing must verify intent, constrain redirects, and use generic results.'
+);
+$assert(
+	false !== $signup_form_context_source
+		&& str_contains( $signup_form_context_source, 'hash_hmac' )
+		&& str_contains( $signup_form_context_source, 'bin2hex' )
+		&& str_contains( $signup_form_context_source, 'hex2bin' ),
+	'Public signup render context must be locally signed without reversible shared secrets.'
+);
+$assert(
+	false !== $subscribe_editor_source
+		&& str_contains( $subscribe_editor_source, "registerBlockType( 'argentwolf-post-notifier/subscribe'" )
+		&& str_contains( $subscribe_editor_source, 'consentText' )
+		&& str_contains( $subscribe_editor_source, 'buttonLabel' ),
+	'Subscribe editor asset must register the canonical configurable block.'
+);
+$assert(
+	is_array( $subscribe_block_metadata )
+		&& 'argentwolf-post-notifier/subscribe' === ( $subscribe_block_metadata['name'] ?? null )
+		&& 3 === ( $subscribe_block_metadata['apiVersion'] ?? null )
+		&& 'argentwolf-post-notifier-subscribe-editor'
+			=== ( $subscribe_block_metadata['editorScript'] ?? null ),
+	'Subscribe block metadata must declare the canonical dynamic block and editor handle.'
+);
+$assert(
+	false !== $build_script
+		&& str_contains( $build_script, "'assets/runtime'" )
+		&& str_contains( $build_script, 'assets/runtime' )
+		&& str_contains( $build_script, 'blocks/subscribe/block.json' ),
+	'Distribution build must include the human-readable runtime block asset.'
 );
 $utc_probe = new DateTimeImmutable(
 	'2026-09-15 08:30:00',

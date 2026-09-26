@@ -21,6 +21,8 @@ main() {
 		'readme.txt'
 		'uninstall.php'
 		'src'
+		'assets/runtime'
+		'blocks/subscribe/block.json'
 	)
 
 	project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
@@ -87,7 +89,7 @@ main() {
 	fi
 
 	rm -rf -- "${stage_root}"
-	mkdir -p "${plugin_dir}" "${dist_dir}" || return 1
+	mkdir -p "${plugin_dir}/assets" "${plugin_dir}/blocks/subscribe" "${dist_dir}" || return 1
 
 	install -m 0644 \
 		"${project_dir}/argentwolf-post-notifier.php" \
@@ -98,6 +100,10 @@ main() {
 		"${plugin_dir}/" || return 1
 
 	cp -a "${project_dir}/src" "${plugin_dir}/src" || return 1
+	cp -a "${project_dir}/assets/runtime" "${plugin_dir}/assets/runtime" || return 1
+	install -m 0644 \
+		"${project_dir}/blocks/subscribe/block.json" \
+		"${plugin_dir}/blocks/subscribe/block.json" || return 1
 
 	find "${plugin_dir}" -type d -exec chmod 0755 {} +
 	find "${plugin_dir}" -type f -exec chmod 0644 {} +
