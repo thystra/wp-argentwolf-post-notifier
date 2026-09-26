@@ -7,7 +7,7 @@
   "scripts": {
     "build": "wp-scripts build --config webpack.config.cjs",
     "start": "wp-scripts start --config webpack.config.cjs",
-    "lint:js": "wp-scripts lint-js assets/src tests/js webpack.config.cjs",
+    "lint:js": "wp-scripts lint-js assets/src assets/runtime tests/js webpack.config.cjs",
     "lint:css": "wp-scripts lint-style \"assets/src/**/*.scss\"",
     "lint:md": "wp-scripts lint-md-docs AGENTS.md ARCHITECTURE.md CHANGELOG.md README.md TODO.md",
     "test:js": "wp-scripts test-unit-js",

@@ -24,7 +24,9 @@ standalone-subscriber workflow with secure pending records, hashed confirmation
 tokens, expiry, resend cooldown, generic signup responses, keyed local rate limits,
 and confirmation-message submission through a transport abstraction. Confirmation
 links now open a display-only page and require a separate nonce-protected POST to
-promote a pending subscriber. The public subscription block remains under development.
+promote a pending subscriber. Alpha.4 also includes the dynamic public subscribe block,
+configurable consent/presentation text, and a no-JavaScript post-redirect-get form with
+generic status messages.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -69,12 +71,13 @@ checking provider health and API compatibility at runtime.
 == Changelog ==
 
 = 0.1.0-alpha.4 =
+* Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.
 * Require an explicit nonce-protected POST after opening a confirmation link.
 * Add generic standalone-signup coordination, local keyed rate limits, and confirmation mail transport.
 * Begin the standalone-subscriber lifecycle and persistence foundation.
 * Add secure hashed confirmation tokens with 24-hour expiry and a 15-minute resend cooldown.
 * Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
-* Add explicit pending-to-subscribed confirmation primitives; public POST routing and confirmation mail remain later work.
+* Add explicit pending-to-subscribed confirmation primitives and qualified public POST routing.
 
 = 0.1.0-alpha.3 =
 * Begin versioned schema migrations and create the initial plugin-owned tables.

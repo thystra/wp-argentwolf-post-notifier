@@ -39,7 +39,10 @@ public-signup coordinator, a honeypot gate, keyed transient rate limits that nev
 persist raw network addresses or user-agent strings, and confirmation-message
 submission through a transport abstraction. The third tranche wires the emailed link
 to a display-only GET and isolates subscriber promotion behind a separate
-nonce-protected POST action. The public block remains later Milestone-4 work.
+nonce-protected POST action. The fourth tranche registers the public dynamic
+subscribe block, preserves configurable consent/source context with a local HMAC,
+and uses post-redirect-get status messages so the complete signup flow works
+without frontend JavaScript.
 
 ## 2.1 Canonical naming
 
@@ -271,7 +274,15 @@ The block may collect:
 - required consent checkbox and configurable consent text; and
 - hidden anti-bot field.
 
-Block attributes control presentation, not trusted subscription state.
+Block attributes control presentation, not trusted subscription state. The rendered
+consent/source context is authenticated by the server before it is accepted back
+from a public form submission. Return destinations are restricted to local URLs.
+
+The public form follows post-redirect-get and exposes one generic accepted-request
+message regardless of whether the address belongs to a WordPress user, already
+exists as a standalone subscriber, is cooling down, or is rate limited. Structural
+form failures use a separate generic retry message without disclosing account or
+subscriber existence. The form remains fully usable without frontend JavaScript.
 
 The submission endpoint:
 

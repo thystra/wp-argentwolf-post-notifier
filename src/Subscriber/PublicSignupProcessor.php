@@ -13,8 +13,8 @@ use InvalidArgumentException;
  * Privacy-preserving public standalone-subscriber signup coordinator.
  *
  * This class contains the public-flow policy but does not register an HTTP
- * endpoint. The later block/controller tranche will translate requests into
- * PublicSignupRequest values and render the one generic response.
+ * endpoint. Public controllers translate requests into PublicSignupRequest
+ * values and render the one generic response.
  */
 final class PublicSignupProcessor {
 	/**

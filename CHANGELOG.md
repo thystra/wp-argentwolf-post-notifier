@@ -20,6 +20,12 @@
   transport, and standalone confirmation-message composition.
 - Add a display-only confirmation-link page and a separate nonce-protected POST
   action so ordinary GET requests cannot promote pending subscribers.
+- Add the dynamic `argentwolf-post-notifier/subscribe` block with configurable
+  heading, description, consent text, and button label.
+- Add a required email field, optional name, required consent checkbox, honeypot,
+  signed consent/source context, and same-site post-redirect-get handling.
+- Keep public signup responses non-enumerating when an address also belongs to a
+  WordPress user, while still requiring explicit standalone double opt-in.
 
 ## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 
