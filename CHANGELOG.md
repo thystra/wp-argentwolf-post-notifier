@@ -22,6 +22,10 @@
   by the same source; administrator suppression remains authoritative.
 - Block public standalone signup and pending confirmation while an address is
   globally suppressed.
+- Add administrator-managed named lists on frozen schema 1.
+- Support typed list memberships for WordPress users and standalone subscribers.
+- Keep list membership organizational only so adding or removing a member cannot
+  subscribe, resubscribe, or clear a global suppression.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 

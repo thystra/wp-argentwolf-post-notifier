@@ -25,6 +25,7 @@ use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationToken;
@@ -74,6 +75,12 @@ $pending_cleanup_source = file_get_contents(
 );
 $subscriber_admin_page_source = file_get_contents(
 	$root . '/src/Admin/SubscriberAdminPage.php'
+);
+$named_list_admin_page_source = file_get_contents(
+	$root . '/src/Admin/NamedListAdminPage.php'
+);
+$named_list_repository_source = file_get_contents(
+	$root . '/src/Recipient/NamedListRepository.php'
 );
 $subscriber_admin_repository_source = file_get_contents(
 	$root . '/src/Admin/SubscriberAdminRepository.php'
@@ -195,6 +202,7 @@ foreach ( $database_files as $database_file ) {
 	);
 }
 $subscriber_files = array(
+	'src/Admin/NamedListAdminPage.php',
 	'src/Admin/SubscriberAdminPage.php',
 	'src/Admin/SubscriberAdminRepository.php',
 	'src/Admin/SubscriberCsvExporter.php',
@@ -202,6 +210,8 @@ $subscriber_files = array(
 	'src/Mail/MailMessage.php',
 	'src/Mail/MailTransport.php',
 	'src/Mail/WpMailTransport.php',
+	'src/Recipient/NamedListMemberType.php',
+	'src/Recipient/NamedListRepository.php',
 	'src/Subscriber/ConfirmationController.php',
 	'src/Subscriber/ConfirmationLinkFactory.php',
 	'src/Subscriber/ConfirmationMailer.php',
@@ -252,6 +262,10 @@ $assert(
 	'Schema one must retain campaign, campaign-recipient, and email uniqueness constraints.'
 );
 $assert(
+	str_contains( (string) $schema_one_source, 'UNIQUE KEY typed_membership (list_id,member_key)' ),
+	'Frozen schema one must retain the typed named-list membership uniqueness constraint.'
+);
+$assert(
 	str_contains( (string) $schema_one_source, 'email_snapshot varchar(320) DEFAULT NULL' )
 		&& str_contains( (string) $schema_one_source, 'email_hash char(64) DEFAULT NULL' )
 		&& str_contains( (string) $schema_one_source, 'personal_data_erased_at_gmt datetime DEFAULT NULL' )
@@ -271,6 +285,20 @@ $assert(
 $assert(
 	$identity->hash( 'Person@Example.COM' ) === $identity->hash( 'person@example.com' ),
 	'Email hashing must operate on the canonical normalized identity.'
+);
+$assert(
+	'user:12' === NamedListMemberType::User->member_key( 12 )
+		&& 'subscriber:34' === NamedListMemberType::Subscriber->member_key( 34 ),
+	'Named-list membership keys must remain typed and stable.'
+);
+$assert(
+	false !== $named_list_admin_page_source
+		&& false !== $named_list_repository_source
+		&& str_contains( $named_list_admin_page_source, 'check_admin_referer' )
+		&& str_contains( $named_list_admin_page_source, 'Adding a member does not subscribe' )
+		&& str_contains( $named_list_repository_source, 'INSERT IGNORE INTO %i' )
+		&& str_contains( $named_list_repository_source, 'member_key' ),
+	'Named-list administration must be intentional, typed, and subscription-neutral.'
 );
 $confirmation_token = ConfirmationToken::generate();
 $assert(
