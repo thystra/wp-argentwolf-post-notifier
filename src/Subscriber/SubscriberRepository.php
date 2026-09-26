@@ -33,6 +33,13 @@ final class SubscriberRepository {
 	private string $table;
 
 	/**
+	 * Global suppression table name.
+	 *
+	 * @var string
+	 */
+	private string $suppression_table;
+
+	/**
 	 * Construct the repository.
 	 *
 	 * @param wpdb|null $database Optional explicit WordPress database connection.
@@ -48,8 +55,10 @@ final class SubscriberRepository {
 			throw new LogicException( 'WordPress database connection is unavailable.' );
 		}
 
-		$this->database = $database;
-		$this->table    = TableNames::from_database( $database )->subscribers();
+		$this->database          = $database;
+		$tables                  = TableNames::from_database( $database );
+		$this->table             = $tables->subscribers();
+		$this->suppression_table = $tables->suppressions();
 	}
 
 	/**
@@ -211,42 +220,176 @@ final class SubscriberRepository {
 	}
 
 	/**
-	 * Confirm one unexpired pending subscriber by token hash.
+	 * Confirm one unexpired, unsuppressed pending subscriber by token hash.
 	 *
-	 * @param string            $token_hash Confirmation-token hash.
-	 * @param DateTimeInterface $now        Current operation time.
+	 * The management-token hash is stored only when confirmation succeeds.
+	 * A global suppression row blocks promotion even when a confirmation link
+	 * was issued before the suppression was created.
+	 *
+	 * @param string            $token_hash        Confirmation-token hash.
+	 * @param string            $manage_token_hash Management-token hash.
+	 * @param DateTimeInterface $now               Current operation time.
 	 * @return bool True only when a pending record was promoted.
 	 * @throws RuntimeException When the database operation fails.
 	 */
-	public function confirm_pending( string $token_hash, DateTimeInterface $now ): bool {
+	public function confirm_pending(
+		string $token_hash,
+		string $manage_token_hash,
+		DateTimeInterface $now
+	): bool {
 		$now_gmt = UtcDateTime::format( $now );
 		$query   = $this->database->prepare(
-			'UPDATE %i
-			SET status = %s,
-				confirmed_at_gmt = %s,
-				confirmation_token_hash = NULL,
-				confirmation_expires_at_gmt = NULL,
-				updated_at_gmt = %s
-			WHERE status = %s
-			AND confirmation_token_hash = %s
-			AND confirmation_expires_at_gmt IS NOT NULL
-			AND confirmation_expires_at_gmt >= %s',
+			'UPDATE %i AS subscriber
+			SET subscriber.status = %s,
+				subscriber.confirmed_at_gmt = %s,
+				subscriber.confirmation_token_hash = NULL,
+				subscriber.confirmation_expires_at_gmt = NULL,
+				subscriber.manage_token_hash = %s,
+				subscriber.unsubscribed_at_gmt = NULL,
+				subscriber.updated_at_gmt = %s
+			WHERE subscriber.status = %s
+			AND subscriber.confirmation_token_hash = %s
+			AND subscriber.confirmation_expires_at_gmt IS NOT NULL
+			AND subscriber.confirmation_expires_at_gmt >= %s
+			AND NOT EXISTS (
+				SELECT 1 FROM %i AS suppression
+				WHERE suppression.email_hash = subscriber.email_hash
+			)',
 			$this->table,
 			SubscriberStatus::Subscribed->value,
 			$now_gmt,
+			$manage_token_hash,
 			$now_gmt,
 			SubscriberStatus::Pending->value,
 			$token_hash,
-			$now_gmt
+			$now_gmt,
+			$this->suppression_table
 		);
 
+		// Plugin-owned subscriber writes intentionally update the custom table.
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
 		$result = $this->database->query( $query );
 		// phpcs:enable
 		if ( false === $result ) {
-			throw new RuntimeException( 'Subscriber confirmation database operation failed.' );
+			throw new RuntimeException(
+				'Subscriber confirmation database operation failed.'
+			);
+		}
+
+		return 1 === $result;
+	}
+
+	/**
+	 * Find one subscriber authorized by a management bearer hash.
+	 *
+	 * @param string $manage_token_hash Management-token hash.
+	 * @return array<string,mixed>|null
+	 */
+	public function find_by_manage_token_hash( string $manage_token_hash ): ?array {
+		$query = $this->database->prepare(
+			'SELECT id, email, email_hash, status, manage_token_hash
+			FROM %i
+			WHERE manage_token_hash = %s
+			LIMIT 1',
+			$this->table,
+			$manage_token_hash
+		);
+
+		// Plugin-owned subscriber reads intentionally query the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$row = $this->database->get_row( $query, ARRAY_A );
+		// phpcs:enable
+
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
+	 * Mark one management-authorized subscriber unsubscribed.
+	 *
+	 * The management bearer remains valid so the same verified holder can use
+	 * the explicit resubscribe workflow later.
+	 *
+	 * @param string            $manage_token_hash Management-token hash.
+	 * @param DateTimeInterface $now               Current operation time.
+	 * @return bool True when one row changed.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function unsubscribe_by_manage_token(
+		string $manage_token_hash,
+		DateTimeInterface $now
+	): bool {
+		$now_gmt = UtcDateTime::format( $now );
+		$query   = $this->database->prepare(
+			'UPDATE %i
+			SET status = %s,
+				unsubscribed_at_gmt = %s,
+				updated_at_gmt = %s
+			WHERE manage_token_hash = %s
+			AND status <> %s',
+			$this->table,
+			SubscriberStatus::Unsubscribed->value,
+			$now_gmt,
+			$now_gmt,
+			$manage_token_hash,
+			SubscriberStatus::Suppressed->value
+		);
+
+		// Plugin-owned subscriber writes intentionally update the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->database->query( $query );
+		// phpcs:enable
+		if ( false === $result ) {
+			throw new RuntimeException( 'Subscriber unsubscribe could not be saved.' );
+		}
+
+		return 1 === $result;
+	}
+
+	/**
+	 * Mark one management-authorized subscriber subscribed again.
+	 *
+	 * Global suppression removal is intentionally handled separately by the
+	 * domain service. Callers must first verify that the current suppression is
+	 * owned by this management source.
+	 *
+	 * @param string            $manage_token_hash Management-token hash.
+	 * @param DateTimeInterface $now               Current operation time.
+	 * @return bool True when one row changed.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function resubscribe_by_manage_token(
+		string $manage_token_hash,
+		DateTimeInterface $now
+	): bool {
+		$now_gmt = UtcDateTime::format( $now );
+		$query   = $this->database->prepare(
+			'UPDATE %i
+			SET status = %s,
+				unsubscribed_at_gmt = NULL,
+				updated_at_gmt = %s
+			WHERE manage_token_hash = %s
+			AND status = %s',
+			$this->table,
+			SubscriberStatus::Subscribed->value,
+			$now_gmt,
+			$manage_token_hash,
+			SubscriberStatus::Unsubscribed->value
+		);
+
+		// Plugin-owned subscriber writes intentionally update the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->database->query( $query );
+		// phpcs:enable
+		if ( false === $result ) {
+			throw new RuntimeException( 'Subscriber resubscribe could not be saved.' );
 		}
 
 		return 1 === $result;

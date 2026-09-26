@@ -233,24 +233,27 @@ where those execution paths exist.
 
 Target: `0.1.0-alpha.5`
 
-Implementation is split into reviewable tranches. Tranche 1 establishes the
-registered-user preference contract and self-service WordPress profile control
-without changing frozen schema 1. Missing or malformed preference metadata uses
-the neutral `site_default` state; choosing `subscribed` never bypasses registered-
-user verification or future global suppression.
+Implementation is split into reviewable tranches. Tranche 1 established the
+registered-user preference contract and self-service WordPress profile control.
+Tranche 2 adds the shared global-suppression policy, hashed standalone management
+bearers, display-only management GETs with nonce-protected POST actions, and
+source-limited verified resubscription. Frozen schema 1 remains unchanged.
+Missing or malformed registered-user preference metadata uses the neutral
+`site_default` state; no preference or management flow can bypass an
+administrator-created suppression.
 
 - [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
 - [x] Add preference controls to user profile.
-- [ ] Add secure self-service manage-subscription page.
+- [x] Add secure self-service manage-subscription page.
 - [ ] Add CSV import only as a separately approved double-opt-in intake flow;
       never import contacts directly into `subscribed`.
 - [ ] Implement named lists.
 - [ ] Support typed list members: users and standalone subscribers.
 - [ ] Implement explicit include and exclude contacts.
-- [ ] Implement global email suppression.
+- [x] Implement global email suppression.
 - [ ] Ensure suppression overrides roles, lists, and explicit inclusion.
-- [ ] Implement verified resubscribe flow.
+- [x] Implement verified resubscribe flow.
 - [ ] Implement duplicate-email merge rules.
 - [ ] Record list and suppression audit events without logging sensitive tokens.
 - [ ] Add capabilities for subscriber and list management.

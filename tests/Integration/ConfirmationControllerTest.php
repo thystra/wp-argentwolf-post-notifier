@@ -145,7 +145,11 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 		);
 
 		self::assertStringContainsString( 'Subscription confirmed', $post_html );
-		self::assertSame( SubscriberStatus::Subscribed->value, $this->status_for( 'person@example.com' ) );
+		self::assertStringContainsString( 'Manage this subscription', $post_html );
+		self::assertSame(
+			SubscriberStatus::Subscribed->value,
+			$this->status_for( 'person@example.com' )
+		);
 	}
 
 	/**

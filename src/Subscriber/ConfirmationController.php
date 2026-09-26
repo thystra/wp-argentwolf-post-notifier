@@ -38,11 +38,23 @@ final class ConfirmationController implements Registerable {
 	private const NONCE_ACTION = 'argentwolf_post_notifier_confirm';
 
 	/**
+	 * Management-link factory.
+	 *
+	 * @var ManageSubscriptionLinkFactory
+	 */
+	private ManageSubscriptionLinkFactory $manage_links;
+
+	/**
 	 * Construct the confirmation controller.
 	 *
-	 * @param SubscriberService $service Subscriber domain service.
+	 * @param SubscriberService                  $service      Subscriber domain service.
+	 * @param ManageSubscriptionLinkFactory|null $manage_links Management links.
 	 */
-	public function __construct( private SubscriberService $service ) {
+	public function __construct(
+		private SubscriberService $service,
+		?ManageSubscriptionLinkFactory $manage_links = null
+	) {
+		$this->manage_links = $manage_links ?? new WordPressManageSubscriptionLinkFactory();
 	}
 
 	/**
@@ -69,7 +81,7 @@ final class ConfirmationController implements Registerable {
 	 */
 	public function handle_get(): void {
 		if ( 'GET' !== $this->request_method() ) {
-			$this->render_result_page( false, 405 );
+			$this->render_result_page( null, 405 );
 			return;
 		}
 
@@ -77,7 +89,7 @@ final class ConfirmationController implements Registerable {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$token = $this->request_value( $_GET, 'token' );
 		if ( null === ConfirmationToken::hash_plaintext( $token ) ) {
-			$this->render_result_page( false, 400 );
+			$this->render_result_page( null, 400 );
 			return;
 		}
 
@@ -133,7 +145,7 @@ final class ConfirmationController implements Registerable {
 	 */
 	public function handle_post(): void {
 		if ( 'POST' !== $this->request_method() ) {
-			$this->render_result_page( false, 405 );
+			$this->render_result_page( null, 405 );
 			return;
 		}
 
@@ -141,11 +153,12 @@ final class ConfirmationController implements Registerable {
 
 		$token = $this->request_value( $_POST, self::TOKEN_FIELD );
 		if ( null === ConfirmationToken::hash_plaintext( $token ) ) {
-			$this->render_result_page( false, 400 );
+			$this->render_result_page( null, 400 );
 			return;
 		}
 
-		$this->render_result_page( $this->service->confirm( $token ), 200 );
+		$manage_token = $this->service->confirm_with_management( $token );
+		$this->render_result_page( $manage_token, 200 );
 	}
 
 	/**
@@ -181,21 +194,34 @@ final class ConfirmationController implements Registerable {
 	/**
 	 * Render the final confirmation result page.
 	 *
-	 * @param bool $confirmed Whether a pending subscriber was promoted.
-	 * @param int  $response  HTTP response code.
+	 * @param string|null $manage_token Plaintext management token on success.
+	 * @param int         $response     HTTP response code.
 	 * @return void
 	 */
-	private function render_result_page( bool $confirmed, int $response ): void {
-		if ( $confirmed ) {
-			$html  = '<h1>';
-			$html .= esc_html__( 'Subscription confirmed', 'argentwolf-post-notifier' );
-			$html .= '</h1>';
-			$html .= '<p>';
-			$html .= esc_html__(
+	private function render_result_page(
+		?string $manage_token,
+		int $response
+	): void {
+		if ( null !== $manage_token ) {
+			$manage_url = $this->manage_links->create( $manage_token );
+			$html       = '<h1>';
+			$html      .= esc_html__(
+				'Subscription confirmed',
+				'argentwolf-post-notifier'
+			);
+			$html      .= '</h1>';
+			$html      .= '<p>';
+			$html      .= esc_html__(
 				'You are now subscribed to post notifications.',
 				'argentwolf-post-notifier'
 			);
-			$html .= '</p>';
+			$html      .= '</p>';
+			$html      .= '<p><a href="' . esc_url( $manage_url ) . '">';
+			$html      .= esc_html__(
+				'Manage this subscription',
+				'argentwolf-post-notifier'
+			);
+			$html      .= '</a></p>';
 		} else {
 			$html  = '<h1>';
 			$html .= esc_html__(
@@ -251,6 +277,9 @@ final class ConfirmationController implements Registerable {
 		return array(
 			'h1'     => array(),
 			'p'      => array(),
+			'a'      => array(
+				'href' => true,
+			),
 			'form'   => array(
 				'method' => true,
 				'action' => true,

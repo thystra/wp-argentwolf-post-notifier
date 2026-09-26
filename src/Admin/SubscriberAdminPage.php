@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
+use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 
 /**
  * Administrator-only standalone subscriber list, suppression, and CSV export.
@@ -46,11 +47,13 @@ final class SubscriberAdminPage implements Registerable {
 	 * Construct the subscriber administration page.
 	 *
 	 * @param SubscriberAdminRepository $repository Administration persistence.
-	 * @param SubscriberCsvExporter     $exporter   CSV exporter.
+	 * @param SubscriberCsvExporter     $exporter CSV exporter.
+	 * @param SuppressionService        $suppression Global suppression policy.
 	 */
 	public function __construct(
 		private SubscriberAdminRepository $repository,
-		private SubscriberCsvExporter $exporter
+		private SubscriberCsvExporter $exporter,
+		private SuppressionService $suppression
 	) {
 	}
 
@@ -144,6 +147,19 @@ final class SubscriberAdminPage implements Registerable {
 			);
 		}
 
+		$email = $this->repository->email_for_id( $subscriber_id );
+		if ( null === $email ) {
+			$this->die_with_status(
+				__( 'The subscriber could not be identified.', 'argentwolf-post-notifier' ),
+				404
+			);
+		}
+
+		$this->suppression->suppress(
+			$email,
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
 		$this->repository->suppress( $subscriber_id );
 
 		wp_safe_redirect(

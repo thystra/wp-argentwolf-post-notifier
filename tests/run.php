@@ -28,8 +28,10 @@ use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationToken;
+use ArgentWolf\PostNotifier\Subscriber\ManageSubscriptionToken;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
 use ArgentWolf\PostNotifier\Support\Container;
+use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 use ArgentWolf\PostNotifier\Version;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
@@ -87,6 +89,18 @@ $registered_user_preference_source = file_get_contents(
 );
 $registered_user_preference_repository_source = file_get_contents(
 	$root . '/src/Recipient/RegisteredUserPreferenceRepository.php'
+);
+$suppression_repository_source = file_get_contents(
+	$root . '/src/Suppression/SuppressionRepository.php'
+);
+$suppression_service_source = file_get_contents(
+	$root . '/src/Suppression/SuppressionService.php'
+);
+$manage_controller_source = file_get_contents(
+	$root . '/src/Subscriber/ManageSubscriptionController.php'
+);
+$subscriber_service_source = file_get_contents(
+	$root . '/src/Subscriber/SubscriberService.php'
 );
 $deactivator_source = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
 $destructive_uninstaller_source = file_get_contents(
@@ -192,6 +206,9 @@ $subscriber_files = array(
 	'src/Subscriber/ConfirmationLinkFactory.php',
 	'src/Subscriber/ConfirmationMailer.php',
 	'src/Subscriber/ConfirmationToken.php',
+	'src/Subscriber/ManageSubscriptionController.php',
+	'src/Subscriber/ManageSubscriptionLinkFactory.php',
+	'src/Subscriber/ManageSubscriptionToken.php',
 	'src/Subscriber/PublicSignupController.php',
 	'src/Subscriber/PublicSignupProcessor.php',
 	'src/Subscriber/PublicSignupRequest.php',
@@ -205,7 +222,10 @@ $subscriber_files = array(
 	'src/Subscriber/SubscriberStatus.php',
 	'src/Subscriber/SubscribeBlock.php',
 	'src/Subscriber/WordPressConfirmationLinkFactory.php',
+	'src/Subscriber/WordPressManageSubscriptionLinkFactory.php',
 	'src/Subscriber/WordPressRateLimitStore.php',
+	'src/Suppression/SuppressionRepository.php',
+	'src/Suppression/SuppressionService.php',
 );
 foreach ( $subscriber_files as $subscriber_file ) {
 	$assert(
@@ -388,8 +408,10 @@ $assert(
 	str_contains( (string) $subscriber_admin_page_source, "CAPABILITY = 'manage_options'" )
 		&& str_contains( (string) $subscriber_admin_page_source, "add_action( 'admin_menu'" )
 		&& str_contains( (string) $subscriber_admin_page_source, 'check_admin_referer' )
-		&& str_contains( (string) $subscriber_admin_page_source, 'wp_safe_redirect' ),
-	'Alpha.4 subscriber administration must remain authenticated, authorized, and nonce-protected.'
+		&& str_contains( (string) $subscriber_admin_page_source, 'wp_safe_redirect' )
+		&& str_contains( (string) $subscriber_admin_page_source, 'SOURCE_SUBSCRIBER_ADMIN' )
+		&& str_contains( (string) $subscriber_admin_repository_source, 'email_for_id' ),
+	'Subscriber administration must be authorized and create canonical global suppression.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )
@@ -429,6 +451,43 @@ $assert(
 		&& str_contains( $user_preference_profile_source, 'wp_verify_nonce' )
 		&& str_contains( $user_preference_profile_source, "current_user_can( 'edit_user', \$user_id )" ),
 	'Registered-user profile preference must be self-service, authorized, and use only defined states.'
+);
+$manage_token = ManageSubscriptionToken::generate();
+$assert(
+	64 === strlen( $manage_token->plaintext() )
+		&& hash( 'sha256', $manage_token->plaintext() )
+			=== $manage_token->hash()
+		&& null === ManageSubscriptionToken::hash_plaintext( 'invalid' ),
+	'Management bearer tokens must be random 256-bit values stored only by hash.'
+);
+$assert(
+	false !== $suppression_repository_source
+		&& false !== $suppression_service_source
+		&& str_contains( $suppression_repository_source, 'ON DUPLICATE KEY UPDATE' )
+		&& str_contains( $suppression_service_source, 'SOURCE_SUBSCRIBER_ADMIN' )
+		&& str_contains( $suppression_service_source, 'delete_if_source' ),
+	'Global suppression must use the canonical table and source-limited resubscribe.'
+);
+$assert(
+	false !== $manage_controller_source
+		&& str_contains( $manage_controller_source, 'check_admin_referer' )
+		&& str_contains( $manage_controller_source, 'Referrer-Policy: no-referrer' )
+		&& str_contains( $manage_controller_source, "'GET' !== \$this->request_method()" )
+		&& str_contains( $manage_controller_source, "'POST' !== \$this->request_method()" ),
+	'Self-service management must keep GET display-only and require intentional POST.'
+);
+$assert(
+	false !== $subscriber_service_source
+		&& str_contains( $subscriber_service_source, 'is_suppressed' )
+		&& str_contains( $subscriber_service_source, 'confirm_with_management' )
+		&& str_contains( $subscriber_service_source, 'unsubscribe_managed' )
+		&& str_contains( $subscriber_service_source, 'resubscribe_managed' ),
+	'Standalone signup, confirmation, unsubscribe, and resubscribe must share suppression policy.'
+);
+$assert(
+	SuppressionService::SOURCE_SUBSCRIBER_MANAGE === 'subscriber_manage'
+		&& SuppressionService::SOURCE_SUBSCRIBER_ADMIN === 'subscriber_admin',
+	'Suppression sources must remain stable for source-limited resubscription.'
 );
 $assert(
 	str_contains( (string) $migrator_source, 'migration->verify()' )

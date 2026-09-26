@@ -12,8 +12,16 @@
 - Add a self-service WordPress profile control that accepts only defined
   preference states and cannot be used by an administrator to silently change
   another user's explicit preference.
-- Keep registered-user verification and future global suppression authoritative
+- Keep registered-user verification and global suppression authoritative
   regardless of a stored preference.
+- Add canonical global email suppression on the frozen schema-1 suppression table.
+- Add secure standalone management bearers stored only by SHA-256 hash.
+- Keep management GET requests display-only and require nonce-protected POST for
+  unsubscribe and resubscribe actions.
+- Allow verified self-service resubscription to remove only suppressions created
+  by the same source; administrator suppression remains authoritative.
+- Block public standalone signup and pending confirmation while an address is
+  globally suppressed.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
