@@ -68,6 +68,15 @@ $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
 $pending_cleanup_source = file_get_contents(
 	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
 );
+$subscriber_admin_page_source = file_get_contents(
+	$root . '/src/Admin/SubscriberAdminPage.php'
+);
+$subscriber_admin_repository_source = file_get_contents(
+	$root . '/src/Admin/SubscriberAdminRepository.php'
+);
+$subscriber_csv_exporter_source = file_get_contents(
+	$root . '/src/Admin/SubscriberCsvExporter.php'
+);
 $deactivator_source = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
 $destructive_uninstaller_source = file_get_contents(
 	$root . '/src/Database/DestructiveUninstaller.php'
@@ -154,6 +163,9 @@ foreach ( $database_files as $database_file ) {
 	);
 }
 $subscriber_files = array(
+	'src/Admin/SubscriberAdminPage.php',
+	'src/Admin/SubscriberAdminRepository.php',
+	'src/Admin/SubscriberCsvExporter.php',
 	'src/Mail/DeliveryResult.php',
 	'src/Mail/MailMessage.php',
 	'src/Mail/MailTransport.php',
@@ -353,6 +365,26 @@ $assert(
 		&& str_contains( (string) $activator_source, 'PendingSubscriberCleanup::schedule();' )
 		&& str_contains( (string) $deactivator_source, 'PendingSubscriberCleanup::unschedule();' ),
 	'Pending subscriber cleanup must use a daily limited schedule and clear it on deactivation.'
+);
+$assert(
+	str_contains( (string) $subscriber_admin_page_source, "CAPABILITY = 'manage_options'" )
+		&& str_contains( (string) $subscriber_admin_page_source, "add_action( 'admin_menu'" )
+		&& str_contains( (string) $subscriber_admin_page_source, 'check_admin_referer' )
+		&& str_contains( (string) $subscriber_admin_page_source, 'wp_safe_redirect' ),
+	'Alpha.4 subscriber administration must remain authenticated, authorized, and nonce-protected.'
+);
+$assert(
+	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )
+		&& str_contains( (string) $subscriber_admin_repository_source, 'confirmation_token_hash = NULL' )
+		&& str_contains( (string) $subscriber_admin_repository_source, 'manage_token_hash = NULL' ),
+	'Manual subscriber suppression must clear reusable bearer hashes.'
+);
+$assert(
+	str_contains( (string) $subscriber_csv_exporter_source, "private const BATCH_SIZE = 500" )
+		&& str_contains( (string) $subscriber_csv_exporter_source, 'safe_cell' )
+		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'confirmation_token_hash' )
+		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'manage_token_hash' ),
+	'Subscriber CSV export must use limited batches, neutralize formula cells, and omit bearer hashes.'
 );
 $assert(
 	str_contains( (string) $migrator_source, 'migration->verify()' )

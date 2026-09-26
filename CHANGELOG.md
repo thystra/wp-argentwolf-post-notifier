@@ -28,6 +28,10 @@
   WordPress user, while still requiring explicit standalone double opt-in.
 - Add daily cleanup for pending subscriber records whose confirmation tokens have
   been expired for seven days, limited to 250 rows per scheduled run.
+- Add an administrator-only subscriber screen with status filtering, email/name
+  search, one-way manual suppression, and nonce-protected CSV export.
+- Keep CSV exports limited to 500-row database batches, omit bearer-token hashes,
+  and neutralize spreadsheet-formula-looking cells.
 
 ## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 

@@ -7,6 +7,9 @@
 
 namespace ArgentWolf\PostNotifier;
 
+use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
+use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
+use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
@@ -81,6 +84,42 @@ final class Plugin {
 			$container->set(
 				DataCleanup::class,
 				static fn (): DataCleanup => new DataCleanup()
+			);
+			$container->set(
+				SubscriberAdminRepository::class,
+				static fn (): SubscriberAdminRepository => new SubscriberAdminRepository()
+			);
+			$container->set(
+				SubscriberCsvExporter::class,
+				static function ( Container $services ): SubscriberCsvExporter {
+					$repository = $services->get( SubscriberAdminRepository::class );
+					if ( ! $repository instanceof SubscriberAdminRepository ) {
+						throw new LogicException(
+							'The subscriber administration repository is invalid.'
+						);
+					}
+
+					return new SubscriberCsvExporter( $repository );
+				}
+			);
+			$container->set(
+				SubscriberAdminPage::class,
+				static function ( Container $services ): SubscriberAdminPage {
+					$repository = $services->get( SubscriberAdminRepository::class );
+					$exporter   = $services->get( SubscriberCsvExporter::class );
+					if ( ! $repository instanceof SubscriberAdminRepository ) {
+						throw new LogicException(
+							'The subscriber administration repository is invalid.'
+						);
+					}
+					if ( ! $exporter instanceof SubscriberCsvExporter ) {
+						throw new LogicException(
+							'The subscriber CSV exporter is invalid.'
+						);
+					}
+
+					return new SubscriberAdminPage( $repository, $exporter );
+				}
 			);
 			$container->set(
 				SubscriberRepository::class,
@@ -306,6 +345,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				ConfirmationController::class,
+				SubscriberAdminPage::class,
 				VerificationProviderNotice::class,
 			)
 		);

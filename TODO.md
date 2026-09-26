@@ -192,7 +192,9 @@ privacy-preserving signup coordination, local abuse controls, and confirmation
 mail transport. The third tranche adds a display-only confirmation GET and a
 separate nonce-protected POST that owns the subscription state change. The fourth
 adds the dynamic public block and accessible no-JavaScript signup form. The fifth
-adds scheduled cleanup for stale pending subscriber records.
+adds scheduled cleanup for stale pending subscriber records. The sixth candidate
+adds administrator-only subscriber search/filter, manual suppression, and CSV
+export; its task boxes remain open until Forgejo qualification and review complete.
 
 - [x] Register dynamic block:
       `argentwolf-post-notifier/subscribe`.

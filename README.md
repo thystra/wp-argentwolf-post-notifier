@@ -19,6 +19,10 @@ tranche adds the dynamic public subscribe block, configurable consent/presentati
 text, signed render context, and a no-JavaScript post-redirect-get form with generic
 status messages. The fifth tranche adds daily limited cleanup for pending subscriber
 records after a seven-day post-expiry grace period.
+The sixth tranche adds an administrator-only subscriber screen with search/status
+filters, explicit manual suppression, and filtered CSV export. Alpha.4 continues to
+use the core `manage_options` capability for this screen; dedicated subscriber
+capability mapping remains a later milestone.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
