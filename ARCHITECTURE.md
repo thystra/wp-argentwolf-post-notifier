@@ -37,8 +37,9 @@ secure hashed confirmation tokens, 24-hour token expiry, a 15-minute resend
 cooldown, and explicit confirmation promotion. The second tranche adds a generic
 public-signup coordinator, a honeypot gate, keyed transient rate limits that never
 persist raw network addresses or user-agent strings, and confirmation-message
-submission through a transport abstraction. The public block and intentional-POST
-confirmation route remain later Milestone-4 work.
+submission through a transport abstraction. The third tranche wires the emailed link
+to a display-only GET and isolates subscriber promotion behind a separate
+nonce-protected POST action. The public block remains later Milestone-4 work.
 
 ## 2.1 Canonical naming
 

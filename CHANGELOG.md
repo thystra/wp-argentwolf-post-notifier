@@ -18,6 +18,8 @@
   network indicators without retaining raw IP addresses or user-agent strings.
 - Add a transport-neutral mail message/result contract, WordPress `wp_mail()`
   transport, and standalone confirmation-message composition.
+- Add a display-only confirmation-link page and a separate nonce-protected POST
+  action so ordinary GET requests cannot promote pending subscribers.
 
 ## 0.1.0-alpha.3 — 2026-09-25 development checkpoint
 

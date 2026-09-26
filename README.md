@@ -12,8 +12,10 @@ states, canonical email identity, secure hashed confirmation tokens, pending
 record creation/refresh, token expiry, resend cooldown, and explicit confirmation
 promotion. The second tranche adds generic non-enumerating signup coordination,
 keyed local rate limits that do not retain raw network addresses, honeypot handling,
-and confirmation-message submission through a transport abstraction. The public
-block and intentional-POST confirmation route remain later Milestone-4 work.
+and confirmation-message submission through a transport abstraction. The third tranche
+adds a display-only emailed-link page and a separate nonce-protected POST action,
+so fetching the confirmation URL alone cannot subscribe an address. The public
+subscription block remains later Milestone-4 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

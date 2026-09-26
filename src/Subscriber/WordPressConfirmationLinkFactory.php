@@ -12,8 +12,8 @@ use InvalidArgumentException;
 /**
  * WordPress-local confirmation-link generator.
  *
- * The GET action is deliberately a display-only destination. A later public
- * route tranche owns the intentional POST that actually calls confirm().
+ * The GET action is deliberately a display-only destination. ConfirmationController
+ * owns the separate nonce-protected POST that can call confirm().
  */
 final class WordPressConfirmationLinkFactory implements ConfirmationLinkFactory {
 	public const GET_ACTION = 'argentwolf_post_notifier_confirm';
