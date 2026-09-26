@@ -1,7 +1,7 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-alpha.4 — Unreleased
+## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
 - Begin the standalone-subscriber domain foundation on frozen schema 1.
 - Add typed pending, subscribed, unsubscribed, and suppressed subscriber states.
