@@ -4,7 +4,7 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-alpha.4
+Stable tag: 0.1.0-alpha.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,7 +28,10 @@ promote a pending subscriber. Alpha.4 also includes the dynamic public subscribe
 configurable consent/presentation text, and a no-JavaScript post-redirect-get form with
 generic status messages.
 It also adds an administrator-only subscriber screen with search/status filters,
-one-way manual suppression, and filtered CSV export.
+one-way manual suppression, and filtered CSV export. Alpha.5 begins registered-user
+preference handling with `site_default`, `subscribed`, and `unsubscribed` states plus
+a self-service WordPress profile control. These preferences do not bypass email
+verification or global suppression.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -71,6 +74,12 @@ now available from WordPress.org. This plugin declares the dependency while stil
 checking provider health and API compatibility at runtime.
 
 == Changelog ==
+
+= 0.1.0-alpha.5 =
+* Begin registered-user preference handling for the alpha.5 audience-management milestone.
+* Add canonical `site_default`, `subscribed`, and `unsubscribed` user-meta preferences.
+* Add a self-service WordPress profile control without allowing administrator override of another user's preference.
+* Keep verification and global suppression authoritative over registered-user preference.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.

@@ -1,6 +1,20 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
+## 0.1.0-alpha.5 — Unreleased
+
+- Begin the user-preference, named-list, and suppression milestone without
+  changing frozen schema 1.
+- Add typed registered-user notification preferences for `site_default`,
+  `subscribed`, and `unsubscribed` using the canonical WordPress user-meta key.
+- Treat missing or malformed stored preference metadata as `site_default` rather
+  than as an implicit opt-in.
+- Add a self-service WordPress profile control that accepts only defined
+  preference states and cannot be used by an administrator to silently change
+  another user's explicit preference.
+- Keep registered-user verification and future global suppression authoritative
+  regardless of a stored preference.
+
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
 - Begin the standalone-subscriber domain foundation on frozen schema 1.

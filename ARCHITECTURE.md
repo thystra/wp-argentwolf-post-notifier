@@ -29,20 +29,14 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository is now in `0.1.0-alpha.4` development. Alpha.2 established the
-verification-provider contract and alpha.3 froze the persistent data foundation.
-Alpha.4 is implementing standalone subscriber double opt-in in reviewable
-tranches. The first tranche established lifecycle states, pending persistence,
-secure hashed confirmation tokens, 24-hour token expiry, a 15-minute resend
-cooldown, and explicit confirmation promotion. The second tranche adds a generic
-public-signup coordinator, a honeypot gate, keyed transient rate limits that never
-persist raw network addresses or user-agent strings, and confirmation-message
-submission through a transport abstraction. The third tranche wires the emailed link
-to a display-only GET and isolates subscriber promotion behind a separate
-nonce-protected POST action. The fourth tranche registers the public dynamic
-subscribe block, preserves configurable consent/source context with a local HMAC,
-and uses post-redirect-get status messages so the complete signup flow works
-without frontend JavaScript.
+The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
+verification-provider contract, alpha.3 froze the persistent data foundation, and
+alpha.4 completed the standalone-subscriber double-opt-in and administration
+milestone. The first alpha.5 tranche adds the registered-user preference contract
+and a self-service WordPress profile control. The canonical user-meta value remains
+one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed metadata
+resolves to `site_default` rather than silently opting the user in. A registered
+user's preference never bypasses verification or global suppression.
 
 ## 2.1 Canonical naming
 
@@ -336,6 +330,12 @@ site_default
 subscribed
 unsubscribed
 ```
+
+Missing or malformed preference metadata resolves to `site_default`; it is never
+interpreted as an implicit opt-in. The WordPress profile control is self-service:
+an administrator editing another user's profile does not silently change this
+preference. Future management or resubscription workflows must remain explicit
+and auditable rather than using ordinary profile administration as an override.
 
 Standalone subscribers are stored in a plugin table.
 
