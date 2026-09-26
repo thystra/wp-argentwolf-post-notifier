@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
+use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
@@ -18,6 +19,7 @@ use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
@@ -88,6 +90,24 @@ final class Plugin {
 			$container->set(
 				SubscriberAdminRepository::class,
 				static fn (): SubscriberAdminRepository => new SubscriberAdminRepository()
+			);
+			$container->set(
+				RegisteredUserPreferenceRepository::class,
+				static fn (): RegisteredUserPreferenceRepository =>
+					new RegisteredUserPreferenceRepository()
+			);
+			$container->set(
+				UserNotificationPreferenceProfile::class,
+				static function ( Container $services ): UserNotificationPreferenceProfile {
+					$preferences = $services->get( RegisteredUserPreferenceRepository::class );
+					if ( ! $preferences instanceof RegisteredUserPreferenceRepository ) {
+						throw new LogicException(
+							'The registered-user preference repository is invalid.'
+						);
+					}
+
+					return new UserNotificationPreferenceProfile( $preferences );
+				}
 			);
 			$container->set(
 				SubscriberCsvExporter::class,
@@ -346,6 +366,7 @@ final class Plugin {
 				UpgradeManager::class,
 				ConfirmationController::class,
 				SubscriberAdminPage::class,
+				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,
 			)
 		);

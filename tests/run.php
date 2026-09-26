@@ -25,6 +25,8 @@ use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationToken;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
 use ArgentWolf\PostNotifier\Support\Container;
@@ -76,6 +78,15 @@ $subscriber_admin_repository_source = file_get_contents(
 );
 $subscriber_csv_exporter_source = file_get_contents(
 	$root . '/src/Admin/SubscriberCsvExporter.php'
+);
+$user_preference_profile_source = file_get_contents(
+	$root . '/src/Admin/UserNotificationPreferenceProfile.php'
+);
+$registered_user_preference_source = file_get_contents(
+	$root . '/src/Recipient/RegisteredUserPreference.php'
+);
+$registered_user_preference_repository_source = file_get_contents(
+	$root . '/src/Recipient/RegisteredUserPreferenceRepository.php'
 );
 $deactivator_source = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
 $destructive_uninstaller_source = file_get_contents(
@@ -143,6 +154,13 @@ $assert(
 		"## Milestone 4 — Standalone subscribers and mailing-list block\n\nTarget: `0.1.0-alpha.4`"
 	),
 	'Alpha.4 must remain the standalone subscriber and mailing-list milestone.'
+);
+$assert(
+	str_contains(
+		(string) $todo,
+		"## Milestone 5 — User preferences, named lists, and suppression\n\nTarget: `0.1.0-alpha.5`"
+	),
+	'Alpha.5 must remain the user preferences, named lists, and suppression milestone.'
 );
 $database_files = array(
 	'src/Database/DataCleanup.php',
@@ -385,6 +403,32 @@ $assert(
 		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'confirmation_token_hash' )
 		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'manage_token_hash' ),
 	'Subscriber CSV export must use limited batches, neutralize formula cells, and omit bearer hashes.'
+);
+$assert(
+	RegisteredUserPreference::SiteDefault->value === 'site_default'
+		&& RegisteredUserPreference::Subscribed->value === 'subscribed'
+		&& RegisteredUserPreference::Unsubscribed->value === 'unsubscribed'
+		&& RegisteredUserPreference::SiteDefault
+			=== RegisteredUserPreference::from_stored_value( 'unexpected' ),
+	'Registered-user preference states must be typed and malformed metadata must use site_default.'
+);
+$assert(
+	RegisteredUserPreferenceRepository::META_KEY
+		=== '_argentwolf_post_notifier_subscription_preference'
+		&& false !== $registered_user_preference_repository_source
+		&& str_contains( $registered_user_preference_repository_source, 'get_user_meta' )
+		&& str_contains( $registered_user_preference_repository_source, 'update_user_meta' ),
+	'Registered-user preference persistence must use the canonical WordPress user-meta key.'
+);
+$assert(
+	false !== $registered_user_preference_source
+		&& false !== $user_preference_profile_source
+		&& str_contains( $user_preference_profile_source, "add_action( 'show_user_profile'" )
+		&& str_contains( $user_preference_profile_source, "add_action( 'personal_options_update'" )
+		&& ! str_contains( $user_preference_profile_source, "add_action( 'edit_user_profile_update'" )
+		&& str_contains( $user_preference_profile_source, 'wp_verify_nonce' )
+		&& str_contains( $user_preference_profile_source, "current_user_can( 'edit_user', \$user_id )" ),
+	'Registered-user profile preference must be self-service, authorized, and use only defined states.'
 );
 $assert(
 	str_contains( (string) $migrator_source, 'migration->verify()' )

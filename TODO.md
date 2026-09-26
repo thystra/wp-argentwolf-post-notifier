@@ -233,9 +233,15 @@ where those execution paths exist.
 
 Target: `0.1.0-alpha.5`
 
-- [ ] Add registered-user notification preference:
+Implementation is split into reviewable tranches. Tranche 1 establishes the
+registered-user preference contract and self-service WordPress profile control
+without changing frozen schema 1. Missing or malformed preference metadata uses
+the neutral `site_default` state; choosing `subscribed` never bypasses registered-
+user verification or future global suppression.
+
+- [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
-- [ ] Add preference controls to user profile.
+- [x] Add preference controls to user profile.
 - [ ] Add secure self-service manage-subscription page.
 - [ ] Add CSV import only as a separately approved double-opt-in intake flow;
       never import contacts directly into `subscribed`.

@@ -1,6 +1,6 @@
 {
   "name": "argentwolf-post-notifier",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "private": true,
   "description": "Development tooling for ArgentWolf Post Notifier.",
   "type": "module",
