@@ -207,7 +207,7 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$table      = TableNames::from_database( $wpdb )->subscribers();
 		$row        = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT status, consent_text, signup_source, source_post_id FROM %i WHERE email_hash = %s',
+				'SELECT status, consent_text_snapshot, signup_source, source_post_id FROM %i WHERE email_hash = %s',
 				$table,
 				$email_hash
 			),
@@ -216,7 +216,7 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 
 		self::assertIsArray( $row );
 		self::assertSame( 'pending', $row['status'] );
-		self::assertSame( 'I agree to receive journal notifications.', $row['consent_text'] );
+		self::assertSame( 'I agree to receive journal notifications.', $row['consent_text_snapshot'] );
 		self::assertSame( 'block', $row['signup_source'] );
 		self::assertSame( (string) $post_id, (string) $row['source_post_id'] );
 	}
