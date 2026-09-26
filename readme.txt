@@ -36,6 +36,9 @@ issues a random management bearer while only its SHA-256 hash is stored; managem
 GET requests are display-only and state changes require nonce-protected POST.
 Self-service resubscription can remove only a suppression created by the same source,
 so administrator suppression remains authoritative.
+Alpha.5 also adds administrator-managed named lists with typed WordPress-user and
+standalone-subscriber memberships. List membership never changes subscription or
+suppression state.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -89,6 +92,8 @@ checking provider health and API compatibility at runtime.
 * Require nonce-protected POST for unsubscribe and verified resubscribe.
 * Keep administrator suppression authoritative over all self-service resubscribe paths.
 * Block suppressed addresses from public standalone signup and confirmation.
+* Add administrator-managed named lists with typed user and standalone-subscriber membership.
+* Keep list membership from changing subscription, resubscription, or suppression state.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.

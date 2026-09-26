@@ -10,13 +10,12 @@ standalone-subscriber milestone. The verification-provider contract,
 lifecycle/tooling foundation, frozen schema-1 data foundation, public double-opt-in
 subscriber flow, limited pending cleanup, and subscriber administration are present.
 Alpha.5 now includes typed registered-user notification preferences, a self-service
-WordPress profile control, canonical global email suppression, and a secure
-standalone management flow. Standalone confirmation issues a random management
-bearer whose hash alone is stored; GET is display-only and unsubscribe/resubscribe
-requires an intentional nonce-protected POST. Self-service resubscription can remove
-only a suppression created by the same verified source, so administrator suppression
-cannot be bypassed. Named lists, typed membership, import, merge rules, audit history,
-and dedicated management capabilities remain later alpha.5 work.
+WordPress profile control, canonical global email suppression, secure standalone
+management, and administrator-managed named lists with typed WordPress-user and
+standalone-subscriber memberships. List membership is organizational only: adding a
+member cannot subscribe, resubscribe, or remove global suppression. Import, explicit
+per-campaign include/exclude contacts, merge rules, audit history, and dedicated
+management capabilities remain later alpha.5 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

@@ -32,15 +32,13 @@ components are implemented.
 The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
 verification-provider contract, alpha.3 froze the persistent data foundation, and
 alpha.4 completed the standalone-subscriber double-opt-in and administration
-milestone. Alpha.5 now includes registered-user preferences plus the global
-suppression and standalone management foundation. The canonical user-meta value
+milestone. Alpha.5 now includes registered-user preferences, global suppression, secure
+standalone management, and named-list administration. The canonical user-meta value
 remains one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed
 metadata resolves to `site_default` rather than silently opting the user in.
-Standalone confirmation issues a random management bearer while only its SHA-256
-hash is stored. Management GET requests are display-only, state changes require
-nonce-protected POST, and verified resubscription can remove only a suppression
-created by the same self-service source. Administrator suppression remains
-authoritative.
+Named-list membership is typed as a WordPress user or standalone subscriber and is
+organizational only: list administration cannot change subscription, verification,
+preference, or suppression state. Administrator suppression remains authoritative.
 
 ## 2.1 Canonical naming
 
@@ -364,8 +362,17 @@ Named lists can contain:
 - standalone subscriber references; and
 - future supported contact types through a typed membership interface.
 
-Lists do not bypass verification or suppression. Removing a contact from a
-named list does not erase the contact or revoke a global subscription.
+Schema 1 persists a canonical membership key such as `user:123` or
+`subscriber:456`, so the same typed entity cannot be added to one list twice even
+though a normalized email may currently exist through more than one source. List
+administration resolves the requested source explicitly and does not merge those
+sources implicitly.
+
+Lists do not confer eligibility and do not bypass verification, preferences, or
+global suppression. Adding a suppressed contact to a list does not resubscribe or
+unsuppress the address. Removing a contact from a named list does not erase the
+contact or revoke a global subscription. Cross-source email deduplication remains an
+audience-resolution responsibility.
 
 ### 4.6 Verification adapters
 

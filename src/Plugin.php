@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier;
 
+use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
@@ -19,6 +20,7 @@ use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
@@ -118,6 +120,10 @@ final class Plugin {
 				static fn (): SubscriberAdminRepository => new SubscriberAdminRepository()
 			);
 			$container->set(
+				NamedListRepository::class,
+				static fn (): NamedListRepository => new NamedListRepository()
+			);
+			$container->set(
 				RegisteredUserPreferenceRepository::class,
 				static fn (): RegisteredUserPreferenceRepository =>
 					new RegisteredUserPreferenceRepository()
@@ -146,6 +152,33 @@ final class Plugin {
 					}
 
 					return new SubscriberCsvExporter( $repository );
+				}
+			);
+			$container->set(
+				NamedListAdminPage::class,
+				static function ( Container $services ): NamedListAdminPage {
+					$repository  = $services->get( NamedListRepository::class );
+					$identity    = $services->get( EmailIdentity::class );
+					$suppression = $services->get( SuppressionService::class );
+					if ( ! $repository instanceof NamedListRepository ) {
+						throw new LogicException(
+							'The named-list repository is invalid.'
+						);
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+					if ( ! $suppression instanceof SuppressionService ) {
+						throw new LogicException(
+							'The suppression service is invalid.'
+						);
+					}
+
+					return new NamedListAdminPage(
+						$repository,
+						$identity,
+						$suppression
+					);
 				}
 			);
 			$container->set(
@@ -449,6 +482,7 @@ final class Plugin {
 				ConfirmationController::class,
 				ManageSubscriptionController::class,
 				SubscriberAdminPage::class,
+				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,
 			)

@@ -235,12 +235,12 @@ Target: `0.1.0-alpha.5`
 
 Implementation is split into reviewable tranches. Tranche 1 established the
 registered-user preference contract and self-service WordPress profile control.
-Tranche 2 adds the shared global-suppression policy, hashed standalone management
-bearers, display-only management GETs with nonce-protected POST actions, and
-source-limited verified resubscription. Frozen schema 1 remains unchanged.
-Missing or malformed registered-user preference metadata uses the neutral
-`site_default` state; no preference or management flow can bypass an
-administrator-created suppression.
+Tranche 2 added shared global suppression and secure standalone management.
+Tranche 3 adds administrator-managed named lists with typed WordPress-user and
+standalone-subscriber memberships. Membership is organizational only and never
+changes subscription, resubscription, verification, preference, or suppression
+state. Frozen schema 1 remains unchanged. Missing or malformed registered-user
+preference metadata uses the neutral `site_default` state.
 
 - [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
@@ -248,8 +248,8 @@ administrator-created suppression.
 - [x] Add secure self-service manage-subscription page.
 - [ ] Add CSV import only as a separately approved double-opt-in intake flow;
       never import contacts directly into `subscribed`.
-- [ ] Implement named lists.
-- [ ] Support typed list members: users and standalone subscribers.
+- [x] Implement named lists.
+- [x] Support typed list members: users and standalone subscribers.
 - [ ] Implement explicit include and exclude contacts.
 - [x] Implement global email suppression.
 - [ ] Ensure suppression overrides roles, lists, and explicit inclusion.
@@ -264,7 +264,7 @@ Acceptance criteria:
 - [ ] One normalized email produces at most one campaign recipient.
 - [ ] Registered and standalone records sharing an email are handled
       deterministically.
-- [ ] Resubscription cannot occur accidentally through list administration.
+- [x] Resubscription cannot occur accidentally through list administration.
 
 ## Milestone 6 — Editor workflow and post metadata
 
