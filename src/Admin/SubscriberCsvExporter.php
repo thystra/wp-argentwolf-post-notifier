@@ -58,6 +58,8 @@ final class SubscriberCsvExporter {
 				self::BATCH_SIZE
 			);
 
+			$batch_is_full = self::BATCH_SIZE === count( $rows );
+
 			foreach ( $rows as $row ) {
 				$after_id = max( $after_id, (int) ( $row['id'] ?? 0 ) );
 				yield $this->csv_line(
@@ -75,7 +77,7 @@ final class SubscriberCsvExporter {
 					)
 				);
 			}
-		} while ( self::BATCH_SIZE === count( $rows ) );
+		} while ( $batch_is_full );
 	}
 
 	/**

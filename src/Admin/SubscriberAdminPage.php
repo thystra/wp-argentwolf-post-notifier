@@ -196,7 +196,9 @@ final class SubscriberAdminPage implements Registerable {
 		echo esc_html__( 'Filter subscribers by status', 'argentwolf-post-notifier' );
 		echo '</label>';
 		echo '<select id="arpn-subscriber-status" name="status">';
-		echo '<option value="">' . esc_html__( 'All statuses', 'argentwolf-post-notifier' ) . '</option>';
+		echo '<option value="">';
+		echo esc_html__( 'All statuses', 'argentwolf-post-notifier' );
+		echo '</option>';
 		foreach ( SubscriberStatus::cases() as $choice ) {
 			echo '<option value="' . esc_attr( $choice->value ) . '"';
 			if ( $choice === $status ) {
@@ -244,7 +246,10 @@ final class SubscriberAdminPage implements Registerable {
 
 		if ( array() === $rows ) {
 			echo '<tr><td colspan="8">';
-			echo esc_html__( 'No subscribers match the current filters.', 'argentwolf-post-notifier' );
+			echo esc_html__(
+				'No subscribers match the current filters.',
+				'argentwolf-post-notifier'
+			);
 			echo '</td></tr>';
 		} else {
 			foreach ( $rows as $row ) {
@@ -303,7 +308,8 @@ final class SubscriberAdminPage implements Registerable {
 	 */
 	private function render_suppress_form( int $subscriber_id ): void {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		echo '<input type="hidden" name="action" value="' . esc_attr( self::SUPPRESS_ACTION ) . '">';
+		echo '<input type="hidden" name="action" value="';
+		echo esc_attr( self::SUPPRESS_ACTION ) . '">';
 		echo '<input type="hidden" name="subscriber_id" value="';
 		echo esc_attr( (string) $subscriber_id ) . '">';
 		wp_nonce_field( self::SUPPRESS_ACTION );
