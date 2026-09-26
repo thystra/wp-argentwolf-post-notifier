@@ -27,6 +27,8 @@ links now open a display-only page and require a separate nonce-protected POST t
 promote a pending subscriber. Alpha.4 also includes the dynamic public subscribe block,
 configurable consent/presentation text, and a no-JavaScript post-redirect-get form with
 generic status messages.
+It also adds an administrator-only subscriber screen with search/status filters,
+one-way manual suppression, and filtered CSV export.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -79,6 +81,7 @@ checking provider health and API compatibility at runtime.
 * Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
 * Add explicit pending-to-subscribed confirmation primitives and qualified public POST routing.
 * Add daily limited cleanup for pending subscribers after a seven-day post-expiry grace period.
+* Add administrator-only subscriber search/filter, manual suppression, and CSV export controls.
 
 = 0.1.0-alpha.3 =
 * Begin versioned schema migrations and create the initial plugin-owned tables.

@@ -953,6 +953,13 @@ Activation grants administrative capabilities to administrators. Editor
 capabilities are an explicit site decision. Sending does not imply permission
 to view all subscriber data or edit global templates.
 
+The initial alpha.4 subscriber administration screen is restricted to WordPress
+administrators through `manage_options`. The later capability-mapping milestone
+will replace that temporary bridge with `manage_post_notification_subscribers`
+without automatically granting subscriber access to editors or send-only roles.
+Administrative suppression is one-way at this stage; verified resubscription and
+global suppression semantics remain later milestones.
+
 ## 14. Privacy and retention
 
 The plugin supplies:
