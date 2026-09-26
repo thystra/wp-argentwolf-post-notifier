@@ -353,7 +353,7 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$location = '';
 		$filter   = static function ( string $url ) use ( &$location ): string {
 			$location = $url;
-			return $url;
+			return '';
 		};
 
 		add_filter( 'wp_redirect', $filter );
