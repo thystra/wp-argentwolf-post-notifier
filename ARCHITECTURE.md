@@ -33,12 +33,14 @@ The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
 verification-provider contract, alpha.3 froze the persistent data foundation, and
 alpha.4 completed the standalone-subscriber double-opt-in and administration
 milestone. Alpha.5 now includes registered-user preferences, global suppression, secure
-standalone management, and named-list administration. The canonical user-meta value
-remains one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed
-metadata resolves to `site_default` rather than silently opting the user in.
-Named-list membership is typed as a WordPress user or standalone subscriber and is
-organizational only: list administration cannot change subscription, verification,
-preference, or suppression state. Administrator suppression remains authoritative.
+standalone management, named-list administration, and a reusable audience-policy
+resolver. The canonical user-meta value remains one of `site_default`, `subscribed`,
+or `unsubscribed`; missing or malformed metadata resolves to `site_default` rather
+than silently opting the user in. Named-list membership is typed as a WordPress user
+or standalone subscriber and is organizational only. Audience policy now expands
+role-provided users and named lists, applies explicit typed inclusion/exclusion,
+normalizes and merges duplicate email identities deterministically, and applies global
+suppression last. Campaign recipient persistence remains a later milestone.
 
 ## 2.1 Canonical naming
 
@@ -348,11 +350,20 @@ alternate source.
 
 When an email belongs to both a WordPress user and a standalone subscriber:
 
-- the resolved campaign has only one recipient;
-- registered-user verification still applies to the user source;
-- a global suppression overrides both records;
-- explicit resubscription requires a verified management workflow; and
-- merge/link behavior is logged without exposing account existence publicly.
+- audience policy returns at most one normalized recipient;
+- registered-user verification and preference still apply to the user source;
+- standalone status still applies to the subscriber source;
+- if both sources are eligible, the registered user is the deterministic primary
+  identity while both eligible IDs remain available to the later campaign snapshot;
+- if the registered source is ineligible but the standalone source is eligible, the
+  standalone subscriber remains eligible rather than being discarded by deduplication;
+- a global suppression overrides both records; and
+- explicit resubscription requires a verified management workflow.
+
+The Alpha.5 resolver accepts a caller-supplied site-default opt-in flag. `site_default`
+is fail-closed when that policy is not supplied, so missing or malformed user metadata
+never becomes an implicit opt-in. The editor and campaign milestones will supply the
+actual site/post policy when those settings exist.
 
 ### 4.5 Named lists
 
@@ -598,15 +609,20 @@ Resolution order:
 
 1. Expand roles and lists to typed contacts.
 2. Add explicit contacts.
-3. Apply explicit exclusions.
-4. Normalize email addresses.
-5. Deduplicate by normalized email.
-6. Apply registered-user verification.
-7. Require standalone subscriber status `subscribed`.
-8. Apply user preference.
-9. Apply global suppression.
-10. Snapshot eligible recipients.
-11. Record aggregate skip reasons.
+3. Apply explicit typed exclusions.
+4. Normalize email addresses and group sources by normalized email.
+5. Apply registered-user preference and verification to each user source.
+6. Require standalone subscriber status `subscribed` for each subscriber source.
+7. Apply global suppression to the complete normalized-email group.
+8. Select one deterministic recipient identity per normalized email.
+9. Record duplicate and aggregate skip reasons.
+10. Snapshot eligible recipients when campaign persistence is implemented.
+
+Alpha.5 implements steps 1-9 as a reusable policy layer. Role expansion itself remains
+a caller responsibility: the resolver receives the role-derived user IDs, which keeps
+WordPress role querying separate from recipient policy. Milestone 9 will consume this
+resolver when it creates immutable campaign-recipient rows and performs pre-send
+hard-ineligibility rechecks.
 
 Suggested skip reasons:
 

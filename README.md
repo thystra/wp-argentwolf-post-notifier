@@ -11,11 +11,12 @@ lifecycle/tooling foundation, frozen schema-1 data foundation, public double-opt
 subscriber flow, limited pending cleanup, and subscriber administration are present.
 Alpha.5 now includes typed registered-user notification preferences, a self-service
 WordPress profile control, canonical global email suppression, secure standalone
-management, and administrator-managed named lists with typed WordPress-user and
-standalone-subscriber memberships. List membership is organizational only: adding a
-member cannot subscribe, resubscribe, or remove global suppression. Import, explicit
-per-campaign include/exclude contacts, merge rules, audit history, and dedicated
-management capabilities remain later alpha.5 work.
+management, administrator-managed named lists, and a reusable audience-policy layer.
+That layer accepts role-expanded users, named lists, and explicit typed include/exclude
+contacts, then applies canonical email normalization, deterministic cross-source merge
+rules, eligibility, and final global suppression. Campaign snapshot persistence remains
+a later milestone. CSV intake, audit history, and dedicated management capabilities
+remain later alpha.5 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

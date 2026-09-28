@@ -237,8 +237,11 @@ Implementation is split into reviewable tranches. Tranche 1 established the
 registered-user preference contract and self-service WordPress profile control.
 Tranche 2 added shared global suppression and secure standalone management.
 Tranche 3 adds administrator-managed named lists with typed WordPress-user and
-standalone-subscriber memberships. Membership is organizational only and never
-changes subscription, resubscription, verification, preference, or suppression
+standalone-subscriber memberships. Tranche 4 adds the reusable audience-policy layer:
+role-expanded users, named lists, and explicit typed include/exclude contacts are
+normalized, merged deterministically by email, filtered by source eligibility, and
+finally subject to global suppression. Membership remains organizational only and
+never changes subscription, resubscription, verification, preference, or suppression
 state. Frozen schema 1 remains unchanged. Missing or malformed registered-user
 preference metadata uses the neutral `site_default` state.
 
@@ -250,19 +253,22 @@ preference metadata uses the neutral `site_default` state.
       never import contacts directly into `subscribed`.
 - [x] Implement named lists.
 - [x] Support typed list members: users and standalone subscribers.
-- [ ] Implement explicit include and exclude contacts.
+- [x] Implement explicit include and exclude contacts.
 - [x] Implement global email suppression.
-- [ ] Ensure suppression overrides roles, lists, and explicit inclusion.
+- [x] Ensure suppression overrides roles, lists, and explicit inclusion.
 - [x] Implement verified resubscribe flow.
-- [ ] Implement duplicate-email merge rules.
+- [x] Implement duplicate-email merge rules.
 - [ ] Record list and suppression audit events without logging sensitive tokens.
 - [ ] Add capabilities for subscriber and list management.
 
 Acceptance criteria:
 
-- [ ] A suppressed email cannot re-enter through another source.
-- [ ] One normalized email produces at most one campaign recipient.
-- [ ] Registered and standalone records sharing an email are handled
+The Alpha.5 checks below are policy-layer guarantees. Milestone 9 must preserve them
+when materializing and rechecking campaign recipients.
+
+- [x] A suppressed email cannot re-enter through another source.
+- [x] One normalized email produces at most one campaign recipient.
+- [x] Registered and standalone records sharing an email are handled
       deterministically.
 - [x] Resubscription cannot occur accidentally through list administration.
 

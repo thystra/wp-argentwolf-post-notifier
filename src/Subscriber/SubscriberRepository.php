@@ -396,6 +396,36 @@ final class SubscriberRepository {
 	}
 
 	/**
+	 * Return the subscriber fields required by audience policy.
+	 *
+	 * @param int $subscriber_id Standalone subscriber row ID.
+	 * @return array<string,mixed>|null
+	 */
+	public function find_for_audience( int $subscriber_id ): ?array {
+		if ( $subscriber_id < 1 ) {
+			return null;
+		}
+
+		$query = $this->database->prepare(
+			'SELECT id, email, email_hash, display_name, status
+			FROM %i
+			WHERE id = %d
+			LIMIT 1',
+			$this->table,
+			$subscriber_id
+		);
+
+		// Plugin-owned audience reads intentionally query the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$row = $this->database->get_row( $query, ARRAY_A );
+		// phpcs:enable
+
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
 	 * Find one subscriber by keyed normalized-email hash.
 	 *
 	 * @param string $email_hash Email identity hash.

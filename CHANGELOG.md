@@ -26,6 +26,15 @@
 - Support typed list memberships for WordPress users and standalone subscribers.
 - Keep list membership organizational only so adding or removing a member cannot
   subscribe, resubscribe, or clear a global suppression.
+- Add a reusable audience-policy resolver for role-expanded users, named lists,
+  and explicit typed include/exclude contacts without creating campaign rows yet.
+- Normalize and deduplicate by canonical email, prefer an eligible registered-user
+  identity when both sources are eligible, and fall back to an eligible standalone
+  subscriber when the registered source is ineligible.
+- Apply global suppression after source expansion and before final recipient
+  selection so suppression overrides roles, named lists, and explicit inclusion.
+- Keep `site_default` registered-user preference fail-closed unless the caller
+  explicitly supplies the site-default opt-in policy for that resolution.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
