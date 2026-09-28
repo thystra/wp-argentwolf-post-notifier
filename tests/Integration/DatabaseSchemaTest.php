@@ -119,20 +119,42 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 		}
 	}
 
-	public function test_schema_one_upgrades_to_schema_two(): void {
-		global $wpdb;
+      public function test_schema_one_upgrades_to_schema_two(): void {
+              global $wpdb;
 
-		$table     = TableNames::from_database( $wpdb )->audit_events();
-		$inspector = new SchemaInspector( $wpdb );
-		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
-		self::assertFalse( $inspector->table_exists( $table ) );
-		update_option( SchemaMigrator::SCHEMA_OPTION, '1', false );
+              $table     = TableNames::from_database( $wpdb )->audit_events();
+              $inspector = new SchemaInspector( $wpdb );
 
-		( new SchemaMigrator( $wpdb ) )->migrate();
+	/*
+	 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+	 * TEMPORARY equivalents inside each test transaction. Schema-upgrade
+	 * qualification must exercise the production DDL against permanent tables.
+	 */
+              self::commit_transaction();
+              remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+              remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 
-		self::assertSame( Version::SCHEMA, get_option( SchemaMigrator::SCHEMA_OPTION ) );
+              try {
+                  $wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		  self::assertFalse( $inspector->table_exists( $table ) );
+		  update_option( SchemaMigrator::SCHEMA_OPTION, '1', false );
+
+		  ( new SchemaMigrator( $wpdb ) )->migrate();
+
+		  self::assertSame(
+		      Version::SCHEMA,
+		      get_option( SchemaMigrator::SCHEMA_OPTION )
+		);
 		self::assertTrue( $inspector->table_exists( $table ) );
-	}
+              } finally {
+		  try {
+			( new SchemaMigrator( $wpdb ) )->migrate();
+			self::commit_transaction();
+		  } finally {
+			$this->start_transaction();
+		            }
+	          }
+              }
 
 	public function test_failed_migration_does_not_advance_and_can_retry_after_repair(): void {
 		global $wpdb;
