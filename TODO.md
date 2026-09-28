@@ -240,16 +240,20 @@ Tranche 3 adds administrator-managed named lists with typed WordPress-user and
 standalone-subscriber memberships. Tranche 4 adds the reusable audience-policy layer:
 role-expanded users, named lists, and explicit typed include/exclude contacts are
 normalized, merged deterministically by email, filtered by source eligibility, and
-finally subject to global suppression. Membership remains organizational only and
-never changes subscription, resubscription, verification, preference, or suppression
-state. Frozen schema 1 remains unchanged. Missing or malformed registered-user
-preference metadata uses the neutral `site_default` state.
+finally subject to global suppression. Tranche 5 adds administrator-only, explicitly
+approved, bounded CSV intake that can create or refresh only pending standalone
+subscribers and sends distinct double-opt-in invitations. Imported status columns are
+ignored, and existing subscribed, unsubscribed, or suppressed contacts are not
+reactivated. Membership remains organizational only and never changes subscription,
+resubscription, verification, preference, or suppression state. Frozen schema 1
+remains unchanged. Missing or malformed registered-user preference metadata uses the
+neutral `site_default` state.
 
 - [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
 - [x] Add preference controls to user profile.
 - [x] Add secure self-service manage-subscription page.
-- [ ] Add CSV import only as a separately approved double-opt-in intake flow;
+- [x] Add CSV import only as a separately approved double-opt-in intake flow;
       never import contacts directly into `subscribed`.
 - [x] Implement named lists.
 - [x] Support typed list members: users and standalone subscribers.

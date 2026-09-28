@@ -33,14 +33,15 @@ The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
 verification-provider contract, alpha.3 froze the persistent data foundation, and
 alpha.4 completed the standalone-subscriber double-opt-in and administration
 milestone. Alpha.5 now includes registered-user preferences, global suppression, secure
-standalone management, named-list administration, and a reusable audience-policy
-resolver. The canonical user-meta value remains one of `site_default`, `subscribed`,
-or `unsubscribed`; missing or malformed metadata resolves to `site_default` rather
-than silently opting the user in. Named-list membership is typed as a WordPress user
-or standalone subscriber and is organizational only. Audience policy now expands
-role-provided users and named lists, applies explicit typed inclusion/exclusion,
-normalizes and merges duplicate email identities deterministically, and applies global
-suppression last. Campaign recipient persistence remains a later milestone.
+standalone management, named-list administration, a reusable audience-policy resolver,
+and bounded administrator CSV double-opt-in intake. The canonical user-meta value
+remains one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed
+metadata resolves to `site_default` rather than silently opting the user in. Named-list
+membership is typed as a WordPress user or standalone subscriber and is organizational
+only. Audience policy now expands role-provided users and named lists, applies explicit
+typed inclusion/exclusion, normalizes and merges duplicate email identities
+deterministically, and applies global suppression last. Campaign recipient persistence
+remains a later milestone.
 
 ## 2.1 Canonical naming
 
@@ -317,6 +318,16 @@ suppressed
 ```
 
 `pending` records expire and are cleaned in bounded batches.
+
+Administrator CSV intake is an invitation path, not a migration into subscribed state.
+It requires an explicit operator approval, accepts at most 250 nonblank rows per
+synchronous request, and recognizes `email` plus an optional `name` or `display_name`
+column. Other columns, including any imported status, are ignored. The importer parses
+the complete bounded row set before sending, deduplicates canonical email addresses
+inside the file, and reuses the standalone confirmation-token and cooldown rules. New
+contacts remain `pending`; existing subscribed, unsubscribed, and suppressed contacts
+are never reactivated. A distinct invitation message explains that the recipient is not
+subscribed until they intentionally confirm.
 
 ### 4.4 Registered users and standalone subscribers
 
