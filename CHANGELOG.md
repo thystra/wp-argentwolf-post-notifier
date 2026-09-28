@@ -42,6 +42,10 @@
 - Keep new CSV contacts pending until intentional confirmation, and never reactivate
   existing subscribed, unsubscribed, or suppressed records through import.
 - Use distinct invitation copy that does not claim the recipient requested signup.
+- Add schema 2 with a structured administrative audit-event ledger while keeping
+  frozen schema 1 unchanged.
+- Audit named-list changes and effective suppression set/remove operations using
+  stable entity IDs and keyed email hashes without storing raw email or tokens.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 

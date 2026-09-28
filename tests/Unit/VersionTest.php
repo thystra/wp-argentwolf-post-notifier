@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class VersionTest extends TestCase {
 	public function test_versions(): void {
 		self::assertSame( '0.1.0-alpha.5', Version::PLUGIN );
-		self::assertSame( '1', Version::SCHEMA );
+		self::assertSame( '2', Version::SCHEMA );
 	}
 }
 

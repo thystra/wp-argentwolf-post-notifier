@@ -40,7 +40,9 @@ Alpha.5 also adds administrator-managed named lists with typed WordPress-user an
 standalone-subscriber memberships. List membership never changes subscription or
 suppression state. Administrator CSV intake is bounded to 250 nonblank rows, requires
 explicit approval, ignores imported status, and sends a distinct double-opt-in
-invitation without directly subscribing the address.
+invitation without directly subscribing the address. Alpha.5 also records
+structured list and suppression audit events without storing raw email addresses or
+bearer tokens.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -99,6 +101,8 @@ checking provider health and API compatibility at runtime.
 * Add explicitly approved, 250-row-bounded CSV double-opt-in intake.
 * Ignore imported status and keep new CSV contacts pending until recipient confirmation.
 * Never reactivate subscribed, unsubscribed, or suppressed contacts through CSV intake.
+* Add schema 2 structured audit events for named-list and suppression changes.
+* Keep audit rows free of raw email addresses and bearer tokens.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.

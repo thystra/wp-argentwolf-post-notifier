@@ -244,10 +244,13 @@ finally subject to global suppression. Tranche 5 adds administrator-only, explic
 approved, bounded CSV intake that can create or refresh only pending standalone
 subscribers and sends distinct double-opt-in invitations. Imported status columns are
 ignored, and existing subscribed, unsubscribed, or suppressed contacts are not
-reactivated. Membership remains organizational only and never changes subscription,
-resubscription, verification, preference, or suppression state. Frozen schema 1
-remains unchanged. Missing or malformed registered-user preference metadata uses the
-neutral `site_default` state.
+reactivated. Tranche 6 adds structured list and suppression audit events using the
+first post-freeze migration, schema 2. Audit rows retain stable event/entity IDs,
+actor IDs when authenticated, and keyed suppression email hashes, but never raw
+email addresses or bearer tokens. Membership remains organizational only and never
+changes subscription, resubscription, verification, preference, or suppression state.
+Missing or malformed registered-user preference metadata uses the neutral
+`site_default` state.
 
 - [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
@@ -262,7 +265,7 @@ neutral `site_default` state.
 - [x] Ensure suppression overrides roles, lists, and explicit inclusion.
 - [x] Implement verified resubscribe flow.
 - [x] Implement duplicate-email merge rules.
-- [ ] Record list and suppression audit events without logging sensitive tokens.
+- [x] Record list and suppression audit events without logging sensitive tokens.
 - [ ] Add capabilities for subscriber and list management.
 
 Acceptance criteria:

@@ -40,7 +40,10 @@ metadata resolves to `site_default` rather than silently opting the user in. Nam
 membership is typed as a WordPress user or standalone subscriber and is organizational
 only. Audience policy now expands role-provided users and named lists, applies explicit
 typed inclusion/exclusion, normalizes and merges duplicate email identities
-deterministically, and applies global suppression last. Campaign recipient persistence
+deterministically, and applies global suppression last. Schema 2 adds a structured
+audit-event ledger for list and suppression changes while leaving frozen schema 1
+unchanged. Audit rows store actor/entity identifiers and keyed suppression email
+hashes, never raw email addresses or bearer tokens. Campaign recipient persistence
 remains a later milestone.
 
 ## 2.1 Canonical naming
