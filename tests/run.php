@@ -65,6 +65,7 @@ $companion_installer = file_get_contents( $root . '/bin/install-verification-com
 $package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
 $package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
 $schema_one_source = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
+$schema_two_source = file_get_contents( $root . '/src/Database/Migrations/Schema2.php' );
 $schema_one_digest_path = $root . '/tests/fixtures/schema-1.sha256';
 $schema_one_digest      = is_readable( $schema_one_digest_path )
 	? trim( (string) file_get_contents( $schema_one_digest_path ) )
@@ -198,6 +199,7 @@ $database_files = array(
 	'src/Database/Migration.php',
 	'src/Database/MigrationLock.php',
 	'src/Database/Migrations/Schema1.php',
+	'src/Database/Migrations/Schema2.php',
 	'src/Database/SchemaInspector.php',
 	'src/Database/SchemaMigrator.php',
 	'src/Database/TableNames.php',
@@ -257,7 +259,13 @@ foreach ( $subscriber_files as $subscriber_file ) {
 	);
 }
 $table_names = new TableNames( 'wp_' );
-$assert( 7 === count( $table_names->all() ), 'Schema one must own exactly seven tables.' );
+$assert( '2' === Version::SCHEMA, 'Alpha.5 audit persistence requires schema two.' );
+$assert( 8 === count( $table_names->all() ), 'Current schema must own exactly eight tables.' );
+$assert(
+	7 === substr_count( (string) $schema_one_source, 'CREATE TABLE ' ),
+	'Frozen schema one must continue defining exactly seven tables.'
+);
+$assert( false !== $schema_two_source, 'Schema two migration source must be readable.' );
 foreach ( $table_names->all() as $table_name ) {
 	$assert(
 		str_starts_with( $table_name, 'wp_argentwolf_pn_' ),
@@ -289,6 +297,20 @@ $assert(
 	1 === preg_match( '/^[a-f0-9]{64}$/', $schema_one_digest )
 		&& hash( 'sha256', (string) $schema_one_source ) === $schema_one_digest,
 	'Schema one is frozen upgrade history; create a new numbered migration instead of changing Schema1.'
+);
+$assert(
+	str_contains( (string) $schema_two_source, 'audit_events_sql' )
+		&& str_contains( (string) $schema_two_source, 'new Schema1' )
+		&& str_contains( (string) $schema_two_source, 'email_hash char(64) DEFAULT NULL' )
+		&& ! str_contains( (string) $schema_two_source, 'email_snapshot' )
+		&& ! str_contains( (string) $schema_two_source, 'token_hash' ),
+	'Schema two must add privacy-conscious audit storage without modifying schema one.'
+);
+$assert(
+	is_readable( $root . '/src/Audit/AuditEventType.php' )
+		&& is_readable( $root . '/src/Audit/AuditRepository.php' )
+		&& is_readable( $root . '/src/Audit/AuditService.php' ),
+	'Alpha.5 structured audit service files must exist.'
 );
 $identity = new EmailIdentity( str_repeat( "\x31", 32 ) );
 $assert(

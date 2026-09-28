@@ -95,6 +95,15 @@ final class TableNames {
 	}
 
 	/**
+	 * Administrative audit-event table.
+	 *
+	 * @return string
+	 */
+	public function audit_events(): string {
+		return $this->prefix . 'argentwolf_pn_audit_events';
+	}
+
+	/**
 	 * Return all plugin-owned tables keyed by logical name.
 	 *
 	 * @return array<string,string>
@@ -108,6 +117,7 @@ final class TableNames {
 			'list_members'        => $this->list_members(),
 			'suppressions'        => $this->suppressions(),
 			'clicks'              => $this->clicks(),
+			'audit_events'        => $this->audit_events(),
 		);
 	}
 }

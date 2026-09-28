@@ -7,6 +7,9 @@
 
 namespace ArgentWolf\PostNotifier\Suppression;
 
+use ArgentWolf\PostNotifier\Audit\AuditEventType;
+use ArgentWolf\PostNotifier\Audit\AuditRepository;
+use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -24,15 +27,25 @@ final class SuppressionService {
 	public const SOURCE_SUBSCRIBER_ADMIN  = 'subscriber_admin';
 
 	/**
+	 * Structured audit policy.
+	 *
+	 * @var AuditService
+	 */
+	private AuditService $audit;
+
+	/**
 	 * Construct the suppression policy service.
 	 *
 	 * @param SuppressionRepository $repository Suppression persistence.
 	 * @param EmailIdentity         $identity   Canonical email identity helper.
+	 * @param AuditService|null     $audit      Optional structured audit policy.
 	 */
 	public function __construct(
 		private SuppressionRepository $repository,
-		private EmailIdentity $identity
+		private EmailIdentity $identity,
+		?AuditService $audit = null
 	) {
+		$this->audit = $audit ?? new AuditService( new AuditRepository() );
 	}
 
 	/**
@@ -93,6 +106,13 @@ final class SuppressionService {
 				$source,
 				$current
 			);
+			$this->audit->record_suppression_event(
+				AuditEventType::SuppressionSet,
+				$email_hash,
+				$reason,
+				$source,
+				$current
+			);
 			return;
 		}
 
@@ -103,6 +123,17 @@ final class SuppressionService {
 			$source,
 			$current
 		);
+
+		$row = $this->repository->find_by_hash( $email_hash );
+		if ( ( $row['source'] ?? null ) === $source && ( $row['reason'] ?? null ) === $reason ) {
+			$this->audit->record_suppression_event(
+				AuditEventType::SuppressionSet,
+				$email_hash,
+				$reason,
+				$source,
+				$current
+			);
+		}
 	}
 
 	/**
@@ -113,12 +144,23 @@ final class SuppressionService {
 	 * @return bool True when one suppression was removed.
 	 */
 	public function resubscribe( string $email, string $expected_source ): bool {
-		$email_hash = $this->required_hash( $email );
-
-		return $this->repository->delete_if_source(
+		$email_hash      = $this->required_hash( $email );
+		$expected_source = $this->validated_code( $expected_source );
+		$removed         = $this->repository->delete_if_source(
 			$email_hash,
-			$this->validated_code( $expected_source )
+			$expected_source
 		);
+
+		if ( $removed ) {
+			$this->audit->record_suppression_event(
+				AuditEventType::SuppressionRemoved,
+				$email_hash,
+				null,
+				$expected_source
+			);
+		}
+
+		return $removed;
 	}
 
 	/**

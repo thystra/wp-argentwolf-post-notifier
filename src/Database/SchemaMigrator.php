@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Database;
 
 use ArgentWolf\PostNotifier\Database\Migrations\Schema1;
+use ArgentWolf\PostNotifier\Database\Migrations\Schema2;
 use ArgentWolf\PostNotifier\Version;
 use LogicException;
 use RuntimeException;
@@ -29,6 +30,7 @@ final class SchemaMigrator {
 	 */
 	private const MIGRATIONS = array(
 		1 => Schema1::class,
+		2 => Schema2::class,
 	);
 
 	/**

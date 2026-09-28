@@ -7,6 +7,9 @@
 
 namespace ArgentWolf\PostNotifier\Admin;
 
+use ArgentWolf\PostNotifier\Audit\AuditEventType;
+use ArgentWolf\PostNotifier\Audit\AuditRepository;
+use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
@@ -54,17 +57,27 @@ final class NamedListAdminPage implements Registerable {
 	public const REMOVE_ACTION = 'argentwolf_post_notifier_remove_list_member';
 
 	/**
+	 * Structured audit policy.
+	 *
+	 * @var AuditService
+	 */
+	private AuditService $audit;
+
+	/**
 	 * Construct the named-list administration page.
 	 *
 	 * @param NamedListRepository $repository  Named-list persistence.
 	 * @param EmailIdentity       $identity    Canonical email identity helper.
 	 * @param SuppressionService  $suppression Global suppression policy.
+	 * @param AuditService|null   $audit       Optional structured audit policy.
 	 */
 	public function __construct(
 		private NamedListRepository $repository,
 		private EmailIdentity $identity,
-		private SuppressionService $suppression
+		private SuppressionService $suppression,
+		?AuditService $audit = null
 	) {
+		$this->audit = $audit ?? new AuditService( new AuditRepository() );
 	}
 
 	/**
@@ -150,6 +163,7 @@ final class NamedListAdminPage implements Registerable {
 			$this->redirect_index( 'invalid_list' );
 		}
 
+		$this->audit->record_list_event( AuditEventType::ListCreated, $list_id );
 		$this->redirect_editor( $list_id, 'created' );
 	}
 
@@ -179,6 +193,7 @@ final class NamedListAdminPage implements Registerable {
 			$this->redirect_editor( $list_id, 'invalid_list' );
 		}
 
+		$this->audit->record_list_event( AuditEventType::ListUpdated, $list_id );
 		$this->redirect_editor( $list_id, 'updated' );
 	}
 
@@ -199,6 +214,7 @@ final class NamedListAdminPage implements Registerable {
 		}
 
 		$this->repository->delete( $list_id );
+		$this->audit->record_list_event( AuditEventType::ListDeleted, $list_id );
 		$this->redirect_index( 'deleted' );
 	}
 
@@ -240,6 +256,14 @@ final class NamedListAdminPage implements Registerable {
 			$this->redirect_editor( $list_id, 'invalid_member' );
 		}
 
+		if ( $inserted ) {
+			$this->audit->record_list_event(
+				AuditEventType::ListMemberAdded,
+				$list_id,
+				$type->value,
+				$entity_id
+			);
+		}
 		$this->redirect_editor( $list_id, $inserted ? 'member_added' : 'member_exists' );
 	}
 
@@ -261,6 +285,14 @@ final class NamedListAdminPage implements Registerable {
 		}
 
 		$removed = $this->repository->remove_member( $list_id, $membership_id );
+		if ( $removed ) {
+			$this->audit->record_list_event(
+				AuditEventType::ListMemberRemoved,
+				$list_id,
+				'membership',
+				$membership_id
+			);
+		}
 		$this->redirect_editor( $list_id, $removed ? 'member_removed' : 'member_missing' );
 	}
 

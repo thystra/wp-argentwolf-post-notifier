@@ -16,9 +16,10 @@ That layer accepts role-expanded users, named lists, and explicit typed include/
 contacts, then applies canonical email normalization, deterministic cross-source merge
 rules, eligibility, and final global suppression. Alpha.5 also includes bounded,
 administrator-approved CSV intake that sends double-opt-in invitations and never
-imports a contact directly into `subscribed`. Campaign snapshot persistence remains a
-later milestone. Audit history and dedicated management capabilities remain later
-alpha.5 work.
+imports a contact directly into `subscribed`. Alpha.5 also records structured list
+and suppression audit events in schema 2 without storing raw email addresses or
+bearer tokens. Campaign snapshot persistence remains a later milestone. Dedicated
+management capabilities remain later alpha.5 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

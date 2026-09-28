@@ -19,9 +19,10 @@ final class Version {
 	/**
 	 * Database schema version.
 	 *
-	 * Schema one introduces the initial plugin-owned data tables.
+	 * Schema two adds the privacy-conscious administrative audit-event ledger
+	 * while preserving frozen schema one as immutable upgrade history.
 	 */
-	public const SCHEMA = '1';
+	public const SCHEMA = '2';
 
 	/**
 	 * Prevent construction.

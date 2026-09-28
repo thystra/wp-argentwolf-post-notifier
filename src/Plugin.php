@@ -16,6 +16,8 @@ use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportMailer;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportPage;
 use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
+use ArgentWolf\PostNotifier\Audit\AuditRepository;
+use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -95,6 +97,21 @@ final class Plugin {
 				static fn (): EmailIdentity => new EmailIdentity()
 			);
 			$container->set(
+				AuditRepository::class,
+				static fn (): AuditRepository => new AuditRepository()
+			);
+			$container->set(
+				AuditService::class,
+				static function ( Container $services ): AuditService {
+					$repository = $services->get( AuditRepository::class );
+					if ( ! $repository instanceof AuditRepository ) {
+						throw new LogicException( 'The audit repository is invalid.' );
+					}
+
+					return new AuditService( $repository );
+				}
+			);
+			$container->set(
 				SuppressionRepository::class,
 				static fn (): SuppressionRepository => new SuppressionRepository()
 			);
@@ -103,6 +120,7 @@ final class Plugin {
 				static function ( Container $services ): SuppressionService {
 					$repository = $services->get( SuppressionRepository::class );
 					$identity   = $services->get( EmailIdentity::class );
+					$audit      = $services->get( AuditService::class );
 					if ( ! $repository instanceof SuppressionRepository ) {
 						throw new LogicException(
 							'The suppression repository is invalid.'
@@ -111,8 +129,11 @@ final class Plugin {
 					if ( ! $identity instanceof EmailIdentity ) {
 						throw new LogicException( 'The email identity service is invalid.' );
 					}
+					if ( ! $audit instanceof AuditService ) {
+						throw new LogicException( 'The audit service is invalid.' );
+					}
 
-					return new SuppressionService( $repository, $identity );
+					return new SuppressionService( $repository, $identity, $audit );
 				}
 			);
 			$container->set(
@@ -207,6 +228,7 @@ final class Plugin {
 					$repository  = $services->get( NamedListRepository::class );
 					$identity    = $services->get( EmailIdentity::class );
 					$suppression = $services->get( SuppressionService::class );
+					$audit       = $services->get( AuditService::class );
 					if ( ! $repository instanceof NamedListRepository ) {
 						throw new LogicException(
 							'The named-list repository is invalid.'
@@ -220,11 +242,15 @@ final class Plugin {
 							'The suppression service is invalid.'
 						);
 					}
+					if ( ! $audit instanceof AuditService ) {
+						throw new LogicException( 'The audit service is invalid.' );
+					}
 
 					return new NamedListAdminPage(
 						$repository,
 						$identity,
-						$suppression
+						$suppression,
+						$audit
 					);
 				}
 			);

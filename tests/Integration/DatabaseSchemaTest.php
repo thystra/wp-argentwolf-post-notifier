@@ -18,7 +18,7 @@ use ArgentWolf\PostNotifier\Version;
 use WP_UnitTestCase;
 
 final class DatabaseSchemaTest extends WP_UnitTestCase {
-	public function test_schema_one_tables_and_required_indexes_exist(): void {
+	public function test_current_schema_tables_and_required_indexes_exist(): void {
 		global $wpdb;
 
 		$tables    = TableNames::from_database( $wpdb );
@@ -84,6 +84,17 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 			$tables->clicks(),
 			array( 'PRIMARY', 'campaign_recipient_id', 'clicked_at_gmt' )
 		);
+		$this->assert_indexes(
+			$tables->audit_events(),
+			array(
+				'PRIMARY',
+				'event_type',
+				'actor_user_id',
+				'subject',
+				'email_hash',
+				'created_at_gmt',
+			)
+		);
 
 		$recipient_columns = $inspector->columns( $tables->campaign_recipients() );
 		self::assertSame( 'YES', $recipient_columns['email_snapshot']['Null'] ?? null );
@@ -107,6 +118,43 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 			self::assertTrue( $inspector->table_exists( $table ) );
 		}
 	}
+
+      public function test_schema_one_upgrades_to_schema_two(): void {
+              global $wpdb;
+
+              $table     = TableNames::from_database( $wpdb )->audit_events();
+              $inspector = new SchemaInspector( $wpdb );
+
+	/*
+	 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+	 * TEMPORARY equivalents inside each test transaction. Schema-upgrade
+	 * qualification must exercise the production DDL against permanent tables.
+	 */
+              self::commit_transaction();
+              remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+              remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+
+              try {
+                  $wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		  self::assertFalse( $inspector->table_exists( $table ) );
+		  update_option( SchemaMigrator::SCHEMA_OPTION, '1', false );
+
+		  ( new SchemaMigrator( $wpdb ) )->migrate();
+
+		  self::assertSame(
+		      Version::SCHEMA,
+		      get_option( SchemaMigrator::SCHEMA_OPTION )
+		);
+		self::assertTrue( $inspector->table_exists( $table ) );
+              } finally {
+		  try {
+			( new SchemaMigrator( $wpdb ) )->migrate();
+			self::commit_transaction();
+		  } finally {
+			$this->start_transaction();
+		            }
+	          }
+              }
 
 	public function test_failed_migration_does_not_advance_and_can_retry_after_repair(): void {
 		global $wpdb;
@@ -247,7 +295,7 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 	public function test_newer_database_schema_is_refused(): void {
 		global $wpdb;
 
-		update_option( SchemaMigrator::SCHEMA_OPTION, '2', false );
+		update_option( SchemaMigrator::SCHEMA_OPTION, '3', false );
 
 		try {
 			$this->expectException( \RuntimeException::class );
