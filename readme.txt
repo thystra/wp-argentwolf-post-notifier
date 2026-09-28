@@ -38,7 +38,9 @@ Self-service resubscription can remove only a suppression created by the same so
 so administrator suppression remains authoritative.
 Alpha.5 also adds administrator-managed named lists with typed WordPress-user and
 standalone-subscriber memberships. List membership never changes subscription or
-suppression state.
+suppression state. Administrator CSV intake is bounded to 250 nonblank rows, requires
+explicit approval, ignores imported status, and sends a distinct double-opt-in
+invitation without directly subscribing the address.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -94,6 +96,9 @@ checking provider health and API compatibility at runtime.
 * Block suppressed addresses from public standalone signup and confirmation.
 * Add administrator-managed named lists with typed user and standalone-subscriber membership.
 * Keep list membership from changing subscription, resubscription, or suppression state.
+* Add explicitly approved, 250-row-bounded CSV double-opt-in intake.
+* Ignore imported status and keep new CSV contacts pending until recipient confirmation.
+* Never reactivate subscribed, unsubscribed, or suppressed contacts through CSV intake.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.

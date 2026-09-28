@@ -14,9 +14,11 @@ WordPress profile control, canonical global email suppression, secure standalone
 management, administrator-managed named lists, and a reusable audience-policy layer.
 That layer accepts role-expanded users, named lists, and explicit typed include/exclude
 contacts, then applies canonical email normalization, deterministic cross-source merge
-rules, eligibility, and final global suppression. Campaign snapshot persistence remains
-a later milestone. CSV intake, audit history, and dedicated management capabilities
-remain later alpha.5 work.
+rules, eligibility, and final global suppression. Alpha.5 also includes bounded,
+administrator-approved CSV intake that sends double-opt-in invitations and never
+imports a contact directly into `subscribed`. Campaign snapshot persistence remains a
+later milestone. Audit history and dedicated management capabilities remain later
+alpha.5 work.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

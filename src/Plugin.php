@@ -11,6 +11,9 @@ use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
+use ArgentWolf\PostNotifier\Admin\SubscriberCsvImporter;
+use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportMailer;
+use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportPage;
 use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
@@ -251,6 +254,44 @@ final class Plugin {
 						$repository,
 						$exporter,
 						$suppression
+					);
+				}
+			);
+			$container->set(
+				SubscriberCsvImportPage::class,
+				static function ( Container $services ): SubscriberCsvImportPage {
+					$subscriber_service = $services->get( SubscriberService::class );
+					$identity           = $services->get( EmailIdentity::class );
+					$links              = $services->get( ConfirmationLinkFactory::class );
+					$transport          = $services->get( MailTransport::class );
+					if ( ! $subscriber_service instanceof SubscriberService ) {
+						throw new LogicException( 'The subscriber service is invalid.' );
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+					if ( ! $links instanceof ConfirmationLinkFactory ) {
+						throw new LogicException(
+							'The confirmation link factory is invalid.'
+						);
+					}
+					if ( ! $transport instanceof MailTransport ) {
+						throw new LogicException( 'The mail transport is invalid.' );
+					}
+
+					return new SubscriberCsvImportPage(
+						new SubscriberCsvImporter(
+							$subscriber_service,
+							$identity,
+							$links,
+							new SubscriberCsvImportMailer(
+								$transport,
+								wp_specialchars_decode(
+									get_bloginfo( 'name' ),
+									ENT_QUOTES
+								)
+							)
+						)
 					);
 				}
 			);
@@ -526,6 +567,7 @@ final class Plugin {
 				ConfirmationController::class,
 				ManageSubscriptionController::class,
 				SubscriberAdminPage::class,
+				SubscriberCsvImportPage::class,
 				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,

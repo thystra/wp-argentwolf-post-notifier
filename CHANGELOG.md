@@ -35,6 +35,13 @@
   selection so suppression overrides roles, named lists, and explicit inclusion.
 - Keep `site_default` registered-user preference fail-closed unless the caller
   explicitly supplies the site-default opt-in policy for that resolution.
+- Add administrator-only CSV double-opt-in intake with explicit operator approval and
+  a 250-row synchronous bound.
+- Parse and validate the complete bounded CSV before sending invitations, deduplicate
+  normalized addresses, and ignore imported status columns.
+- Keep new CSV contacts pending until intentional confirmation, and never reactivate
+  existing subscribed, unsubscribed, or suppressed records through import.
+- Use distinct invitation copy that does not claim the recipient requested signup.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
