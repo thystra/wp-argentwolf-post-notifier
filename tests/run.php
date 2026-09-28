@@ -25,6 +25,8 @@ use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\AudienceResolutionRequest;
+use ArgentWolf\PostNotifier\Recipient\AudienceSource;
 use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
@@ -81,6 +83,12 @@ $named_list_admin_page_source = file_get_contents(
 );
 $named_list_repository_source = file_get_contents(
 	$root . '/src/Recipient/NamedListRepository.php'
+);
+$audience_resolver_source = file_get_contents(
+	$root . '/src/Recipient/AudienceResolver.php'
+);
+$audience_request_source = file_get_contents(
+	$root . '/src/Recipient/AudienceResolutionRequest.php'
 );
 $subscriber_admin_repository_source = file_get_contents(
 	$root . '/src/Admin/SubscriberAdminRepository.php'
@@ -210,8 +218,13 @@ $subscriber_files = array(
 	'src/Mail/MailMessage.php',
 	'src/Mail/MailTransport.php',
 	'src/Mail/WpMailTransport.php',
+	'src/Recipient/AudienceResolution.php',
+	'src/Recipient/AudienceResolutionRequest.php',
+	'src/Recipient/AudienceResolver.php',
+	'src/Recipient/AudienceSource.php',
 	'src/Recipient/NamedListMemberType.php',
 	'src/Recipient/NamedListRepository.php',
+	'src/Recipient/ResolvedAudienceRecipient.php',
 	'src/Subscriber/ConfirmationController.php',
 	'src/Subscriber/ConfirmationLinkFactory.php',
 	'src/Subscriber/ConfirmationMailer.php',
@@ -299,6 +312,36 @@ $assert(
 		&& str_contains( $named_list_repository_source, 'INSERT IGNORE INTO %i' )
 		&& str_contains( $named_list_repository_source, 'member_key' ),
 	'Named-list administration must be intentional, typed, and subscription-neutral.'
+);
+$audience_request = new AudienceResolutionRequest(
+	array( 5, 2, 5 ),
+	array( 8, 3, 8 ),
+	array( 11, 11 ),
+	array( 13, 13 ),
+	array( 11 ),
+	array( 13 )
+);
+$assert(
+	array( 2, 5 ) === $audience_request->role_user_ids()
+		&& array( 3, 8 ) === $audience_request->named_list_ids()
+		&& ! $audience_request->site_default_user_subscribed(),
+	'Audience requests must normalize typed inputs and keep site_default fail-closed.'
+);
+$assert(
+	AudienceSource::Role->value === 'role'
+		&& AudienceSource::NamedList->value === 'named_list'
+		&& AudienceSource::Explicit->value === 'explicit',
+	'Audience-source identifiers must remain typed and stable.'
+);
+$assert(
+	false !== $audience_resolver_source
+		&& false !== $audience_request_source
+		&& str_contains( $audience_resolver_source, 'is_suppressed' )
+		&& str_contains( $audience_resolver_source, "'duplicate'" )
+		&& str_contains( $audience_resolver_source, "'excluded'" )
+		&& str_contains( $audience_resolver_source, 'find_for_audience' )
+		&& str_contains( $audience_resolver_source, 'site_default_user_subscribed' ),
+	'Audience policy must apply exclusions, deduplication, eligibility, and suppression.'
 );
 $confirmation_token = ConfirmationToken::generate();
 $assert(

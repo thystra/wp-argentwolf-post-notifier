@@ -20,6 +20,7 @@ use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationController;
@@ -127,6 +128,49 @@ final class Plugin {
 				RegisteredUserPreferenceRepository::class,
 				static fn (): RegisteredUserPreferenceRepository =>
 					new RegisteredUserPreferenceRepository()
+			);
+			$container->set(
+				AudienceResolver::class,
+				static function ( Container $services ): AudienceResolver {
+					$lists       = $services->get( NamedListRepository::class );
+					$preferences = $services->get( RegisteredUserPreferenceRepository::class );
+					$eligibility = $services->get( RegisteredUserEligibility::class );
+					$subscribers = $services->get( SubscriberRepository::class );
+					$suppression = $services->get( SuppressionService::class );
+					$identity    = $services->get( EmailIdentity::class );
+
+					if ( ! $lists instanceof NamedListRepository ) {
+						throw new LogicException( 'The named-list repository is invalid.' );
+					}
+					if ( ! $preferences instanceof RegisteredUserPreferenceRepository ) {
+						throw new LogicException(
+							'The registered-user preference repository is invalid.'
+						);
+					}
+					if ( ! $eligibility instanceof RegisteredUserEligibility ) {
+						throw new LogicException(
+							'The registered-user eligibility policy is invalid.'
+						);
+					}
+					if ( ! $subscribers instanceof SubscriberRepository ) {
+						throw new LogicException( 'The subscriber repository is invalid.' );
+					}
+					if ( ! $suppression instanceof SuppressionService ) {
+						throw new LogicException( 'The suppression service is invalid.' );
+					}
+					if ( ! $identity instanceof EmailIdentity ) {
+						throw new LogicException( 'The email identity service is invalid.' );
+					}
+
+					return new AudienceResolver(
+						$lists,
+						$preferences,
+						$eligibility,
+						$subscribers,
+						$suppression,
+						$identity
+					);
+				}
 			);
 			$container->set(
 				UserNotificationPreferenceProfile::class,
