@@ -287,7 +287,15 @@ when materializing and rechecking campaign recipients.
 
 Target: `0.1.0-beta.1`
 
-- [ ] Register authorized REST-visible post metadata.
+Tranche 1 establishes the server-side editor contract before UI work. It
+registers revision-aware post metadata for send intent, audience configuration,
+content mode, template selection, and CTA override. REST exposure is edit-context
+only, writes require both `edit_post` and `send_post_notifications`, and role/list/
+explicit-contact selections are stored as canonical configuration rather than resolved
+campaign recipients. The tranche also advances the capability layout so sending can
+be delegated independently without granting subscriber or list administration.
+
+- [x] Register authorized REST-visible post metadata.
 - [ ] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
 - [ ] Add send, do-not-send, and site-default intent.
@@ -309,7 +317,7 @@ Acceptance criteria:
 
 - [ ] Editor state survives save, reload, schedule, and scheduled-post edits.
 - [ ] Test and preview actions never create campaigns.
-- [ ] Unauthorized users cannot alter notification metadata.
+- [x] Unauthorized users cannot alter notification metadata.
 - [ ] Pre-publish summary matches saved configuration.
 
 ## Milestone 7 — Scheduled and immediate publication lifecycle

@@ -22,6 +22,11 @@ final class Capabilities {
 	public const MANAGE_LISTS = 'manage_post_notification_lists';
 
 	/**
+	 * Capability for editing per-post notification intent and configuration.
+	 */
+	public const SEND_NOTIFICATIONS = 'send_post_notifications';
+
+	/**
 	 * Stored capability-layout version.
 	 */
 	public const VERSION_OPTION = 'argentwolf_post_notifier_capability_version';
@@ -29,7 +34,7 @@ final class Capabilities {
 	/**
 	 * Current capability-layout version.
 	 */
-	public const VERSION = '1';
+	public const VERSION = '2';
 
 	/**
 	 * Install the current capability layout for the administrator role.
@@ -92,6 +97,7 @@ final class Capabilities {
 		return array(
 			self::MANAGE_SUBSCRIBERS,
 			self::MANAGE_LISTS,
+			self::SEND_NOTIFICATIONS,
 		);
 	}
 
