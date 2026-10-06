@@ -427,8 +427,8 @@ argentwolf_post_notifier_verification_provider
 The provider result is authoritative for registered-user eligibility. Unknown
 is ineligible by default.
 
-The initial adapter requires the canonical public functions released by
-ArgentWolf Email Verification 0.3.4. It detects the companion version from the
+The adapter requires the canonical public functions provided by ArgentWolf Email
+Verification 1.0.2 or later. It detects the companion version from the
 file that defines the public status function and reports distinct health codes
 for a missing API, failed provider health check, unknown version, obsolete API,
 and healthy provider (`missing_api`, `provider_health_failed`, `unknown_version`,
@@ -996,17 +996,21 @@ manage_post_notification_subscribers
 manage_post_notification_lists
 ```
 
-Activation grants administrative capabilities to administrators. Editor
-capabilities are an explicit site decision. Sending does not imply permission
-to view all subscriber data or edit global templates.
+The Alpha.5 capability model grants subscriber/list management capabilities to
+administrators. The capability-layout version is checked during ordinary plugin
+upgrade handling so an already-active installation receives newly introduced grants.
+Deactivation preserves role assignments; uninstall removes plugin-owned capabilities
+from every role. Editor capabilities remain an explicit site decision. Sending does
+not imply permission to view subscriber data or edit global templates.
 
-The subscriber administration screen remains restricted to WordPress administrators
-through `manage_options`. The later capability-mapping milestone will replace that
-temporary bridge with `manage_post_notification_subscribers` without automatically
-granting subscriber access to editors or send-only roles. Its suppression action
-now writes both the canonical global suppression and the standalone row state.
-Self-service resubscription cannot remove an administrator-created suppression;
-operator override and suppression audit history remain later milestones.
+Standalone subscriber administration and CSV intake require
+`manage_post_notification_subscribers`. Named-list administration requires
+`manage_post_notification_lists`. The two capabilities may be delegated independently;
+a list-only role receives a directly accessible Lists menu instead of depending on the
+subscriber-management parent menu. Neither capability is granted automatically to
+editors or send-only roles. Subscriber suppression writes both the canonical global
+suppression and the standalone row state. Self-service resubscription cannot remove an
+administrator-created suppression; operator override remains a separate workflow.
 
 ## 14. Privacy and retention
 

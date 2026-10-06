@@ -18,13 +18,13 @@ use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 use InvalidArgumentException;
 
 /**
- * Administrator-only named-list and typed-membership management.
+ * Capability-gated named-list and typed-membership management.
  */
 final class NamedListAdminPage implements Registerable {
 	/**
-	 * Initial alpha list-management capability.
+	 * Dedicated named-list management capability.
 	 */
-	public const CAPABILITY = 'manage_options';
+	public const CAPABILITY = Capabilities::MANAGE_LISTS;
 
 	/**
 	 * WordPress administration page slug.
@@ -110,18 +110,35 @@ final class NamedListAdminPage implements Registerable {
 	}
 
 	/**
-	 * Register the Lists submenu below the plugin subscriber screen.
+	 * Register list management in an accessible administration menu.
+	 *
+	 * Subscriber managers see Lists below the primary Post Notifier menu. A role
+	 * delegated only list management receives a dedicated top-level Lists entry
+	 * rather than depending on a parent menu it cannot access.
 	 *
 	 * @return void
 	 */
 	public function register_menu(): void {
-		add_submenu_page(
-			SubscriberAdminPage::PAGE_SLUG,
+		if ( current_user_can( SubscriberAdminPage::CAPABILITY ) ) {
+			add_submenu_page(
+				SubscriberAdminPage::PAGE_SLUG,
+				__( 'Notification Lists', 'argentwolf-post-notifier' ),
+				__( 'Lists', 'argentwolf-post-notifier' ),
+				self::CAPABILITY,
+				self::PAGE_SLUG,
+				array( $this, 'render' )
+			);
+			return;
+		}
+
+		add_menu_page(
 			__( 'Notification Lists', 'argentwolf-post-notifier' ),
-			__( 'Lists', 'argentwolf-post-notifier' ),
+			__( 'Post Notifier Lists', 'argentwolf-post-notifier' ),
 			self::CAPABILITY,
 			self::PAGE_SLUG,
-			array( $this, 'render' )
+			array( $this, 'render' ),
+			'dashicons-list-view',
+			58
 		);
 	}
 

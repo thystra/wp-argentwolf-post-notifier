@@ -79,8 +79,9 @@ Acceptance criteria:
 
 Target: `0.1.0-alpha.2`
 
-Companion API `v0.3.4` is released. The notifier adapter uses only the
-canonical public API and deliberately omits a private-meta adapter.
+Companion API `v0.3.4` was established and tagged during development. The
+supported WordPress.org companion floor is now 1.0.2; the notifier adapter uses
+only the canonical public API and deliberately omits a private-meta adapter.
 
 
 ### Companion plugin work
@@ -127,8 +128,8 @@ Repository:
 
 Acceptance criteria:
 
-- [x] The minimum public API release (0.3.4) and current companion release are
-      healthy across the supported WordPress integration matrix.
+- [x] The supported WordPress.org companion floor (1.0.2) is healthy across the
+      supported WordPress integration matrix.
 - [x] Missing, obsolete, malformed, and failing provider states resolve to
       `unknown` and fail closed.
 - [x] Pending and unknown users retain distinct aggregate skip reasons
@@ -233,24 +234,27 @@ where those execution paths exist.
 
 Target: `0.1.0-alpha.5`
 
-Implementation is split into reviewable tranches. Tranche 1 established the
-registered-user preference contract and self-service WordPress profile control.
-Tranche 2 added shared global suppression and secure standalone management.
-Tranche 3 adds administrator-managed named lists with typed WordPress-user and
-standalone-subscriber memberships. Tranche 4 adds the reusable audience-policy layer:
-role-expanded users, named lists, and explicit typed include/exclude contacts are
-normalized, merged deterministically by email, filtered by source eligibility, and
-finally subject to global suppression. Tranche 5 adds administrator-only, explicitly
-approved, bounded CSV intake that can create or refresh only pending standalone
-subscribers and sends distinct double-opt-in invitations. Imported status columns are
-ignored, and existing subscribed, unsubscribed, or suppressed contacts are not
-reactivated. Tranche 6 adds structured list and suppression audit events using the
-first post-freeze migration, schema 2. Audit rows retain stable event/entity IDs,
-actor IDs when authenticated, and keyed suppression email hashes, but never raw
-email addresses or bearer tokens. Membership remains organizational only and never
-changes subscription, resubscription, verification, preference, or suppression state.
-Missing or malformed registered-user preference metadata uses the neutral
-`site_default` state.
+The Alpha.5 implementation is complete and was split into reviewable tranches.
+Tranche 1 established the registered-user preference contract and self-service
+WordPress profile control. Tranche 2 added shared global suppression and secure
+standalone management. Tranche 3 added administrator-managed named lists with typed
+WordPress-user and standalone-subscriber memberships. Tranche 4 added the reusable
+audience-policy layer: role-expanded users, named lists, and explicit typed
+include/exclude contacts are normalized, merged deterministically by email, filtered
+by source eligibility, and finally subject to global suppression. Tranche 5 added
+administrator-only, explicitly approved, bounded CSV intake that can create or refresh
+only pending standalone subscribers and sends distinct double-opt-in invitations.
+Imported status columns are ignored, and existing subscribed, unsubscribed, or
+suppressed contacts are not reactivated. Tranche 6 added structured list and
+suppression audit events using the first post-freeze migration, schema 2. Audit rows
+retain stable event/entity IDs, actor IDs when authenticated, and keyed suppression
+email hashes, but never raw email addresses or bearer tokens. Tranche 7 replaced the
+temporary `manage_options` bridge with dedicated subscriber and list management
+capabilities. Administrators receive both capabilities on activation/upgrade while
+delegated roles may receive either capability independently. Membership remains
+organizational only and never changes subscription, resubscription, verification,
+preference, or suppression state. Missing or malformed registered-user preference
+metadata uses the neutral `site_default` state.
 
 - [x] Add registered-user notification preference:
       `site_default`, `subscribed`, `unsubscribed`.
@@ -266,7 +270,7 @@ Missing or malformed registered-user preference metadata uses the neutral
 - [x] Implement verified resubscribe flow.
 - [x] Implement duplicate-email merge rules.
 - [x] Record list and suppression audit events without logging sensitive tokens.
-- [ ] Add capabilities for subscriber and list management.
+- [x] Add capabilities for subscriber and list management.
 
 Acceptance criteria:
 

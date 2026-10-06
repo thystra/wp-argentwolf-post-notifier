@@ -1,9 +1,9 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-alpha.5 — Unreleased
+## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
 
-- Begin the user-preference, named-list, and suppression milestone without
+- Complete the user-preference, named-list, and suppression milestone without
   changing frozen schema 1.
 - Add typed registered-user notification preferences for `site_default`,
   `subscribed`, and `unsubscribed` using the canonical WordPress user-meta key.
@@ -46,6 +46,12 @@
   frozen schema 1 unchanged.
 - Audit named-list changes and effective suppression set/remove operations using
   stable entity IDs and keyed email hashes without storing raw email or tokens.
+- Replace the temporary `manage_options` administration bridge with dedicated
+  subscriber and named-list capabilities granted to administrators by default.
+- Keep subscriber and list permissions independently delegable, preserve them across
+  deactivation, and remove plugin-owned capabilities on uninstall.
+- Raise the minimum supported ArgentWolf Email Verification companion release to
+  WordPress.org 1.0.2 and retire the pre-directory 0.3.4 development fixture from CI.
 
 ## 0.1.0-alpha.4 — 2026-09-26 development checkpoint
 
@@ -115,14 +121,14 @@
 ## 0.1.0-alpha.2 — 2026-09-15
 
 - Add a typed registered-user verification-provider contract.
-- Integrate with the released ArgentWolf Email Verification 0.3.4 public API.
+- Integrate with the ArgentWolf Email Verification 0.3.4 development public API.
 - Add provider version and health reporting with fail-closed eligibility.
 - Add the alternate-provider filter and an administrator health warning.
 - Add unit and companion-backed WordPress integration tests.
 - Deliberately omit private companion metadata access and mail-success inference.
 - Move repository and issue authority to Forgejo while retaining GitHub only as a mirror.
 - Declare the now-resolvable WordPress.org dependency on ArgentWolf Email Verification.
-- Test the minimum 0.3.4 verification API and current 1.0.2 companion release against
+- Test the development 0.3.4 verification API and current 1.0.2 companion release against
   WordPress 7.0.4 and 7.1.
 - Make package version selection derive from the canonical PHP version constant and
   make packaging failures propagate to callers.

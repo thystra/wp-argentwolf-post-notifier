@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
+use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Version;
@@ -54,6 +55,8 @@ final class UpgradeManager implements Registerable {
 			$migrator = $this->schema_migrator ?? new SchemaMigrator();
 			$migrator->migrate();
 		}
+
+		Capabilities::install();
 
 		if ( Version::PLUGIN !== $installed_plugin ) {
 			update_option(

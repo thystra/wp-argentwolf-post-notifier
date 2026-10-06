@@ -25,7 +25,10 @@ final class SubscriberAdminTest extends WP_UnitTestCase {
 		$service = Plugin::instance()->container()->get( SubscriberAdminPage::class );
 
 		self::assertInstanceOf( SubscriberAdminPage::class, $service );
-		self::assertSame( 'manage_options', SubscriberAdminPage::CAPABILITY );
+		self::assertSame(
+			'manage_post_notification_subscribers',
+			SubscriberAdminPage::CAPABILITY
+		);
 		self::assertNotFalse(
 			has_action( 'admin_menu', array( $service, 'register_menu' ) )
 		);

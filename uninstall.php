@@ -10,6 +10,7 @@
  * @package ArgentWolf\PostNotifier
  */
 
+use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Database\DestructiveUninstaller;
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -17,6 +18,8 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 require_once __DIR__ . '/autoload.php';
+
+Capabilities::uninstall();
 
 if ( ! DestructiveUninstaller::is_enabled() ) {
 	return;

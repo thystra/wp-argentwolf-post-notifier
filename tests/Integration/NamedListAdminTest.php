@@ -29,7 +29,10 @@ final class NamedListAdminTest extends WP_UnitTestCase {
 		$service = Plugin::instance()->container()->get( NamedListAdminPage::class );
 
 		self::assertInstanceOf( NamedListAdminPage::class, $service );
-		self::assertSame( 'manage_options', NamedListAdminPage::CAPABILITY );
+		self::assertSame(
+			'manage_post_notification_lists',
+			NamedListAdminPage::CAPABILITY
+		);
 		self::assertSame( SubscriberAdminPage::PAGE_SLUG, 'argentwolf-post-notifier' );
 		self::assertNotFalse(
 			has_action( 'admin_menu', array( $service, 'register_menu' ) )
