@@ -5,7 +5,7 @@ ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
 verified, unsubscribe-capable email notifications when posts are actually
 published.
 
-The project is now in `0.1.0-alpha.5` development after completing the
+The current tree completes the `0.1.0-alpha.5` development milestone after the
 standalone-subscriber milestone. The verification-provider contract,
 lifecycle/tooling foundation, frozen schema-1 data foundation, public double-opt-in
 subscriber flow, limited pending cleanup, and subscriber administration are present.
@@ -18,8 +18,10 @@ rules, eligibility, and final global suppression. Alpha.5 also includes bounded,
 administrator-approved CSV intake that sends double-opt-in invitations and never
 imports a contact directly into `subscribed`. Alpha.5 also records structured list
 and suppression audit events in schema 2 without storing raw email addresses or
-bearer tokens. Campaign snapshot persistence remains a later milestone. Dedicated
-management capabilities remain later alpha.5 work.
+bearer tokens. Alpha.5 also replaces the temporary `manage_options` bridge with
+dedicated subscriber and list management capabilities; administrators receive both
+while either may be delegated independently. Campaign snapshot persistence remains a
+later milestone.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
@@ -76,7 +78,8 @@ available.
 ArgentWolf Email Verification is now published on WordPress.org under the
 `argentwolf-email-verification` slug. The notifier declares that formal
 `Requires Plugins` dependency while retaining runtime health checks so missing,
-obsolete, or failing verification APIs still fail closed.
+obsolete, or failing verification APIs still fail closed. The minimum supported
+companion release is 1.0.2; earlier releases and development tags are obsolete.
 
 Standalone subscribers are maintained by the notifier and must complete a
 double-opt-in confirmation before they are eligible for post notifications.
@@ -130,8 +133,8 @@ license review, and the full supported-version test matrix.
 
 Forgejo CI uses qualified PHP 8.4 and 8.5 images by immutable digest. The
 integration matrix exercises the maintained WordPress 7.0 patch release and the
-current WordPress 7.1 patch release against the minimum and current qualified
-ArgentWolf Email Verification releases. After source and integration checks pass,
+current WordPress 7.1 patch release against the qualified ArgentWolf Email
+Verification 1.0.2 release. After source and integration checks pass,
 CI builds one deterministic installable ZIP, installs that exact ZIP into a
 disposable WordPress site with the qualified verification companion, verifies
 the installed tree against the package bytes, and runs pinned Plugin Check 2.1.0

@@ -12,16 +12,13 @@ use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 
 /**
- * Administrator-only standalone subscriber list, suppression, and CSV export.
+ * Capability-gated standalone subscriber list, suppression, and CSV export.
  */
 final class SubscriberAdminPage implements Registerable {
 	/**
-	 * Initial alpha administration capability.
-	 *
-	 * A dedicated subscriber-management capability is introduced by a later
-	 * capability-mapping milestone. Alpha.4 remains administrator-only.
+	 * Dedicated subscriber-management capability.
 	 */
-	public const CAPABILITY = 'manage_options';
+	public const CAPABILITY = Capabilities::MANAGE_SUBSCRIBERS;
 
 	/**
 	 * WordPress administration page slug.
@@ -499,7 +496,7 @@ final class SubscriberAdminPage implements Registerable {
 	}
 
 	/**
-	 * Require alpha.4's administrator-only management capability.
+	 * Require the subscriber-management capability.
 	 *
 	 * @return void
 	 */

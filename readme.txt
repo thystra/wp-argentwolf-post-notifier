@@ -17,9 +17,8 @@ ArgentWolf Post Notifier is currently an alpha development build.
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
 integration, deterministic packaging, and frozen initial database schema.
-Registered-user verification supports the public API introduced in ArgentWolf
-Email Verification 0.3.4 and is tested against the current 1.0.2 release; it
-fails closed when no authoritative provider is healthy. Alpha.4 begins the
+Registered-user verification requires ArgentWolf Email Verification 1.0.2 or later
+and fails closed when no authoritative provider is healthy. Alpha.4 begins the
 standalone-subscriber workflow with secure pending records, hashed confirmation
 tokens, expiry, resend cooldown, generic signup responses, keyed local rate limits,
 and confirmation-message submission through a transport abstraction. Confirmation
@@ -42,7 +41,9 @@ suppression state. Administrator CSV intake is bounded to 250 nonblank rows, req
 explicit approval, ignores imported status, and sends a distinct double-opt-in
 invitation without directly subscribing the address. Alpha.5 also records
 structured list and suppression audit events without storing raw email addresses or
-bearer tokens.
+bearer tokens. Alpha.5 uses dedicated subscriber and list management capabilities
+instead of `manage_options`; administrators receive both by default and sites may
+delegate either capability independently.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -81,8 +82,8 @@ publication, never merely because a future publication time was selected.
 = Is ArgentWolf Email Verification required? =
 
 Yes. It is the authoritative provider for registered-user verification and is
-now available from WordPress.org. This plugin declares the dependency while still
-checking provider health and API compatibility at runtime.
+available from WordPress.org. This plugin requires version 1.0.2 or later, declares
+the dependency, and still checks provider health and API compatibility at runtime.
 
 == Changelog ==
 
@@ -103,6 +104,7 @@ checking provider health and API compatibility at runtime.
 * Never reactivate subscribed, unsubscribed, or suppressed contacts through CSV intake.
 * Add schema 2 structured audit events for named-list and suppression changes.
 * Keep audit rows free of raw email addresses and bearer tokens.
+* Require ArgentWolf Email Verification 1.0.2 or later for registered-user verification.
 
 = 0.1.0-alpha.4 =
 * Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.
@@ -125,7 +127,7 @@ checking provider health and API compatibility at runtime.
 
 = 0.1.0-alpha.2 =
 * Add the registered-user verification-provider contract and typed statuses.
-* Integrate with the released ArgentWolf Email Verification 0.3.4 public API.
+* Integrate with the ArgentWolf Email Verification 0.3.4 development public API.
 * Add provider health/version reporting, fail-closed eligibility, and an alternate-provider filter.
 * Add an administrator warning and companion-backed integration tests.
 

@@ -12,7 +12,7 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * Administrator-only bounded CSV double-opt-in intake page.
+ * Subscriber-management capability-gated CSV double-opt-in intake page.
  */
 final class SubscriberCsvImportPage implements Registerable {
 	/**

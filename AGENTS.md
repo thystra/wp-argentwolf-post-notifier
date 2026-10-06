@@ -27,7 +27,7 @@ in this file take precedence for this project.
   and supported PHP branches
 - Companion project:
   `https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification`
-- Minimum companion public API version: ArgentWolf Email Verification 0.3.4
+- Minimum supported companion release: ArgentWolf Email Verification 1.0.2
 - Current qualified companion release: ArgentWolf Email Verification 1.0.2
 - Formal WordPress.org dependency slug: `argentwolf-email-verification`
 - Registered-user verification must fail closed when no healthy authoritative
@@ -369,8 +369,8 @@ Do not claim success until command output confirms it.
 Forgejo CI should use the qualified shared PHP images by immutable digest rather
 than provisioning PHP dynamically. For the current PHP support range, exercise
 PHP 8.4 and 8.5 source checks, the maintained WordPress 7.0 patch release and
-current WordPress 7.1 patch release, and the minimum/current verification
-companion releases. The exact-package lane may install pinned WP-CLI inside the
+current WordPress 7.1 patch release, and the qualified ArgentWolf Email
+Verification release. The exact-package lane may install pinned WP-CLI inside the
 shared PHP image when runtime WordPress setup is required.
 
 ## Commit and release workflow

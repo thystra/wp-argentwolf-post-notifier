@@ -72,6 +72,7 @@ $schema_one_digest      = is_readable( $schema_one_digest_path )
 	: '';
 $activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
 $uninstall_source = file_get_contents( $root . '/uninstall.php' );
+$capabilities_source = file_get_contents( $root . '/src/Admin/Capabilities.php' );
 $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
 $pending_cleanup_source = file_get_contents(
 	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
@@ -212,6 +213,7 @@ foreach ( $database_files as $database_file ) {
 	);
 }
 $subscriber_files = array(
+	'src/Admin/Capabilities.php',
 	'src/Admin/NamedListAdminPage.php',
 	'src/Admin/SubscriberAdminPage.php',
 	'src/Admin/SubscriberAdminRepository.php',
@@ -498,13 +500,32 @@ $assert(
 	'Pending subscriber cleanup must use a daily limited schedule and clear it on deactivation.'
 );
 $assert(
-	str_contains( (string) $subscriber_admin_page_source, "CAPABILITY = 'manage_options'" )
-		&& str_contains( (string) $subscriber_admin_page_source, "add_action( 'admin_menu'" )
+	false !== $capabilities_source
+		&& str_contains(
+			$capabilities_source,
+			"MANAGE_SUBSCRIBERS = 'manage_post_notification_subscribers'"
+		)
+		&& str_contains(
+			$capabilities_source,
+			"MANAGE_LISTS = 'manage_post_notification_lists'"
+		)
+		&& str_contains( (string) $activator_source, 'Capabilities::install( true );' )
+		&& str_contains( (string) $uninstall_source, 'Capabilities::uninstall();' )
+		&& str_contains(
+			(string) $subscriber_admin_page_source,
+			'Capabilities::MANAGE_SUBSCRIBERS'
+		)
+		&& str_contains( (string) $named_list_admin_page_source, 'Capabilities::MANAGE_LISTS' )
+		&& str_contains(
+			(string) $named_list_admin_page_source,
+			'current_user_can( SubscriberAdminPage::CAPABILITY )'
+		)
+		&& str_contains( (string) $named_list_admin_page_source, 'add_menu_page(' )
 		&& str_contains( (string) $subscriber_admin_page_source, 'check_admin_referer' )
 		&& str_contains( (string) $subscriber_admin_page_source, 'wp_safe_redirect' )
 		&& str_contains( (string) $subscriber_admin_page_source, 'SOURCE_SUBSCRIBER_ADMIN' )
 		&& str_contains( (string) $subscriber_admin_repository_source, 'email_for_id' ),
-	'Subscriber administration must be authorized and create canonical global suppression.'
+	'Dedicated subscriber/list capabilities must gate administration and preserve suppression policy.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )
@@ -689,16 +710,17 @@ $assert(
 	'WordPress integration CI must cover the maintained minimum branch and current stable release.'
 );
 $assert(
-	str_contains( (string) $workflow, "- '0.3.4'" )
-		&& str_contains( (string) $workflow, "- '1.0.2'" ),
-	'WordPress integration CI must cover the minimum and current companion releases.'
+	str_contains( (string) $workflow, "VERIFICATION_VERSION: '1.0.2'" )
+		&& ! str_contains( (string) $workflow, "- '0.3.4'" )
+		&& ! str_contains( (string) $workflow, 'matrix.verification' ),
+	'WordPress integration CI must qualify only the supported 1.0.2 companion release.'
 );
 $assert(
 	str_contains(
 		(string) $workflow,
-		'ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION: ${{ matrix.verification }}'
+		"ARGENTWOLF_EMAIL_VERIFICATION_EXPECTED_VERSION: '1.0.2'"
 	),
-	'WordPress integration CI must pass the selected companion version to integration tests.'
+	'WordPress integration CI must pass the supported companion version to integration tests.'
 );
 $assert(
 	str_contains( (string) $workflow, "PLUGIN_CHECK_VERSION: '2.1.0'" )
@@ -740,6 +762,11 @@ $assert(
 		'https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-email-verification'
 	),
 	'Companion integration fixtures must use the authoritative Forgejo project.'
+);
+$assert(
+	str_contains( (string) $companion_installer, "supported_version='1.0.2'" )
+		&& ! str_contains( (string) $companion_installer, '0.3.4' ),
+	'Companion integration fixture must target only the supported 1.0.2 release.'
 );
 $assert(
 	! str_contains(
@@ -860,14 +887,18 @@ foreach ( $verification_files as $verification_file ) {
 		sprintf( 'Verification contract file must exist: %s.', $verification_file )
 	);
 }
+$assert(
+	'1.0.2' === ArgentWolfEmailVerificationProvider::MINIMUM_VERSION,
+	'ArgentWolf Email Verification 1.0.2 must be the minimum supported companion release.'
+);
 $provider = new ArgentWolfEmailVerificationProvider(
 	static fn ( int $user_id ): string => 10 === $user_id
 		? 'verified'
 		: 'pending',
 	static fn (): bool => true,
-	static fn (): string => '0.3.4'
+	static fn (): string => '1.0.2'
 );
-$assert( $provider->health()->is_healthy(), 'Released companion contract must be healthy.' );
+$assert( $provider->health()->is_healthy(), 'Supported companion contract must be healthy.' );
 $policy = new RegisteredUserEligibility( $provider );
 $assert( $policy->is_eligible( 10 ), 'Verified users must be eligible.' );
 $assert( ! $policy->is_eligible( 11 ), 'Pending users must be ineligible.' );

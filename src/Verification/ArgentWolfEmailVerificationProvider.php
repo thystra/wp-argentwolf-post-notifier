@@ -16,9 +16,9 @@ use Throwable;
  */
 final class ArgentWolfEmailVerificationProvider implements VerificationProvider {
 	/**
-	 * Minimum released companion API version.
+	 * Minimum supported companion release.
 	 */
-	public const MINIMUM_VERSION = '0.3.4';
+	public const MINIMUM_VERSION = '1.0.2';
 
 	/**
 	 * Canonical companion status function.
@@ -138,7 +138,10 @@ final class ArgentWolfEmailVerificationProvider implements VerificationProvider 
 				false,
 				null,
 				'missing_api',
-				'ArgentWolf Email Verification 0.3.4 or later is not active.'
+				sprintf(
+					'ArgentWolf Email Verification %s or later is not active.',
+					self::MINIMUM_VERSION
+				)
 			);
 		}
 
@@ -175,7 +178,10 @@ final class ArgentWolfEmailVerificationProvider implements VerificationProvider 
 				false,
 				$version,
 				'obsolete_api',
-				'ArgentWolf Email Verification must be upgraded to version 0.3.4 or later.'
+				sprintf(
+					'ArgentWolf Email Verification must be upgraded to version %s or later.',
+					self::MINIMUM_VERSION
+				)
 			);
 		}
 

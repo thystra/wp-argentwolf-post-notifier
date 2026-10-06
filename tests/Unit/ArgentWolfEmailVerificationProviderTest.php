@@ -13,13 +13,17 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class ArgentWolfEmailVerificationProviderTest extends TestCase {
+	public function test_minimum_supported_companion_release_is_1_0_2(): void {
+		self::assertSame( '1.0.2', ArgentWolfEmailVerificationProvider::MINIMUM_VERSION );
+	}
+
 	public function test_healthy_provider_maps_statuses(): void {
 		$provider = new ArgentWolfEmailVerificationProvider(
 			static fn ( int $user_id ): string => 10 === $user_id
 				? 'verified'
 				: 'pending',
 			static fn (): bool => true,
-			static fn (): string => '0.3.4'
+			static fn (): string => '1.0.2'
 		);
 
 		self::assertTrue( $provider->health()->is_healthy() );
@@ -65,7 +69,7 @@ final class ArgentWolfEmailVerificationProviderTest extends TestCase {
 		$provider = new ArgentWolfEmailVerificationProvider(
 			static fn (): string => 'verified',
 			static fn (): bool => true,
-			static fn (): string => '0.3.3'
+			static fn (): string => '1.0.1'
 		);
 
 		self::assertSame( 'obsolete_api', $provider->health()->code() );
@@ -81,7 +85,7 @@ final class ArgentWolfEmailVerificationProviderTest extends TestCase {
 			static function (): never {
 				throw new RuntimeException( 'Availability failure.' );
 			},
-			static fn (): string => '0.3.4'
+			static fn (): string => '1.0.2'
 		);
 
 		self::assertFalse( $provider->is_available() );
@@ -116,7 +120,7 @@ final class ArgentWolfEmailVerificationProviderTest extends TestCase {
 				throw new RuntimeException( 'Provider failure.' );
 			},
 			static fn (): bool => true,
-			static fn (): string => '0.3.4'
+			static fn (): string => '1.0.2'
 		);
 
 		self::assertSame(
