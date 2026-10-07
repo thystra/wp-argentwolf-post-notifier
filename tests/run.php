@@ -78,6 +78,10 @@ $capabilities_source = file_get_contents( $root . '/src/Admin/Capabilities.php' 
 $post_notification_meta_source = file_get_contents(
 	$root . '/src/Editor/PostNotificationMeta.php'
 );
+$editor_assets_source = file_get_contents( $root . '/src/Editor/EditorAssets.php' );
+$post_editor_runtime_source = file_get_contents(
+	$root . '/assets/runtime/post-editor.js'
+);
 $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
 $pending_cleanup_source = file_get_contents(
 	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
@@ -559,6 +563,21 @@ $assert(
 		&& array( 'site_default', 'send', 'do_not_send' ) === SendIntent::values()
 		&& array( 'site_default', 'excerpt', 'full' ) === ContentMode::values(),
 	'Beta.1 post metadata must be private in REST, revision-aware, and send-capability gated.'
+);
+$assert(
+	false !== $editor_assets_source
+		&& false !== $post_editor_runtime_source
+		&& str_contains( $editor_assets_source, "enqueue_block_editor_assets" )
+		&& str_contains( $editor_assets_source, 'Capabilities::SEND_NOTIFICATIONS' )
+		&& str_contains( $editor_assets_source, 'assets/runtime/post-editor.js' )
+		&& str_contains( $post_editor_runtime_source, 'PluginSidebar' )
+		&& str_contains( $post_editor_runtime_source, 'editPost' )
+		&& ! str_contains( $post_editor_runtime_source, '_argentwolf_post_notifier_' )
+		&& str_contains(
+			(string) $package_manifest_script,
+			'argentwolf-post-notifier/assets/runtime/post-editor.js'
+		),
+	'Beta.1 editor sidebar must be capability-gated, bind through core editor state, and ship in the package.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )

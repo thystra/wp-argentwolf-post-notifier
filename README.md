@@ -13,8 +13,10 @@ events, and reusable audience resolver are present. Beta.1 begins the editor wor
 with a revision-aware REST post-meta contract for send intent, audience configuration,
 content mode, template selection, and CTA override. Per-post notification writes
 require both permission to edit the target post and the independently delegable
-`send_post_notifications` capability. Campaign creation and persistence remain later
-milestones.
+`send_post_notifications` capability. Beta.1 tranche 2 adds the first
+post-editor sidebar for send intent, content mode, CTA override, and a read-only saved
+audience summary; broader audience controls and pre-publish confirmation remain later
+Beta.1 work. Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
