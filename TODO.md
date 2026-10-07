@@ -327,6 +327,13 @@ notice. Audience-resolver construction is deferred until estimate execution so p
 filters registered by later-loading plugins are available before verification policy is
 resolved.
 
+Tranche 7 adds a bounded editor-visible template catalog and selector without introducing
+template persistence or rendering ahead of Milestone 8. Template ID `0` remains the
+site-default sentinel; custom choices use positive integer IDs supplied through the
+`argentwolf_post_notifier_editor_template_choices` filter. A saved nonzero template ID that
+is no longer available remains intact in post metadata and produces an invalid-template
+warning rather than being silently replaced.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
@@ -336,13 +343,13 @@ resolved.
 - [x] Add individual user/subscriber include and exclude selectors.
 - [x] Add resolved audience estimate.
 - [x] Add content-mode selector.
-- [ ] Add template selector.
+- [x] Add template selector.
 - [x] Add call-to-action override.
 - [ ] Add preview-email action.
 - [ ] Add send-test-email action.
 - [x] Add missing-verification-provider warning.
 - [x] Add empty-audience warning.
-- [ ] Add invalid-template warning.
+- [x] Add invalid-template warning.
 - [ ] Add classic editor fallback or explicitly document that it is unsupported.
 - [ ] Ensure autosaves and revisions do not alter campaign state.
 

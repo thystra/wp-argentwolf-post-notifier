@@ -25,6 +25,7 @@ use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
 use ArgentWolf\PostNotifier\Editor\EditorAudienceEstimate;
 use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
+use ArgentWolf\PostNotifier\Editor\EditorTemplateCatalog;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
@@ -543,15 +544,24 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EditorTemplateCatalog::class,
+				static fn (): EditorTemplateCatalog => new EditorTemplateCatalog()
+			);
+			$container->set(
 				EditorAssets::class,
 				static function ( Container $services ): EditorAssets {
-					$lists = $services->get( NamedListRepository::class );
+					$lists     = $services->get( NamedListRepository::class );
+					$templates = $services->get( EditorTemplateCatalog::class );
 					if ( ! $lists instanceof NamedListRepository ) {
 						throw new LogicException( 'The named-list repository is invalid.' );
+					}
+					if ( ! $templates instanceof EditorTemplateCatalog ) {
+						throw new LogicException( 'The editor template catalog is invalid.' );
 					}
 
 					return new EditorAssets(
 						$lists,
+						$templates,
 						static fn (): object => $services->get( VerificationProvider::class )
 					);
 				}

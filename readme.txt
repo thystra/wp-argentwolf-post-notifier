@@ -52,8 +52,10 @@ resolve the current unsaved audience configuration to aggregate eligible and ski
 without returning recipient identities; registered users with the neutral `site_default`
 preference remain fail-closed until a site policy defines that default. The sidebar warns
 when registered-user verification is unavailable or unhealthy and when an explicit estimate
-resolves to zero eligible recipients. Template selection, previews, invalid-template
-validation, and pre-publish confirmation remain under development.
+resolves to zero eligible recipients. The editor also exposes the saved template ID through
+a bounded catalog, preserves unavailable custom selections, and warns when the selected
+template is no longer available. Template rendering/previews, test sends, and pre-publish
+confirmation remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -109,6 +111,8 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Warn send-authorized editors when registered-user verification is unavailable or unhealthy.
 * Warn when an explicit resolved audience estimate contains zero eligible recipients.
 * Defer provider-dependent editor resolution until use so later-loading provider filters apply.
+* Add a bounded template selector with Site default as ID `0`.
+* Preserve and warn on unavailable saved custom template IDs instead of silently replacing them.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =

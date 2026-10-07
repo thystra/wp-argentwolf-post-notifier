@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Tests\Integration;
 use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
 use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
+use ArgentWolf\PostNotifier\Editor\EditorTemplateCatalog;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
@@ -36,6 +37,10 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		parent::set_up();
 
 		Capabilities::install( true );
+		add_filter(
+			EditorTemplateCatalog::FILTER,
+			array( $this, 'provide_template_choices' )
+		);
 		$this->administrator_id = self::factory()->user->create(
 			array( 'role' => 'administrator' )
 		);
@@ -50,10 +55,29 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function tear_down(): void {
+		remove_filter(
+			EditorTemplateCatalog::FILTER,
+			array( $this, 'provide_template_choices' )
+		);
 		wp_dequeue_script( EditorAssets::SCRIPT_HANDLE );
 		wp_set_current_user( 0 );
 		set_current_screen( 'front' );
 		parent::tear_down();
+	}
+
+	/**
+	 * Supply one editor-visible custom template choice.
+	 *
+	 * @param array<int,array{id:int,label:string}> $choices Existing choices.
+	 * @return array<int,array{id:int,label:string}>
+	 */
+	public function provide_template_choices( array $choices ): array {
+		$choices[] = array(
+			'id'    => 17,
+			'label' => 'Editorial standard',
+		);
+
+		return $choices;
 	}
 
 	/**
@@ -108,6 +132,7 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		self::assertStringContainsString( PostNotificationMeta::SEND_INTENT_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::AUDIENCE_CONFIG_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CONTENT_MODE_KEY, $inline );
+		self::assertStringContainsString( PostNotificationMeta::TEMPLATE_ID_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CTA_TEXT_KEY, $inline );
 		self::assertStringContainsString(
 			str_replace( '/', '\/', EditorContactLookup::ROUTE ),
@@ -115,6 +140,8 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		);
 		self::assertStringContainsString( 'Editorial digest', $inline );
 		self::assertStringContainsString( '"value":"administrator"', $inline );
+		self::assertStringContainsString( 'Editorial standard', $inline );
+		self::assertStringContainsString( '"value":17', $inline );
 		self::assertStringContainsString(
 			'"verification":{"healthy":true}',
 			$inline
@@ -129,11 +156,15 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_unhealthy_verification_exposes_only_boolean_editor_flag(): void {
-		$lists = Plugin::instance()->container()->get( NamedListRepository::class );
+		$container = Plugin::instance()->container();
+		$lists     = $container->get( NamedListRepository::class );
+		$templates = $container->get( EditorTemplateCatalog::class );
 		self::assertInstanceOf( NamedListRepository::class, $lists );
+		self::assertInstanceOf( EditorTemplateCatalog::class, $templates );
 
 		$service = new EditorAssets(
 			$lists,
+			$templates,
 			static fn (): object => new UnavailableVerificationProvider(
 				'test_unhealthy',
 				'Provider diagnostic that must stay out of sender bootstrap.'

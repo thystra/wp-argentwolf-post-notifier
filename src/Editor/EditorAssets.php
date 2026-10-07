@@ -32,11 +32,13 @@ final class EditorAssets implements Registerable {
 	/**
 	 * Construct the editor asset coordinator.
 	 *
-	 * @param NamedListRepository $named_lists          Named-list read repository.
-	 * @param Closure             $verification_provider Deferred verification-provider resolver.
+	 * @param NamedListRepository   $named_lists           Named-list read repository.
+	 * @param EditorTemplateCatalog $templates             Editor-visible template catalog.
+	 * @param Closure               $verification_provider Deferred verification-provider resolver.
 	 */
 	public function __construct(
 		private NamedListRepository $named_lists,
+		private EditorTemplateCatalog $templates,
 		private Closure $verification_provider
 	) {
 	}
@@ -129,6 +131,7 @@ final class EditorAssets implements Registerable {
 				'sendIntent'     => PostNotificationMeta::SEND_INTENT_KEY,
 				'audienceConfig' => PostNotificationMeta::AUDIENCE_CONFIG_KEY,
 				'contentMode'    => PostNotificationMeta::CONTENT_MODE_KEY,
+				'templateId'     => PostNotificationMeta::TEMPLATE_ID_KEY,
 				'ctaText'        => PostNotificationMeta::CTA_TEXT_KEY,
 			),
 			'values'        => array(
@@ -147,6 +150,7 @@ final class EditorAssets implements Registerable {
 				'roles' => $this->role_choices(),
 				'lists' => $this->named_list_choices(),
 			),
+			'templates'     => $this->templates->choices(),
 			'verification'  => array(
 				'healthy' => $this->verification_healthy(),
 			),
