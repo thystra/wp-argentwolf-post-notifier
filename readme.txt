@@ -54,8 +54,10 @@ preference remain fail-closed until a site policy defines that default. The side
 when registered-user verification is unavailable or unhealthy and when an explicit estimate
 resolves to zero eligible recipients. The editor also exposes the saved template ID through
 a bounded catalog, preserves unavailable custom selections, and warns when the selected
-template is no longer available. Template rendering/previews, test sends, and pre-publish
-confirmation remain under development.
+template is no longer available. A native pre-publish panel summarizes the current
+notification metadata and warning state without resolving recipients, rendering email, or
+creating campaign state. Template rendering/previews and test sends remain under
+development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -113,6 +115,7 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Defer provider-dependent editor resolution until use so later-loading provider filters apply.
 * Add a bounded template selector with Site default as ID `0`.
 * Preserve and warn on unavailable saved custom template IDs instead of silently replacing them.
+* Add a native pre-publish notification summary that does not create campaign state.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =

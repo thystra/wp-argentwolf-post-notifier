@@ -334,9 +334,16 @@ site-default sentinel; custom choices use positive integer IDs supplied through 
 is no longer available remains intact in post metadata and produces an invalid-template
 warning rather than being silently replaced.
 
+Tranche 8 adds a native block-editor pre-publish confirmation panel. The panel summarizes
+the current notification intent, privacy-safe audience selections, content mode, template,
+and CTA override directly from the same edited post metadata used by the persistent sidebar.
+It repeats provider-health and invalid-template warnings where publication is confirmed,
+but does not resolve recipients automatically, render email, submit mail, or create campaign
+state.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
-- [ ] Add native pre-publish confirmation panel.
+- [x] Add native pre-publish confirmation panel.
 - [x] Add send, do-not-send, and site-default intent.
 - [x] Add role selector.
 - [x] Add named-list selector.

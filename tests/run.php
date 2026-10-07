@@ -602,6 +602,13 @@ $assert(
 		&& str_contains( $editor_audience_estimate_source, "'eligible' => count" )
 		&& str_contains( $audience_request_builder_source, "'role__in'" )
 		&& str_contains( $post_editor_runtime_source, 'PluginSidebar' )
+		&& str_contains( $post_editor_runtime_source, 'PluginPrePublishPanel' )
+		&& str_contains( $post_editor_runtime_source, 'Post notification summary' )
+		&& str_contains(
+			$post_editor_runtime_source,
+			'This confirmation does not create a campaign or send email.'
+		)
+		&& str_contains( $post_editor_runtime_source, 'render: PostNotificationPlugin' )
 		&& str_contains( $post_editor_runtime_source, 'CheckboxControl' )
 		&& str_contains( $post_editor_runtime_source, 'editPost' )
 		&& str_contains( $post_editor_runtime_source, "'role_slugs'" )

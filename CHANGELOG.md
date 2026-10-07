@@ -33,6 +33,8 @@
   default and deferring actual template persistence/rendering to the later template milestone.
 - Preserve unavailable saved custom template IDs and show an invalid-template warning
   instead of silently replacing editorial configuration.
+- Add a native pre-publish confirmation panel that summarizes the current notification
+  metadata and warning state without resolving recipients or creating campaign state.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
