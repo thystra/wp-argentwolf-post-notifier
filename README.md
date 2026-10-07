@@ -13,12 +13,16 @@ events, and reusable audience resolver are present. Beta.1 begins the editor wor
 with a revision-aware REST post-meta contract for send intent, audience configuration,
 content mode, template selection, and CTA override. Per-post notification writes
 require both permission to edit the target post and the independently delegable
-`send_post_notifications` capability. Beta.1 tranches 2 through 4 add the
+`send_post_notifications` capability. Beta.1 tranches 2 through 5 add the
 post-editor sidebar, role and named-list selectors, and individual WordPress-user or
 subscribed-standalone-subscriber include/exclude controls. Individual contacts are
 found only by exact email through an authenticated POST lookup that returns masked
-addresses and does not provide a browsable contact directory. Resolved audience
-estimates, templates, previews, and pre-publish confirmation remain later Beta.1 work.
+addresses and does not provide a browsable contact directory. The editor can explicitly
+resolve the current unsaved audience configuration to aggregate eligible and skip counts
+through the same reusable audience policy used by later campaign work; no resolved
+recipient identities are returned, and neutral `site_default` registered-user preferences
+remain fail-closed until a site policy defines that default. Templates, previews, warnings,
+and pre-publish confirmation remain later Beta.1 work.
 Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.

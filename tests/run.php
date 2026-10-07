@@ -82,6 +82,12 @@ $editor_assets_source = file_get_contents( $root . '/src/Editor/EditorAssets.php
 $editor_contact_lookup_source = file_get_contents(
 	$root . '/src/Editor/EditorContactLookup.php'
 );
+$editor_audience_estimate_source = file_get_contents(
+	$root . '/src/Editor/EditorAudienceEstimate.php'
+);
+$audience_request_builder_source = file_get_contents(
+	$root . '/src/Recipient/AudienceRequestBuilder.php'
+);
 $post_editor_runtime_source = file_get_contents(
 	$root . '/assets/runtime/post-editor.js'
 );
@@ -570,6 +576,8 @@ $assert(
 $assert(
 	false !== $editor_assets_source
 		&& false !== $editor_contact_lookup_source
+		&& false !== $editor_audience_estimate_source
+		&& false !== $audience_request_builder_source
 		&& false !== $post_editor_runtime_source
 		&& str_contains( $editor_assets_source, "enqueue_block_editor_assets" )
 		&& str_contains( $editor_assets_source, 'Capabilities::SEND_NOTIFICATIONS' )
@@ -578,6 +586,10 @@ $assert(
 		&& str_contains( $editor_assets_source, '$this->role_choices()' )
 		&& str_contains( $editor_assets_source, '$this->named_list_choices()' )
 		&& str_contains( $editor_contact_lookup_source, 'WP_REST_Server::CREATABLE' )
+		&& str_contains( $editor_audience_estimate_source, 'WP_REST_Server::CREATABLE' )
+		&& str_contains( $editor_audience_estimate_source, 'AudienceResolver' )
+		&& str_contains( $editor_audience_estimate_source, "'eligible' => count" )
+		&& str_contains( $audience_request_builder_source, "'role__in'" )
 		&& str_contains( $post_editor_runtime_source, 'PluginSidebar' )
 		&& str_contains( $post_editor_runtime_source, 'CheckboxControl' )
 		&& str_contains( $post_editor_runtime_source, 'editPost' )
@@ -585,6 +597,8 @@ $assert(
 		&& str_contains( $post_editor_runtime_source, "'named_list_ids'" )
 		&& str_contains( $post_editor_runtime_source, "method: 'POST'" )
 		&& str_contains( $post_editor_runtime_source, 'data: { email: candidate }' )
+		&& str_contains( $post_editor_runtime_source, 'estimateSettings.path' )
+		&& str_contains( $post_editor_runtime_source, 'Eligible recipients: %d' )
 		&& ! str_contains( $post_editor_runtime_source, '&email=' )
 		&& ! str_contains( $post_editor_runtime_source, '&include=' )
 		&& ! str_contains( $post_editor_runtime_source, '_argentwolf_post_notifier_' )
@@ -592,7 +606,8 @@ $assert(
 			(string) $package_manifest_script,
 			'argentwolf-post-notifier/assets/runtime/post-editor.js'
 		),
-	'Beta.1 editor sidebar must expose privacy-bounded audience controls without putting contact PII in request URLs.'
+	'Beta.1 editor sidebar must expose privacy-bounded audience controls '
+		. 'and aggregate resolution without putting contact PII in request URLs.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )

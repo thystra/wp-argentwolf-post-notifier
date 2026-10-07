@@ -31,7 +31,8 @@
 		! settings.metaKeys ||
 		! settings.values ||
 		! settings.audience ||
-		! settings.contactLookup
+		! settings.contactLookup ||
+		! settings.estimate
 	) {
 		return;
 	}
@@ -48,6 +49,7 @@
 		values,
 		audience: audienceChoices,
 		contactLookup,
+		estimate: estimateSettings,
 	} = settings;
 
 	/**
@@ -515,6 +517,57 @@
 	}
 
 	/**
+	 * Return nonzero aggregate skip rows in stable display order.
+	 *
+	 * @param {*} skipped Aggregate skip-count object.
+	 * @return {Array} Display rows.
+	 */
+	function estimateSkipRows( skipped ) {
+		const counts = skipped && typeof skipped === 'object' ? skipped : {};
+		const labels = {
+			excluded: __( 'Explicit exclusions', 'argentwolf-post-notifier' ),
+			suppressed: __( 'Global suppressions', 'argentwolf-post-notifier' ),
+			verification_unknown: __(
+				'Verification unavailable',
+				'argentwolf-post-notifier'
+			),
+			unverified: __(
+				'Unverified registered users',
+				'argentwolf-post-notifier'
+			),
+			unsubscribed: __(
+				'Unsubscribed or site-default users',
+				'argentwolf-post-notifier'
+			),
+			pending_subscription: __(
+				'Pending standalone subscribers',
+				'argentwolf-post-notifier'
+			),
+			deleted: __( 'Missing contacts', 'argentwolf-post-notifier' ),
+			no_email: __(
+				'Contacts without email',
+				'argentwolf-post-notifier'
+			),
+			invalid_email: __(
+				'Invalid email identities',
+				'argentwolf-post-notifier'
+			),
+			duplicate: __(
+				'Duplicate identities merged',
+				'argentwolf-post-notifier'
+			),
+		};
+
+		return Object.entries( labels )
+			.map( ( [ reason, label ] ) => ( {
+				reason,
+				label,
+				count: Number( counts[ reason ] ) || 0,
+			} ) )
+			.filter( ( row ) => row.count > 0 );
+	}
+
+	/**
 	 * Render the persistent post-notification sidebar.
 	 *
 	 * @return {Object|null} Sidebar element or null outside supported posts.
@@ -530,6 +583,9 @@
 			};
 		}, [] );
 		const { editPost } = useDispatch( 'core/editor' );
+		const [ resolvedEstimate, setResolvedEstimate ] = useState( null );
+		const [ estimateMessage, setEstimateMessage ] = useState( '' );
+		const [ estimateBusy, setEstimateBusy ] = useState( false );
 
 		if ( settings.postType !== state.postType ) {
 			return null;
@@ -560,6 +616,8 @@
 			editPost( { meta: { [ key ]: value } } );
 		};
 		const updateAudience = ( changes ) => {
+			setResolvedEstimate( null );
+			setEstimateMessage( '' );
 			updateMeta( metaKeys.audienceConfig, {
 				...audience,
 				...changes,
@@ -568,6 +626,53 @@
 		const updateAudienceField = ( field, value ) => {
 			updateAudience( { [ field ]: value } );
 		};
+		const estimateAudience = () => {
+			if ( state.postId < 1 ) {
+				return;
+			}
+
+			setEstimateBusy( true );
+			setResolvedEstimate( null );
+			setEstimateMessage( '' );
+
+			apiFetch( {
+				path: estimateSettings.path,
+				method: 'POST',
+				data: {
+					post_id: state.postId,
+					audience,
+				},
+			} )
+				.then( ( response ) => {
+					const eligible = Number( response && response.eligible );
+					const skipped =
+						response &&
+						response.skipped &&
+						typeof response.skipped === 'object'
+							? response.skipped
+							: {};
+
+					if ( ! Number.isInteger( eligible ) || eligible < 0 ) {
+						throw new Error(
+							'Invalid audience estimate response.'
+						);
+					}
+
+					setResolvedEstimate( { eligible, skipped } );
+				} )
+				.catch( () => {
+					setEstimateMessage(
+						__(
+							'Audience estimate failed. Reload the editor and try again.',
+							'argentwolf-post-notifier'
+						)
+					);
+				} )
+				.finally( () => setEstimateBusy( false ) );
+		};
+		const estimateRows = resolvedEstimate
+			? estimateSkipRows( resolvedEstimate.skipped )
+			: [];
 
 		return createElement(
 			PluginSidebar,
@@ -672,6 +777,75 @@
 					initialOpen: false,
 				},
 				createElement( 'p', null, audienceSummary( audience ) ),
+				createElement(
+					Button,
+					{
+						variant: 'secondary',
+						disabled: estimateBusy || state.postId < 1,
+						onClick: estimateAudience,
+					},
+					estimateBusy
+						? __( 'Estimating…', 'argentwolf-post-notifier' )
+						: __(
+								'Estimate resolved audience',
+								'argentwolf-post-notifier'
+						  )
+				),
+				state.postId < 1
+					? createElement(
+							'p',
+							null,
+							__(
+								'Save the draft before estimating its audience.',
+								'argentwolf-post-notifier'
+							)
+					  )
+					: null,
+				estimateMessage === ''
+					? null
+					: createElement( 'p', null, estimateMessage ),
+				resolvedEstimate
+					? createElement(
+							'div',
+							{
+								className:
+									'argentwolf-post-notifier-audience-estimate',
+							},
+							createElement(
+								'p',
+								null,
+								sprintf(
+									/* translators: %d: number of eligible recipients. */
+									__(
+										'Eligible recipients: %d',
+										'argentwolf-post-notifier'
+									),
+									resolvedEstimate.eligible
+								)
+							),
+							estimateRows.length === 0
+								? null
+								: createElement(
+										'ul',
+										null,
+										estimateRows.map( ( row ) =>
+											createElement(
+												'li',
+												{ key: row.reason },
+												`${ row.label }: ${ row.count }`
+											)
+										)
+								  )
+					  )
+					: null,
+				createElement(
+					'p',
+					null,
+					__(
+						'The estimate uses current editor selections. Registered users with the site-default preference are currently treated as not opted in.',
+						'argentwolf-post-notifier'
+					)
+				),
 				choiceFieldset(
 					__( 'WordPress roles', 'argentwolf-post-notifier' ),
 					__(

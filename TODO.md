@@ -312,6 +312,14 @@ and returns only typed IDs, display labels, and masked addresses. Saved-ID hydra
 is limited to IDs already stored on that post, so the endpoint is not a browsable or
 sequential-ID contact directory.
 
+Tranche 5 adds an aggregate-only resolved audience estimate for the current editor
+configuration. An authorized sender requests the estimate explicitly; AWPN expands
+selected WordPress roles through the reusable audience request builder and applies the
+existing audience resolver for named lists, explicit contacts, exclusions, verification,
+preferences, standalone subscription state, suppression, and deduplication. The endpoint
+returns only eligible and aggregate skip counts, and neutral `site_default` registered-user
+preferences remain fail-closed until a later site policy explicitly defines that default.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
@@ -319,7 +327,7 @@ sequential-ID contact directory.
 - [x] Add role selector.
 - [x] Add named-list selector.
 - [x] Add individual user/subscriber include and exclude selectors.
-- [ ] Add resolved audience estimate.
+- [x] Add resolved audience estimate.
 - [x] Add content-mode selector.
 - [ ] Add template selector.
 - [x] Add call-to-action override.

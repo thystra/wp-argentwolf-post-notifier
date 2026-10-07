@@ -19,6 +19,11 @@
   lookup rather than a browsable contact directory.
 - Keep raw lookup email out of request URLs by using authenticated POST bodies, return
   masked addresses, and limit saved-ID hydration to IDs already selected on the post.
+- Add an explicit aggregate-only resolved audience estimate for the current editor
+  configuration, reusing the existing audience policy rather than exposing recipient data.
+- Expand selected WordPress roles through a reusable audience-request builder and return
+  only eligible plus stable aggregate skip counts; neutral `site_default` registered-user
+  preferences remain fail-closed until a later site policy defines that default.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
