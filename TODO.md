@@ -295,17 +295,24 @@ explicit-contact selections are stored as canonical configuration rather than re
 campaign recipients. The tranche also advances the capability layout so sending can
 be delegated independently without granting subscriber or list administration.
 
+Tranche 2 adds the first persistent block-editor sidebar. Authorized senders
+can edit send intent, content mode, and the CTA override through the core editor store,
+while the current canonical audience configuration is summarized read-only. The runtime
+asset is loaded only on the post block editor for users with `send_post_notifications`;
+role, list, contact, template, estimate, preview, test-send, and pre-publish controls
+remain later Beta.1 tranches.
+
 - [x] Register authorized REST-visible post metadata.
-- [ ] Add block-editor sidebar controls.
+- [x] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
-- [ ] Add send, do-not-send, and site-default intent.
+- [x] Add send, do-not-send, and site-default intent.
 - [ ] Add role selector.
 - [ ] Add named-list selector.
 - [ ] Add individual user/subscriber include and exclude selectors.
 - [ ] Add resolved audience estimate.
-- [ ] Add content-mode selector.
+- [x] Add content-mode selector.
 - [ ] Add template selector.
-- [ ] Add call-to-action override.
+- [x] Add call-to-action override.
 - [ ] Add preview-email action.
 - [ ] Add send-test-email action.
 - [ ] Add missing-verification-provider warning.

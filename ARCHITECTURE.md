@@ -271,6 +271,16 @@ or `full`; the later rendering milestone defines the site-default cutoff precede
 Template ID `0` means site default, and CTA text is an optional bounded plain-text
 override.
 
+Beta.1 tranche 2 adds a capability-gated `PluginSidebar` to the post
+block editor. The sidebar reads unsaved metadata through the `core/editor` data store
+and updates it with `editPost`, so ordinary editor save/autosave behavior remains the
+only persistence path. This first UI slice exposes send intent, content mode, and CTA
+override plus a read-only summary of already-saved audience selections. It does not
+resolve recipients, create campaigns, or expose subscriber details. The runtime asset
+is enqueued only for the `post` editor when the current user has
+`send_post_notifications`; audience selectors, template selection, previews, tests,
+and pre-publish confirmation remain separate Beta.1 work.
+
 ### 4.3 Public subscription block
 
 Dynamic block:

@@ -43,7 +43,10 @@ invitation without directly subscribing the address. Alpha.5 also records
 structured list and suppression audit events without storing raw email addresses or
 bearer tokens. Alpha.5 uses dedicated subscriber and list management capabilities
 instead of `manage_options`; administrators receive both by default and sites may
-delegate either capability independently.
+delegate either capability independently. Beta.1 adds a capability-gated post-editor
+sidebar for notification intent, content mode, CTA override, and a read-only summary
+of saved audience selections. The remaining audience selectors and pre-publish
+confirmation are still under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -59,7 +62,7 @@ URI.
 
 == Installation ==
 
-This alpha is intended for development and controlled testing.
+This beta is intended for development and controlled testing.
 
 1. Upload the `argentwolf-post-notifier` directory to `/wp-content/plugins/`.
 2. Activate ArgentWolf Post Notifier through the Plugins screen.
@@ -90,6 +93,8 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Begin revision-aware REST post metadata for the editor workflow.
 * Add independently delegable `send_post_notifications` authorization.
 * Guard autosave and revision metadata with send authorization and preserve it on core autosave revisions.
+* Add the first capability-gated block-editor sidebar for send intent, content mode, CTA override, and saved-audience summary.
+* Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =
 * Begin registered-user preference handling for the alpha.5 audience-management milestone.

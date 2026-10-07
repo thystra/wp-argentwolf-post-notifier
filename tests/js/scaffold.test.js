@@ -2,11 +2,12 @@
  * File: tests/js/scaffold.test.js
  */
 
-import { PLUGIN_SLUG } from '../../assets/src/editor';
+import { PLUGIN_SLUG, RUNTIME_EDITOR_ASSET } from '../../assets/src/editor';
 
-describe( 'development scaffold', () => {
-	it( 'exports canonical identifiers', () => {
+describe( 'editor tooling contract', () => {
+	it( 'exports canonical editor identifiers', () => {
 		expect( PLUGIN_SLUG ).toBe( 'argentwolf-post-notifier' );
+		expect( RUNTIME_EDITOR_ASSET ).toBe( 'assets/runtime/post-editor.js' );
 	} );
 } );
 
