@@ -51,7 +51,10 @@ final class EditorTemplateCatalog {
 			 *
 			 * @param array<int,array{id:int,label:string}> $choices Custom choices.
 			 */
-			$candidates = apply_filters( self::FILTER, array() );
+			$candidates = apply_filters(
+				'argentwolf_post_notifier_editor_template_choices',
+				array()
+			);
 		} catch ( Throwable ) {
 			return $choices;
 		}
