@@ -517,7 +517,14 @@ final class Plugin {
 			);
 			$container->set(
 				EditorAssets::class,
-				static fn (): EditorAssets => new EditorAssets()
+				static function ( Container $services ): EditorAssets {
+					$lists = $services->get( NamedListRepository::class );
+					if ( ! $lists instanceof NamedListRepository ) {
+						throw new LogicException( 'The named-list repository is invalid.' );
+					}
+
+					return new EditorAssets( $lists );
+				}
 			);
 			$container->set(
 				PostNotificationMeta::class,
