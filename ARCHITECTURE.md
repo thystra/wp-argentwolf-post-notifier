@@ -315,8 +315,17 @@ deferred until editor enqueue or estimate execution. This ensures alternate-prov
 filters registered by later-loading plugins are available before health or recipient
 eligibility is evaluated.
 
-Template selection, previews, tests, the invalid-template warning, and pre-publish
-confirmation remain separate Beta.1 work.
+Tranche 7 adds template selection without implementing the Milestone 8 template system.
+`EditorTemplateCatalog` always exposes ID `0` as the site-default sentinel and accepts
+only bounded, sanitized positive-ID custom choices from the
+`argentwolf_post_notifier_editor_template_choices` filter. The editor persists only the
+existing `template_id` post metadata. If a previously saved nonzero ID is absent from the
+current catalog, the selector preserves that value as unavailable and shows an advisory
+warning until the sender chooses Site default or another available template. Beta.1 does
+not resolve, render, preview, or snapshot templates.
+
+Previews, test sends, and pre-publish confirmation remain separate Beta.1 work; actual
+template storage, validation, rendering, and preview behavior remain in Milestone 8.
 
 ### 4.3 Public subscription block
 

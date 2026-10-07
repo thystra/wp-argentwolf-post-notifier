@@ -24,8 +24,10 @@ recipient identities are returned, and neutral `site_default` registered-user pr
 remain fail-closed until a site policy defines that default. The sidebar also warns when
 registered-user verification is unavailable or unhealthy and when an explicit estimate
 resolves to zero eligible recipients; detailed provider diagnostics remain administrator-only.
-Templates, previews, invalid-template validation, and pre-publish confirmation remain later
-Beta.1 work.
+Beta.1 also exposes the existing template-ID metadata through a bounded editor template
+catalog: ID `0` uses the site default, and unavailable saved custom IDs are preserved and
+flagged instead of silently changed. Template rendering, previews, and storage remain
+Milestone 8 work; test sends and pre-publish confirmation remain later Beta.1 work.
 Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.

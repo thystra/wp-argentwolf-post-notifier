@@ -29,6 +29,10 @@
 - Warn after an explicit audience estimate resolves to zero eligible recipients.
 - Defer editor verification-provider and audience-resolver construction until use so
   later-loading alternate-provider filters participate in health and eligibility policy.
+- Add a bounded editor template catalog and selector while keeping ID `0` as the site
+  default and deferring actual template persistence/rendering to the later template milestone.
+- Preserve unavailable saved custom template IDs and show an invalid-template warning
+  instead of silently replacing editorial configuration.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint

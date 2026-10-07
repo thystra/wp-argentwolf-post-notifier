@@ -31,6 +31,7 @@
 		! settings.metaKeys ||
 		! settings.values ||
 		! settings.audience ||
+		! settings.templates ||
 		! settings.verification ||
 		! settings.contactLookup ||
 		! settings.estimate
@@ -55,6 +56,7 @@
 		metaKeys,
 		values,
 		audience: audienceChoices,
+		templates: templateChoices,
 		verification: verificationSettings,
 		contactLookup,
 		estimate: estimateSettings,
@@ -608,6 +610,11 @@
 			typeof meta[ metaKeys.contentMode ] === 'string'
 				? meta[ metaKeys.contentMode ]
 				: values.contentMode.siteDefault;
+		const rawTemplateId = Number( meta[ metaKeys.templateId ] );
+		const templateId =
+			Number.isInteger( rawTemplateId ) && rawTemplateId >= 0
+				? rawTemplateId
+				: 0;
 		const ctaText =
 			typeof meta[ metaKeys.ctaText ] === 'string'
 				? meta[ metaKeys.ctaText ]
@@ -619,6 +626,45 @@
 		const listChoices = Array.isArray( audienceChoices.lists )
 			? audienceChoices.lists
 			: [];
+		const normalizedTemplateChoices = Array.isArray( templateChoices )
+			? templateChoices
+					.map( ( choice ) => ( {
+						value: Number( choice && choice.value ),
+						label:
+							choice && typeof choice.label === 'string'
+								? choice.label
+								: '',
+					} ) )
+					.filter(
+						( choice ) =>
+							Number.isInteger( choice.value ) &&
+							choice.value >= 0 &&
+							choice.label !== ''
+					)
+			: [];
+		const templateAvailable =
+			templateId === 0 ||
+			normalizedTemplateChoices.some(
+				( choice ) => choice.value === templateId
+			);
+		const templateOptions = normalizedTemplateChoices.map( ( choice ) => ( {
+			label: choice.label,
+			value: String( choice.value ),
+		} ) );
+		if ( ! templateAvailable && templateId > 0 ) {
+			templateOptions.push( {
+				label: sprintf(
+					/* translators: %d: unavailable template ID. */
+					__(
+						'Unavailable template #%d',
+						'argentwolf-post-notifier'
+					),
+					templateId
+				),
+				value: String( templateId ),
+				disabled: true,
+			} );
+		}
 
 		const updateMeta = ( key, value ) => {
 			editPost( { meta: { [ key ]: value } } );
@@ -751,6 +797,39 @@
 					title: __( 'Email content', 'argentwolf-post-notifier' ),
 					initialOpen: true,
 				},
+				createElement( SelectControl, {
+					label: __( 'Email template', 'argentwolf-post-notifier' ),
+					value: String( templateId ),
+					options: templateOptions,
+					onChange: ( value ) => {
+						const nextTemplateId = Number.parseInt( value, 10 );
+
+						updateMeta(
+							metaKeys.templateId,
+							Number.isInteger( nextTemplateId ) &&
+								nextTemplateId >= 0
+								? nextTemplateId
+								: 0
+						);
+					},
+					help: __(
+						'Site default follows the site-level template choice when rendering is implemented.',
+						'argentwolf-post-notifier'
+					),
+				} ),
+				templateAvailable
+					? null
+					: createElement(
+							Notice,
+							{
+								status: 'warning',
+								isDismissible: false,
+							},
+							__(
+								'The selected email template is unavailable. Choose Site default or another available template before publication.',
+								'argentwolf-post-notifier'
+							)
+					  ),
 				createElement( SelectControl, {
 					label: __( 'Content mode', 'argentwolf-post-notifier' ),
 					value: contentMode,

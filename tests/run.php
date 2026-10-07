@@ -79,6 +79,9 @@ $post_notification_meta_source = file_get_contents(
 	$root . '/src/Editor/PostNotificationMeta.php'
 );
 $editor_assets_source = file_get_contents( $root . '/src/Editor/EditorAssets.php' );
+$editor_template_catalog_source = file_get_contents(
+	$root . '/src/Editor/EditorTemplateCatalog.php'
+);
 $editor_contact_lookup_source = file_get_contents(
 	$root . '/src/Editor/EditorContactLookup.php'
 );
@@ -575,6 +578,7 @@ $assert(
 );
 $assert(
 	false !== $editor_assets_source
+		&& false !== $editor_template_catalog_source
 		&& false !== $editor_contact_lookup_source
 		&& false !== $editor_audience_estimate_source
 		&& false !== $audience_request_builder_source
@@ -585,7 +589,13 @@ $assert(
 		&& str_contains( $editor_assets_source, "'audience'" )
 		&& str_contains( $editor_assets_source, '$this->role_choices()' )
 		&& str_contains( $editor_assets_source, '$this->named_list_choices()' )
+		&& str_contains( $editor_assets_source, '$this->templates->choices()' )
 		&& str_contains( $editor_assets_source, '$this->verification_healthy()' )
+		&& str_contains(
+			$editor_template_catalog_source,
+			'argentwolf_post_notifier_editor_template_choices'
+		)
+		&& str_contains( $editor_template_catalog_source, "'value' => 0" )
 		&& str_contains( $editor_contact_lookup_source, 'WP_REST_Server::CREATABLE' )
 		&& str_contains( $editor_audience_estimate_source, 'WP_REST_Server::CREATABLE' )
 		&& str_contains( $editor_audience_estimate_source, 'AudienceResolver' )
@@ -600,6 +610,12 @@ $assert(
 		&& str_contains( $post_editor_runtime_source, 'data: { email: candidate }' )
 		&& str_contains( $post_editor_runtime_source, 'estimateSettings.path' )
 		&& str_contains( $post_editor_runtime_source, 'Eligible recipients: %d' )
+		&& str_contains( $post_editor_runtime_source, 'metaKeys.templateId' )
+		&& str_contains( $post_editor_runtime_source, 'Email template' )
+		&& str_contains(
+			$post_editor_runtime_source,
+			'The selected email template is unavailable.'
+		)
 		&& str_contains( $post_editor_runtime_source, 'verificationSettings.healthy' )
 		&& str_contains(
 			$post_editor_runtime_source,
