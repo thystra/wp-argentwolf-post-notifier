@@ -38,8 +38,8 @@ in this file take precedence for this project.
 - Do not read companion private `_wrav_ev_*` metadata from this plugin
 - Never treat `wp_mail()` success as proof of email verification
 
-The repository is under active alpha development. Do not describe a feature as
-implemented, released, installed, or deployed until repository, package, and
+The repository is under active pre-release development. Do not describe a feature
+as implemented, released, installed, or deployed until repository, package, and
 production evidence support that statement.
 
 ## Communication and operator workflow
@@ -195,26 +195,25 @@ loaded provider API is healthy or compatible.
 ## Development and release lifecycle
 
 ArgentWolf Post Notifier follows a feature-development and release-candidate
-model. Alpha version numbers are development checkpoints, not automatic public
-releases.
+model. Alpha and beta version numbers are development checkpoints, not automatic
+public releases.
 
 - Implement substantial capabilities on focused `feature/...` branches.
-- Use `0.1.0-alpha.x` numbers to identify coherent development milestones.
-- Annotated tags are appropriate at major alpha checkpoints when preserving an
-  exact source boundary is useful.
-- Completing an alpha milestone does **not** by itself authorize a Forgejo or
-  GitHub Release object or imply that the plugin is ready for operators.
-- Continue alpha development until the intended initial feature set is
-  substantially complete and the normal automated test battery is green.
-- Before the first release candidate, qualify the assembled plugin in a clean
-  disposable VM/runtime environment, including fresh install, upgrade,
-  activation/deactivation, uninstall/data-retention behavior, and realistic
-  WordPress workflows.
-- Enter `0.1.0-rcN` only after feature development and pre-RC VM qualification
-  are complete enough for operational testing. RCs are the normal point for
-  public Forgejo prerelease artifacts and downstream GitHub prerelease mirrors.
-- Use the RC phase for operational, failure/recovery, upgrade, packaging, and
-  any approved live-site acceptance testing.
+- Use `0.1.0-alpha.x` for foundational milestones and `0.1.0-beta.x` for the
+  integrated editor, publication, rendering, and campaign workflow milestones.
+- Annotated tags are appropriate at major development checkpoints when preserving
+  an exact source boundary is useful.
+- Completing an alpha or beta milestone does **not** by itself authorize a Forgejo
+  or GitHub Release object or imply that the plugin is ready for operators.
+- Before the first release candidate, complete the planned beta feature set and
+  qualify the assembled plugin in a clean disposable VM/runtime environment,
+  including fresh install, upgrade, activation/deactivation, uninstall/data-retention
+  behavior, and realistic WordPress workflows.
+- Enter `0.1.0-rcN` only after feature development and pre-RC VM qualification are
+  complete enough for operational testing. RCs are the normal point for public
+  Forgejo prerelease artifacts and downstream GitHub prerelease mirrors.
+- Use the RC phase for operational, failure/recovery, upgrade, packaging, and any
+  approved live-site acceptance testing.
 - Publish stable `0.1.0` only after the RC acceptance criteria are satisfied.
 
 Forgejo remains the canonical source and release authority throughout. GitHub

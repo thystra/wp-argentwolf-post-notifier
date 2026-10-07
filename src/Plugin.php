@@ -22,6 +22,7 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
+use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
@@ -514,6 +515,10 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				PostNotificationMeta::class,
+				static fn (): PostNotificationMeta => new PostNotificationMeta()
+			);
+			$container->set(
 				UpgradeManager::class,
 				static function ( Container $services ): UpgradeManager {
 					$migrator = $services->get( SchemaMigrator::class );
@@ -590,6 +595,7 @@ final class Plugin {
 		$this->register_services(
 			array(
 				UpgradeManager::class,
+				PostNotificationMeta::class,
 				ConfirmationController::class,
 				ManageSubscriptionController::class,
 				SubscriberAdminPage::class,

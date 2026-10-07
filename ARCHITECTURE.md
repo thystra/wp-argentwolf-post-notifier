@@ -29,22 +29,17 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository is now in `0.1.0-alpha.5` development. Alpha.2 established the
-verification-provider contract, alpha.3 froze the persistent data foundation, and
-alpha.4 completed the standalone-subscriber double-opt-in and administration
-milestone. Alpha.5 now includes registered-user preferences, global suppression, secure
-standalone management, named-list administration, a reusable audience-policy resolver,
-and bounded administrator CSV double-opt-in intake. The canonical user-meta value
-remains one of `site_default`, `subscribed`, or `unsubscribed`; missing or malformed
-metadata resolves to `site_default` rather than silently opting the user in. Named-list
-membership is typed as a WordPress user or standalone subscriber and is organizational
-only. Audience policy now expands role-provided users and named lists, applies explicit
-typed inclusion/exclusion, normalizes and merges duplicate email identities
-deterministically, and applies global suppression last. Schema 2 adds a structured
-audit-event ledger for list and suppression changes while leaving frozen schema 1
-unchanged. Audit rows store actor/entity identifiers and keyed suppression email
-hashes, never raw email addresses or bearer tokens. Campaign recipient persistence
-remains a later milestone.
+The repository is now in `0.1.0-beta.1` development. Alpha.2 established the
+verification-provider contract, alpha.3 froze the persistent data foundation, alpha.4
+completed standalone double opt-in and administration, and alpha.5 completed the
+pre-campaign audience-policy layer: registered-user preferences, global suppression,
+secure standalone management, named lists, bounded CSV intake, deterministic audience
+resolution, and structured administrative audit events. Beta.1 begins the editor
+workflow. Its first tranche stores editorial notification configuration as protected,
+revision-aware post metadata exposed only in REST edit context. Per-post writes require
+permission to edit the target post plus the independently delegable
+`send_post_notifications` capability. Campaign creation, recipient persistence, and
+delivery remain later milestones.
 
 ## 2.1 Canonical naming
 
@@ -258,8 +253,23 @@ _argentwolf_post_notifier_template_id
 _argentwolf_post_notifier_cta_text
 ```
 
-Registered post meta must have REST schemas, sanitization, authorization, and
-appropriate defaults.
+The Beta.1 metadata contract registers these keys only for `post`. REST schemas
+expose them in `edit` context, not public `view` responses. Every normal metadata write
+requires both `edit_post` for the target post and `send_post_notifications`. Metadata
+opts into core revision support. When WordPress creates an autosave revision, the
+notification metadata is stored on that revision. Core may instead update an unlocked
+draft owned by the current author in place; AWPN treats either autosave path as
+editorial state only and never as campaign state. Because core autosave/revision helpers
+can write revision metadata without consulting registered-meta auth callbacks, AWPN
+also removes its revision keys for unauthorized users and rejects unauthorized REST
+autosave metadata before the route callback runs.
+
+`send_intent` accepts `site_default`, `send`, or `do_not_send`. `audience_config` stores
+canonical role slugs, named-list IDs, and typed user/subscriber include/exclude IDs; it
+does not persist a resolved audience. `content_mode` accepts `site_default`, `excerpt`,
+or `full`; the later rendering milestone defines the site-default cutoff precedence.
+Template ID `0` means site default, and CTA text is an optional bounded plain-text
+override.
 
 ### 4.3 Public subscription block
 
@@ -996,12 +1006,13 @@ manage_post_notification_subscribers
 manage_post_notification_lists
 ```
 
-The Alpha.5 capability model grants subscriber/list management capabilities to
-administrators. The capability-layout version is checked during ordinary plugin
-upgrade handling so an already-active installation receives newly introduced grants.
-Deactivation preserves role assignments; uninstall removes plugin-owned capabilities
-from every role. Editor capabilities remain an explicit site decision. Sending does
-not imply permission to view subscriber data or edit global templates.
+The capability model grants plugin-owned capabilities to administrators by default.
+The capability-layout version is checked during ordinary plugin upgrade handling so an
+already-active installation receives newly introduced grants. Deactivation preserves
+role assignments; uninstall removes plugin-owned capabilities from every role. Beta.1
+adds `send_post_notifications` as an independently delegable permission and does not
+grant it automatically to editors. Sending does not imply permission to view
+subscriber data or edit global templates.
 
 Standalone subscriber administration and CSV intake require
 `manage_post_notification_subscribers`. Named-list administration requires

@@ -5,23 +5,16 @@ ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
 verified, unsubscribe-capable email notifications when posts are actually
 published.
 
-The current tree completes the `0.1.0-alpha.5` development milestone after the
-standalone-subscriber milestone. The verification-provider contract,
-lifecycle/tooling foundation, frozen schema-1 data foundation, public double-opt-in
-subscriber flow, limited pending cleanup, and subscriber administration are present.
-Alpha.5 now includes typed registered-user notification preferences, a self-service
-WordPress profile control, canonical global email suppression, secure standalone
-management, administrator-managed named lists, and a reusable audience-policy layer.
-That layer accepts role-expanded users, named lists, and explicit typed include/exclude
-contacts, then applies canonical email normalization, deterministic cross-source merge
-rules, eligibility, and final global suppression. Alpha.5 also includes bounded,
-administrator-approved CSV intake that sends double-opt-in invitations and never
-imports a contact directly into `subscribed`. Alpha.5 also records structured list
-and suppression audit events in schema 2 without storing raw email addresses or
-bearer tokens. Alpha.5 also replaces the temporary `manage_options` bridge with
-dedicated subscriber and list management capabilities; administrators receive both
-while either may be delegated independently. Campaign snapshot persistence remains a
-later milestone.
+The current tree has entered `0.1.0-beta.1` development after completing the
+Alpha.5 audience-policy milestone. The verification-provider contract, frozen schema
+foundation, standalone double opt-in, subscriber administration, registered-user
+preferences, global suppression, named lists, bounded CSV intake, structured audit
+events, and reusable audience resolver are present. Beta.1 begins the editor workflow
+with a revision-aware REST post-meta contract for send intent, audience configuration,
+content mode, template selection, and CTA override. Per-post notification writes
+require both permission to edit the target post and the independently delegable
+`send_post_notifications` capability. Campaign creation and persistence remain later
+milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

@@ -4,15 +4,15 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-alpha.5
+Stable tag: 0.1.0-beta.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Alpha foundation for verified, unsubscribe-capable post notification campaigns created after publication.
+Development foundation for verified, unsubscribe-capable post notification campaigns created after publication.
 
 == Description ==
 
-ArgentWolf Post Notifier is currently an alpha development build.
+ArgentWolf Post Notifier is currently a beta development build.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
@@ -69,10 +69,9 @@ No notification campaign features are available yet.
 
 == Frequently Asked Questions ==
 
-= Does this alpha send post-notification email? =
+= Does this beta send post-notification email? =
 
-No. This release is a development skeleton and intentionally sends no campaign
-email.
+No. This development build does not yet create or deliver publication campaigns.
 
 = Does scheduling a post send anything? =
 
@@ -86,6 +85,11 @@ available from WordPress.org. This plugin requires version 1.0.2 or later, decla
 the dependency, and still checks provider health and API compatibility at runtime.
 
 == Changelog ==
+
+= 0.1.0-beta.1 =
+* Begin revision-aware REST post metadata for the editor workflow.
+* Add independently delegable `send_post_notifications` authorization.
+* Guard autosave and revision metadata with send authorization and preserve it on core autosave revisions.
 
 = 0.1.0-alpha.5 =
 * Begin registered-user preference handling for the alpha.5 audience-management milestone.

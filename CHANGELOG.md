@@ -1,6 +1,17 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
+## 0.1.0-beta.1 — Unreleased
+
+- Begin the editor-workflow milestone with a revision-aware REST post-meta contract.
+- Add independently delegable `send_post_notifications` authorization while keeping
+  subscriber and named-list administration separate.
+- Store send intent, canonical audience selection, content mode, template ID, and CTA
+  override as editorial configuration rather than campaign state.
+- Restrict notification metadata to REST edit context, guard autosave/revision writes
+  with the send capability, and preserve metadata on autosave revisions when core
+  creates them.
+
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
 
 - Complete the user-preference, named-list, and suppression milestone without

@@ -23,6 +23,8 @@ require_once $root . '/autoload.php';
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
+use ArgentWolf\PostNotifier\Editor\ContentMode;
+use ArgentWolf\PostNotifier\Editor\SendIntent;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolutionRequest;
@@ -73,6 +75,9 @@ $schema_one_digest      = is_readable( $schema_one_digest_path )
 $activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
 $uninstall_source = file_get_contents( $root . '/uninstall.php' );
 $capabilities_source = file_get_contents( $root . '/src/Admin/Capabilities.php' );
+$post_notification_meta_source = file_get_contents(
+	$root . '/src/Editor/PostNotificationMeta.php'
+);
 $cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
 $pending_cleanup_source = file_get_contents(
 	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
@@ -168,9 +173,9 @@ $agents = file_get_contents( $root . '/AGENTS.md' );
 $assert(
 	str_contains(
 		(string) $agents,
-		'Completing an alpha milestone does **not** by itself authorize a Forgejo or'
+		'Completing an alpha or beta milestone does **not** by itself authorize a Forgejo'
 	),
-	'AGENTS must preserve the alpha-development/RC release lifecycle.'
+	'AGENTS must preserve the pre-release development/RC lifecycle.'
 );
 $assert(
 	str_contains(
@@ -509,6 +514,11 @@ $assert(
 			$capabilities_source,
 			"MANAGE_LISTS = 'manage_post_notification_lists'"
 		)
+		&& str_contains(
+			$capabilities_source,
+			"SEND_NOTIFICATIONS = 'send_post_notifications'"
+		)
+		&& str_contains( $capabilities_source, "VERSION = '2'" )
 		&& str_contains( (string) $activator_source, 'Capabilities::install( true );' )
 		&& str_contains( (string) $uninstall_source, 'Capabilities::uninstall();' )
 		&& str_contains(
@@ -525,7 +535,30 @@ $assert(
 		&& str_contains( (string) $subscriber_admin_page_source, 'wp_safe_redirect' )
 		&& str_contains( (string) $subscriber_admin_page_source, 'SOURCE_SUBSCRIBER_ADMIN' )
 		&& str_contains( (string) $subscriber_admin_repository_source, 'email_for_id' ),
-	'Dedicated subscriber/list capabilities must gate administration and preserve suppression policy.'
+	'Dedicated plugin capabilities must gate administration and per-post sending policy.'
+);
+$assert(
+	false !== $post_notification_meta_source
+		&& str_contains(
+			(string) $post_notification_meta_source,
+			"_argentwolf_post_notifier_send_intent"
+		)
+		&& str_contains(
+			(string) $post_notification_meta_source,
+			"_argentwolf_post_notifier_audience_config"
+		)
+		&& str_contains( (string) $post_notification_meta_source, "'revisions_enabled' => true" )
+		&& str_contains( (string) $post_notification_meta_source, "'context' => array( 'edit' )" )
+		&& str_contains(
+			(string) $post_notification_meta_source,
+			'Capabilities::SEND_NOTIFICATIONS'
+		)
+		&& str_contains( (string) $post_notification_meta_source, "user_can( \$user_id, 'edit_post'" )
+		&& str_contains( (string) $post_notification_meta_source, 'rest_request_before_callbacks' )
+		&& str_contains( (string) $post_notification_meta_source, 'wp_post_revision_meta_keys' )
+		&& array( 'site_default', 'send', 'do_not_send' ) === SendIntent::values()
+		&& array( 'site_default', 'excerpt', 'full' ) === ContentMode::values(),
+	'Beta.1 post metadata must be private in REST, revision-aware, and send-capability gated.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )
