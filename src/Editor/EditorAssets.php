@@ -10,6 +10,9 @@ namespace ArgentWolf\PostNotifier\Editor;
 use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Verification\VerificationProvider;
+use Closure;
+use Throwable;
 use WP_Screen;
 
 /**
@@ -29,9 +32,13 @@ final class EditorAssets implements Registerable {
 	/**
 	 * Construct the editor asset coordinator.
 	 *
-	 * @param NamedListRepository $named_lists Named-list read repository.
+	 * @param NamedListRepository $named_lists          Named-list read repository.
+	 * @param Closure             $verification_provider Deferred verification-provider resolver.
 	 */
-	public function __construct( private NamedListRepository $named_lists ) {
+	public function __construct(
+		private NamedListRepository $named_lists,
+		private Closure $verification_provider
+	) {
 	}
 
 	/**
@@ -140,6 +147,9 @@ final class EditorAssets implements Registerable {
 				'roles' => $this->role_choices(),
 				'lists' => $this->named_list_choices(),
 			),
+			'verification'  => array(
+				'healthy' => $this->verification_healthy(),
+			),
 			'contactLookup' => array(
 				'path'  => '/'
 					. EditorContactLookup::REST_NAMESPACE
@@ -155,6 +165,26 @@ final class EditorAssets implements Registerable {
 					. EditorAudienceEstimate::ROUTE,
 			),
 		);
+	}
+
+	/**
+	 * Determine whether registered-user verification is currently authoritative.
+	 *
+	 * Detailed health diagnostics remain on the administrator notice. The editor
+	 * receives only a Boolean so delegated send authorization does not disclose
+	 * provider internals.
+	 *
+	 * @return bool
+	 */
+	private function verification_healthy(): bool {
+		try {
+			$provider = ( $this->verification_provider )();
+
+			return $provider instanceof VerificationProvider
+				&& $provider->health()->is_healthy();
+		} catch ( Throwable ) {
+			return false;
+		}
 	}
 
 	/**

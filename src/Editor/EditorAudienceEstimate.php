@@ -11,6 +11,8 @@ use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
+use Closure;
+use LogicException;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -51,12 +53,16 @@ final class EditorAudienceEstimate implements Registerable {
 	/**
 	 * Construct the editor estimate service.
 	 *
-	 * @param AudienceRequestBuilder $requests Audience request builder.
-	 * @param AudienceResolver       $resolver Audience policy resolver.
+	 * Resolver construction is deferred until an estimate is requested so
+	 * alternate verification-provider filters registered by later-loading
+	 * plugins are available before audience policy is resolved.
+	 *
+	 * @param AudienceRequestBuilder $requests          Audience request builder.
+	 * @param Closure                $resolver_provider Deferred audience-resolver provider.
 	 */
 	public function __construct(
 		private AudienceRequestBuilder $requests,
-		private AudienceResolver $resolver
+		private Closure $resolver_provider
 	) {
 	}
 
@@ -144,11 +150,17 @@ final class EditorAudienceEstimate implements Registerable {
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response
+	 * @throws LogicException When the deferred audience resolver is invalid.
 	 */
 	public function estimate( WP_REST_Request $request ): WP_REST_Response {
+		$resolver = ( $this->resolver_provider )();
+		if ( ! $resolver instanceof AudienceResolver ) {
+			throw new LogicException( 'The audience resolver is invalid.' );
+		}
+
 		$submitted  = $request->get_param( 'audience' );
 		$config     = PostNotificationMeta::sanitize_audience_config( $submitted );
-		$resolution = $this->resolver->resolve(
+		$resolution = $resolver->resolve(
 			$this->requests->from_config( $config, false )
 		);
 

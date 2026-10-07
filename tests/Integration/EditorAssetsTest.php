@@ -13,6 +13,7 @@ use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Verification\UnavailableVerificationProvider;
 use WP_UnitTestCase;
 
 /**
@@ -114,8 +115,43 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		);
 		self::assertStringContainsString( 'Editorial digest', $inline );
 		self::assertStringContainsString( '"value":"administrator"', $inline );
+		self::assertStringContainsString(
+			'"verification":{"healthy":true}',
+			$inline
+		);
 		self::assertStringNotContainsString( 'Internal description', $inline );
 		self::assertStringNotContainsString( 'member_count', $inline );
+	}
+
+	/**
+	 * Unhealthy verification is exposed only as a fail-closed editor flag.
+	 *
+	 * @return void
+	 */
+	public function test_unhealthy_verification_exposes_only_boolean_editor_flag(): void {
+		$lists = Plugin::instance()->container()->get( NamedListRepository::class );
+		self::assertInstanceOf( NamedListRepository::class, $lists );
+
+		$service = new EditorAssets(
+			$lists,
+			static fn (): object => new UnavailableVerificationProvider(
+				'test_unhealthy',
+				'Provider diagnostic that must stay out of sender bootstrap.'
+			)
+		);
+		$service->enqueue_assets();
+
+		$before = wp_scripts()->get_data( EditorAssets::SCRIPT_HANDLE, 'before' );
+		self::assertIsArray( $before );
+		$inline = implode( "\n", $before );
+		self::assertStringContainsString(
+			'"verification":{"healthy":false}',
+			$inline
+		);
+		self::assertStringNotContainsString(
+			'Provider diagnostic that must stay out of sender bootstrap.',
+			$inline
+		);
 	}
 
 	/**

@@ -530,19 +530,16 @@ final class Plugin {
 				EditorAudienceEstimate::class,
 				static function ( Container $services ): EditorAudienceEstimate {
 					$requests = $services->get( AudienceRequestBuilder::class );
-					$resolver = $services->get( AudienceResolver::class );
 					if ( ! $requests instanceof AudienceRequestBuilder ) {
 						throw new LogicException(
 							'The audience request builder is invalid.'
 						);
 					}
-					if ( ! $resolver instanceof AudienceResolver ) {
-						throw new LogicException(
-							'The audience resolver is invalid.'
-						);
-					}
 
-					return new EditorAudienceEstimate( $requests, $resolver );
+					return new EditorAudienceEstimate(
+						$requests,
+						static fn (): object => $services->get( AudienceResolver::class )
+					);
 				}
 			);
 			$container->set(
@@ -553,7 +550,10 @@ final class Plugin {
 						throw new LogicException( 'The named-list repository is invalid.' );
 					}
 
-					return new EditorAssets( $lists );
+					return new EditorAssets(
+						$lists,
+						static fn (): object => $services->get( VerificationProvider::class )
+					);
 				}
 			);
 			$container->set(

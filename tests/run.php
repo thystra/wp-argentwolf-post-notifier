@@ -585,6 +585,7 @@ $assert(
 		&& str_contains( $editor_assets_source, "'audience'" )
 		&& str_contains( $editor_assets_source, '$this->role_choices()' )
 		&& str_contains( $editor_assets_source, '$this->named_list_choices()' )
+		&& str_contains( $editor_assets_source, '$this->verification_healthy()' )
 		&& str_contains( $editor_contact_lookup_source, 'WP_REST_Server::CREATABLE' )
 		&& str_contains( $editor_audience_estimate_source, 'WP_REST_Server::CREATABLE' )
 		&& str_contains( $editor_audience_estimate_source, 'AudienceResolver' )
@@ -599,6 +600,11 @@ $assert(
 		&& str_contains( $post_editor_runtime_source, 'data: { email: candidate }' )
 		&& str_contains( $post_editor_runtime_source, 'estimateSettings.path' )
 		&& str_contains( $post_editor_runtime_source, 'Eligible recipients: %d' )
+		&& str_contains( $post_editor_runtime_source, 'verificationSettings.healthy' )
+		&& str_contains(
+			$post_editor_runtime_source,
+			'The current audience resolves to zero eligible recipients.'
+		)
 		&& ! str_contains( $post_editor_runtime_source, '&email=' )
 		&& ! str_contains( $post_editor_runtime_source, '&include=' )
 		&& ! str_contains( $post_editor_runtime_source, '_argentwolf_post_notifier_' )

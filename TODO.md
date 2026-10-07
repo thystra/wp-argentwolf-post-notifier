@@ -320,6 +320,13 @@ preferences, standalone subscription state, suppression, and deduplication. The 
 returns only eligible and aggregate skip counts, and neutral `site_default` registered-user
 preferences remain fail-closed until a later site policy explicitly defines that default.
 
+Tranche 6 adds sender-facing warnings for unavailable or unhealthy registered-user
+verification and for a resolved audience with zero eligible recipients. The editor receives
+only a Boolean provider-health flag; detailed diagnostics remain in the administrator
+notice. Audience-resolver construction is deferred until estimate execution so provider
+filters registered by later-loading plugins are available before verification policy is
+resolved.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
@@ -333,8 +340,9 @@ preferences remain fail-closed until a later site policy explicitly defines that
 - [x] Add call-to-action override.
 - [ ] Add preview-email action.
 - [ ] Add send-test-email action.
-- [ ] Add missing-verification-provider warning.
-- [ ] Add empty-audience and invalid-template warnings.
+- [x] Add missing-verification-provider warning.
+- [x] Add empty-audience warning.
+- [ ] Add invalid-template warning.
 - [ ] Add classic editor fallback or explicitly document that it is unsupported.
 - [ ] Ensure autosaves and revisions do not alter campaign state.
 

@@ -50,8 +50,10 @@ exact-email lookup through an authenticated POST request; responses use masked
 addresses and do not provide a browsable subscriber directory. The editor can explicitly
 resolve the current unsaved audience configuration to aggregate eligible and skip counts
 without returning recipient identities; registered users with the neutral `site_default`
-preference remain fail-closed until a site policy defines that default. Template selection,
-previews, warnings, and pre-publish confirmation remain under development.
+preference remain fail-closed until a site policy defines that default. The sidebar warns
+when registered-user verification is unavailable or unhealthy and when an explicit estimate
+resolves to zero eligible recipients. Template selection, previews, invalid-template
+validation, and pre-publish confirmation remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -104,6 +106,9 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Limit saved-ID hydration to contacts already selected on the target post.
 * Add an aggregate-only resolved audience estimate for the current unsaved editor configuration.
 * Reuse the existing audience policy and return only eligible and aggregate skip counts.
+* Warn send-authorized editors when registered-user verification is unavailable or unhealthy.
+* Warn when an explicit resolved audience estimate contains zero eligible recipients.
+* Defer provider-dependent editor resolution until use so later-loading provider filters apply.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =
