@@ -40,7 +40,7 @@
 	}
 
 	const { registerPlugin } = plugins;
-	const { PluginSidebar } = editor;
+	const { PluginPrePublishPanel, PluginSidebar } = editor;
 	const {
 		Button,
 		CheckboxControl,
@@ -50,7 +50,7 @@
 		TextControl,
 	} = components;
 	const { useDispatch, useSelect } = data;
-	const { createElement, useEffect, useState } = element;
+	const { createElement, Fragment, useEffect, useState } = element;
 	const { __, sprintf } = i18n;
 	const {
 		metaKeys,
@@ -1025,8 +1025,226 @@
 		);
 	}
 
+	/**
+	 * Render the native pre-publish notification confirmation panel.
+	 *
+	 * The panel summarizes current editor metadata only. It deliberately does
+	 * not resolve recipients, render email, submit mail, or create campaign state.
+	 *
+	 * @return {Object|null} Pre-publish panel or null outside supported posts.
+	 */
+	function PostNotificationPrePublishPanel() {
+		const state = useSelect( ( select ) => {
+			const editorStore = select( 'core/editor' );
+
+			return {
+				postType: editorStore.getCurrentPostType(),
+				meta: editorStore.getEditedPostAttribute( 'meta' ) || {},
+			};
+		}, [] );
+
+		if ( settings.postType !== state.postType ) {
+			return null;
+		}
+
+		const meta = state.meta;
+		const sendIntent =
+			typeof meta[ metaKeys.sendIntent ] === 'string'
+				? meta[ metaKeys.sendIntent ]
+				: values.sendIntent.siteDefault;
+		const contentMode =
+			typeof meta[ metaKeys.contentMode ] === 'string'
+				? meta[ metaKeys.contentMode ]
+				: values.contentMode.siteDefault;
+		const rawTemplateId = Number( meta[ metaKeys.templateId ] );
+		const templateId =
+			Number.isInteger( rawTemplateId ) && rawTemplateId >= 0
+				? rawTemplateId
+				: 0;
+		const ctaText =
+			typeof meta[ metaKeys.ctaText ] === 'string'
+				? meta[ metaKeys.ctaText ]
+				: '';
+		const audience = normalizedAudience( meta[ metaKeys.audienceConfig ] );
+		const normalizedTemplateChoices = Array.isArray( templateChoices )
+			? templateChoices
+					.map( ( choice ) => ( {
+						value: Number( choice && choice.value ),
+						label:
+							choice && typeof choice.label === 'string'
+								? choice.label
+								: '',
+					} ) )
+					.filter(
+						( choice ) =>
+							Number.isInteger( choice.value ) &&
+							choice.value >= 0 &&
+							choice.label !== ''
+					)
+			: [];
+		const selectedTemplate = normalizedTemplateChoices.find(
+			( choice ) => choice.value === templateId
+		);
+		const templateAvailable =
+			templateId === 0 || Boolean( selectedTemplate );
+
+		const sendIntentLabels = {
+			[ values.sendIntent.siteDefault ]: __(
+				'Site default',
+				'argentwolf-post-notifier'
+			),
+			[ values.sendIntent.send ]: __(
+				'Send notification',
+				'argentwolf-post-notifier'
+			),
+			[ values.sendIntent.doNotSend ]: __(
+				'Do not send',
+				'argentwolf-post-notifier'
+			),
+		};
+		const contentModeLabels = {
+			[ values.contentMode.siteDefault ]: __(
+				'Site default',
+				'argentwolf-post-notifier'
+			),
+			[ values.contentMode.excerpt ]: __(
+				'Excerpt',
+				'argentwolf-post-notifier'
+			),
+			[ values.contentMode.full ]: __(
+				'Full post',
+				'argentwolf-post-notifier'
+			),
+		};
+
+		const sendIntentLabel =
+			sendIntentLabels[ sendIntent ] ||
+			sendIntentLabels[ values.sendIntent.siteDefault ];
+		const contentModeLabel =
+			contentModeLabels[ contentMode ] ||
+			contentModeLabels[ values.contentMode.siteDefault ];
+
+		let templateLabel = __( 'Site default', 'argentwolf-post-notifier' );
+		if ( selectedTemplate ) {
+			templateLabel = selectedTemplate.label;
+		} else if ( templateId > 0 ) {
+			templateLabel = sprintf(
+				/* translators: %d: unavailable template ID. */
+				__( 'Unavailable template #%d', 'argentwolf-post-notifier' ),
+				templateId
+			);
+		}
+
+		const ctaLabel =
+			ctaText === ''
+				? __( 'Site default', 'argentwolf-post-notifier' )
+				: ctaText;
+
+		return createElement(
+			PluginPrePublishPanel,
+			{
+				className: 'argentwolf-post-notifier-pre-publish-summary',
+				title: __(
+					'Post notification summary',
+					'argentwolf-post-notifier'
+				),
+				initialOpen: true,
+			},
+			verificationSettings.healthy === true
+				? null
+				: createElement(
+						Notice,
+						{
+							status: 'warning',
+							isDismissible: false,
+						},
+						__(
+							'Registered-user delivery is disabled because the authoritative email-verification provider is unavailable or unhealthy.',
+							'argentwolf-post-notifier'
+						)
+				  ),
+			templateAvailable
+				? null
+				: createElement(
+						Notice,
+						{
+							status: 'warning',
+							isDismissible: false,
+						},
+						__(
+							'The selected email template is unavailable. Choose Site default or another available template before publication.',
+							'argentwolf-post-notifier'
+						)
+				  ),
+			createElement(
+				'p',
+				null,
+				__(
+					'Review the notification configuration that will be saved with this post.',
+					'argentwolf-post-notifier'
+				)
+			),
+			createElement(
+				'dl',
+				null,
+				createElement(
+					'dt',
+					null,
+					__( 'Notification intent', 'argentwolf-post-notifier' )
+				),
+				createElement( 'dd', null, sendIntentLabel ),
+				createElement(
+					'dt',
+					null,
+					__( 'Audience', 'argentwolf-post-notifier' )
+				),
+				createElement( 'dd', null, audienceSummary( audience ) ),
+				createElement(
+					'dt',
+					null,
+					__( 'Content mode', 'argentwolf-post-notifier' )
+				),
+				createElement( 'dd', null, contentModeLabel ),
+				createElement(
+					'dt',
+					null,
+					__( 'Email template', 'argentwolf-post-notifier' )
+				),
+				createElement( 'dd', null, templateLabel ),
+				createElement(
+					'dt',
+					null,
+					__( 'Call-to-action override', 'argentwolf-post-notifier' )
+				),
+				createElement( 'dd', null, ctaLabel )
+			),
+			createElement(
+				'p',
+				null,
+				__(
+					'This confirmation does not create a campaign or send email.',
+					'argentwolf-post-notifier'
+				)
+			)
+		);
+	}
+
+	/**
+	 * Render all post-notification editor slot fills.
+	 *
+	 * @return {Object} Plugin editor elements.
+	 */
+	function PostNotificationPlugin() {
+		return createElement(
+			Fragment,
+			null,
+			createElement( PostNotificationSidebar ),
+			createElement( PostNotificationPrePublishPanel )
+		);
+	}
+
 	registerPlugin( 'argentwolf-post-notifier', {
-		render: PostNotificationSidebar,
+		render: PostNotificationPlugin,
 		icon: 'email-alt',
 	} );
 } )(

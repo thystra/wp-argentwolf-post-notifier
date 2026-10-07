@@ -26,9 +26,12 @@ registered-user verification is unavailable or unhealthy and when an explicit es
 resolves to zero eligible recipients; detailed provider diagnostics remain administrator-only.
 Beta.1 also exposes the existing template-ID metadata through a bounded editor template
 catalog: ID `0` uses the site default, and unavailable saved custom IDs are preserved and
-flagged instead of silently changed. Template rendering, previews, and storage remain
-Milestone 8 work; test sends and pre-publish confirmation remain later Beta.1 work.
-Campaign creation and persistence remain later milestones.
+flagged instead of silently changed. The block editor now also presents a native
+pre-publish summary of the current notification intent, privacy-safe audience selections,
+content mode, template, CTA override, and relevant warning state. The summary is
+informational only and does not resolve recipients, render email, send mail, or create a
+campaign. Template rendering, previews, and storage remain Milestone 8 work; test sends
+remain later Beta.1 work. Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

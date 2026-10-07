@@ -324,8 +324,15 @@ current catalog, the selector preserves that value as unavailable and shows an a
 warning until the sender chooses Site default or another available template. Beta.1 does
 not resolve, render, preview, or snapshot templates.
 
-Previews, test sends, and pre-publish confirmation remain separate Beta.1 work; actual
-template storage, validation, rendering, and preview behavior remain in Milestone 8.
+Tranche 8 adds a native `PluginPrePublishPanel` alongside the persistent sidebar. It reads
+the same current edited post metadata and presents a publication-time summary of notification
+intent, privacy-safe audience selection counts, content mode, template selection, and CTA
+override. Provider-health and invalid-template warnings are repeated in the pre-publish
+surface. The panel is informational only: it does not resolve recipients, render email,
+submit mail, or create campaign state.
+
+Preview and test-send actions remain separate Beta.1 work, while actual template storage,
+validation, rendering, and preview behavior remain in Milestone 8.
 
 ### 4.3 Public subscription block
 
