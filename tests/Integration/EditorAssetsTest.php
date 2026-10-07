@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Tests\Integration;
 
 use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
+use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
@@ -95,6 +96,7 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		self::assertTrue( wp_script_is( EditorAssets::SCRIPT_HANDLE, 'enqueued' ) );
 		$dependency = wp_scripts()->registered[ EditorAssets::SCRIPT_HANDLE ] ?? null;
 		self::assertNotNull( $dependency );
+		self::assertContains( 'wp-api-fetch', $dependency->deps );
 		self::assertContains( 'wp-editor', $dependency->deps );
 		self::assertContains( 'wp-data', $dependency->deps );
 		self::assertContains( 'wp-plugins', $dependency->deps );
@@ -106,6 +108,10 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		self::assertStringContainsString( PostNotificationMeta::AUDIENCE_CONFIG_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CONTENT_MODE_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CTA_TEXT_KEY, $inline );
+		self::assertStringContainsString(
+			str_replace( '/', '\/', EditorContactLookup::ROUTE ),
+			$inline
+		);
 		self::assertStringContainsString( 'Editorial digest', $inline );
 		self::assertStringContainsString( '"value":"administrator"', $inline );
 		self::assertStringNotContainsString( 'Internal description', $inline );

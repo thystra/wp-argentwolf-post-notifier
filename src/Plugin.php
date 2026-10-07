@@ -23,6 +23,7 @@ use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
+use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
@@ -516,6 +517,10 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EditorContactLookup::class,
+				static fn (): EditorContactLookup => new EditorContactLookup()
+			);
+			$container->set(
 				EditorAssets::class,
 				static function ( Container $services ): EditorAssets {
 					$lists = $services->get( NamedListRepository::class );
@@ -608,6 +613,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				PostNotificationMeta::class,
+				EditorContactLookup::class,
 				EditorAssets::class,
 				ConfirmationController::class,
 				ManageSubscriptionController::class,

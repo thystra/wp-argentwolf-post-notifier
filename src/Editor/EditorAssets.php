@@ -60,6 +60,7 @@ final class EditorAssets implements Registerable {
 			self::SCRIPT_HANDLE,
 			ARGENTWOLF_POST_NOTIFIER_URL . self::RUNTIME_SCRIPT,
 			array(
+				'wp-api-fetch',
 				'wp-components',
 				'wp-data',
 				'wp-editor',
@@ -116,14 +117,14 @@ final class EditorAssets implements Registerable {
 	 */
 	private function settings(): array {
 		return array(
-			'postType' => 'post',
-			'metaKeys' => array(
+			'postType'      => 'post',
+			'metaKeys'      => array(
 				'sendIntent'     => PostNotificationMeta::SEND_INTENT_KEY,
 				'audienceConfig' => PostNotificationMeta::AUDIENCE_CONFIG_KEY,
 				'contentMode'    => PostNotificationMeta::CONTENT_MODE_KEY,
 				'ctaText'        => PostNotificationMeta::CTA_TEXT_KEY,
 			),
-			'values'   => array(
+			'values'        => array(
 				'sendIntent'  => array(
 					'siteDefault' => SendIntent::SiteDefault->value,
 					'send'        => SendIntent::Send->value,
@@ -135,9 +136,18 @@ final class EditorAssets implements Registerable {
 					'full'        => ContentMode::Full->value,
 				),
 			),
-			'audience' => array(
+			'audience'      => array(
 				'roles' => $this->role_choices(),
 				'lists' => $this->named_list_choices(),
+			),
+			'contactLookup' => array(
+				'path'  => '/'
+					. EditorContactLookup::REST_NAMESPACE
+					. EditorContactLookup::ROUTE,
+				'types' => array(
+					'user'       => EditorContactLookup::TYPE_USER,
+					'subscriber' => EditorContactLookup::TYPE_SUBSCRIBER,
+				),
 			),
 		);
 	}

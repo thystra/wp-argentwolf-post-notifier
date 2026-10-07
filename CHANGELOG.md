@@ -12,7 +12,13 @@
   with the send capability, and preserve metadata on autosave revisions when core
   creates them.
 - Add the first capability-gated block-editor sidebar for send intent, content mode,
-  CTA override, and a read-only summary of saved audience selections.
+  CTA override, and saved audience configuration.
+- Add WordPress-role and named-list audience selectors without exposing list membership
+  or subscriber records through sender authorization.
+- Add typed individual user/subscriber include and exclude controls backed by exact-email
+  lookup rather than a browsable contact directory.
+- Keep raw lookup email out of request URLs by using authenticated POST bodies, return
+  masked addresses, and limit saved-ID hydration to IDs already selected on the post.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint

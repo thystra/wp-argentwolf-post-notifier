@@ -298,17 +298,27 @@ be delegated independently without granting subscriber or list administration.
 Tranche 2 adds the first persistent block-editor sidebar. Authorized senders
 can edit send intent, content mode, and the CTA override through the core editor store,
 while the current canonical audience configuration is summarized read-only. The runtime
-asset is loaded only on the post block editor for users with `send_post_notifications`;
-role, list, contact, template, estimate, preview, test-send, and pre-publish controls
-remain later Beta.1 tranches.
+asset is loaded only on the post block editor for users with `send_post_notifications`.
+
+Tranche 3 adds privacy-bounded WordPress-role and named-list selectors. The editor
+bootstrap contains only role slug/label pairs and named-list ID/name pairs; list
+membership, descriptions, counts, and subscriber records remain outside sender
+authorization.
+
+Tranche 4 adds individual WordPress-user and subscribed standalone-subscriber
+include/exclude controls through an exact-email lookup contract. Lookup requires both
+post-edit and send authorization, sends lookup inputs in authenticated POST bodies,
+and returns only typed IDs, display labels, and masked addresses. Saved-ID hydration
+is limited to IDs already stored on that post, so the endpoint is not a browsable or
+sequential-ID contact directory.
 
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [ ] Add native pre-publish confirmation panel.
 - [x] Add send, do-not-send, and site-default intent.
-- [ ] Add role selector.
-- [ ] Add named-list selector.
-- [ ] Add individual user/subscriber include and exclude selectors.
+- [x] Add role selector.
+- [x] Add named-list selector.
+- [x] Add individual user/subscriber include and exclude selectors.
 - [ ] Add resolved audience estimate.
 - [x] Add content-mode selector.
 - [ ] Add template selector.

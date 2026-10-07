@@ -79,6 +79,9 @@ $post_notification_meta_source = file_get_contents(
 	$root . '/src/Editor/PostNotificationMeta.php'
 );
 $editor_assets_source = file_get_contents( $root . '/src/Editor/EditorAssets.php' );
+$editor_contact_lookup_source = file_get_contents(
+	$root . '/src/Editor/EditorContactLookup.php'
+);
 $post_editor_runtime_source = file_get_contents(
 	$root . '/assets/runtime/post-editor.js'
 );
@@ -566,24 +569,30 @@ $assert(
 );
 $assert(
 	false !== $editor_assets_source
+		&& false !== $editor_contact_lookup_source
 		&& false !== $post_editor_runtime_source
 		&& str_contains( $editor_assets_source, "enqueue_block_editor_assets" )
 		&& str_contains( $editor_assets_source, 'Capabilities::SEND_NOTIFICATIONS' )
 		&& str_contains( $editor_assets_source, 'assets/runtime/post-editor.js' )
-		&& str_contains( $editor_assets_source, "'audience' => array(" )
+		&& str_contains( $editor_assets_source, "'audience'" )
 		&& str_contains( $editor_assets_source, '$this->role_choices()' )
 		&& str_contains( $editor_assets_source, '$this->named_list_choices()' )
+		&& str_contains( $editor_contact_lookup_source, 'WP_REST_Server::CREATABLE' )
 		&& str_contains( $post_editor_runtime_source, 'PluginSidebar' )
 		&& str_contains( $post_editor_runtime_source, 'CheckboxControl' )
 		&& str_contains( $post_editor_runtime_source, 'editPost' )
 		&& str_contains( $post_editor_runtime_source, "'role_slugs'" )
 		&& str_contains( $post_editor_runtime_source, "'named_list_ids'" )
+		&& str_contains( $post_editor_runtime_source, "method: 'POST'" )
+		&& str_contains( $post_editor_runtime_source, 'data: { email: candidate }' )
+		&& ! str_contains( $post_editor_runtime_source, '&email=' )
+		&& ! str_contains( $post_editor_runtime_source, '&include=' )
 		&& ! str_contains( $post_editor_runtime_source, '_argentwolf_post_notifier_' )
 		&& str_contains(
 			(string) $package_manifest_script,
 			'argentwolf-post-notifier/assets/runtime/post-editor.js'
 		),
-	'Beta.1 editor sidebar must expose privacy-bounded role/list audience controls through core editor state.'
+	'Beta.1 editor sidebar must expose privacy-bounded audience controls without putting contact PII in request URLs.'
 );
 $assert(
 	str_contains( (string) $subscriber_admin_repository_source, 'SubscriberStatus::Suppressed->value' )

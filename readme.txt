@@ -44,9 +44,11 @@ structured list and suppression audit events without storing raw email addresses
 bearer tokens. Alpha.5 uses dedicated subscriber and list management capabilities
 instead of `manage_options`; administrators receive both by default and sites may
 delegate either capability independently. Beta.1 adds a capability-gated post-editor
-sidebar for notification intent, content mode, CTA override, and a read-only summary
-of saved audience selections. The remaining audience selectors and pre-publish
-confirmation are still under development.
+sidebar for notification intent, content mode, CTA override, role and named-list
+selection, and typed individual include/exclude contacts. Individual contacts require
+exact-email lookup through an authenticated POST request; responses use masked
+addresses and do not provide a browsable subscriber directory. Audience estimates,
+template selection, previews, and pre-publish confirmation remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -93,7 +95,10 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Begin revision-aware REST post metadata for the editor workflow.
 * Add independently delegable `send_post_notifications` authorization.
 * Guard autosave and revision metadata with send authorization and preserve it on core autosave revisions.
-* Add the first capability-gated block-editor sidebar for send intent, content mode, CTA override, and saved-audience summary.
+* Add the first capability-gated block-editor sidebar for send intent, content mode, CTA override, and saved-audience configuration.
+* Add WordPress-role and named-list audience selectors without exposing list membership or subscriber records.
+* Add typed individual include/exclude contacts through exact-email POST lookup with masked response addresses.
+* Limit saved-ID hydration to contacts already selected on the target post.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =
