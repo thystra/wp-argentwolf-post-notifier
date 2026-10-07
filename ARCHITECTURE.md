@@ -291,8 +291,20 @@ POST bodies so raw addresses are not placed in request URLs. Responses contain t
 entity IDs, display labels, and masked addresses. Saved-ID hydration is bounded and may
 return only IDs already present in that post's canonical audience configuration. The
 lookup does not change preferences, subscription state, suppression, or campaign state.
-Template selection, resolved audience estimates, previews, tests, warnings, and
-pre-publish confirmation remain separate Beta.1 work.
+
+Tranche 5 adds an explicit aggregate-only resolved audience estimate. A reusable
+`AudienceRequestBuilder` converts the canonical editor configuration into the existing
+`AudienceResolutionRequest`, including deterministic expansion of selected WordPress
+roles. The editor estimate endpoint then applies `AudienceResolver` and returns only the
+eligible-recipient count plus stable aggregate skip counts. It does not serialize resolved
+recipient objects, email addresses, keyed email hashes, user IDs, subscriber IDs, or list
+membership. The request uses the current unsaved editor configuration, so changing an
+audience selection invalidates the displayed estimate until the sender explicitly refreshes
+it. Registered users in the neutral `site_default` preference remain fail-closed until a
+later site-level policy explicitly defines that default.
+
+Template selection, previews, tests, warnings, and pre-publish confirmation remain
+separate Beta.1 work.
 
 ### 4.3 Public subscription block
 

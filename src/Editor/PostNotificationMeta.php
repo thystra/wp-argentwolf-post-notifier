@@ -410,7 +410,7 @@ final class PostNotificationMeta implements Registerable {
 	 *
 	 * @return array<string,mixed>
 	 */
-	private static function audience_rest_schema(): array {
+	public static function audience_rest_schema(): array {
 		$id_list = array(
 			'type'     => 'array',
 			'maxItems' => self::MAX_AUDIENCE_ITEMS,

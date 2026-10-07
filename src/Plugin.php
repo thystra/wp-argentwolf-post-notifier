@@ -23,11 +23,13 @@ use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
+use ArgentWolf\PostNotifier\Editor\EditorAudienceEstimate;
 use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
@@ -155,6 +157,10 @@ final class Plugin {
 				RegisteredUserPreferenceRepository::class,
 				static fn (): RegisteredUserPreferenceRepository =>
 					new RegisteredUserPreferenceRepository()
+			);
+			$container->set(
+				AudienceRequestBuilder::class,
+				static fn (): AudienceRequestBuilder => new AudienceRequestBuilder()
 			);
 			$container->set(
 				AudienceResolver::class,
@@ -521,6 +527,25 @@ final class Plugin {
 				static fn (): EditorContactLookup => new EditorContactLookup()
 			);
 			$container->set(
+				EditorAudienceEstimate::class,
+				static function ( Container $services ): EditorAudienceEstimate {
+					$requests = $services->get( AudienceRequestBuilder::class );
+					$resolver = $services->get( AudienceResolver::class );
+					if ( ! $requests instanceof AudienceRequestBuilder ) {
+						throw new LogicException(
+							'The audience request builder is invalid.'
+						);
+					}
+					if ( ! $resolver instanceof AudienceResolver ) {
+						throw new LogicException(
+							'The audience resolver is invalid.'
+						);
+					}
+
+					return new EditorAudienceEstimate( $requests, $resolver );
+				}
+			);
+			$container->set(
 				EditorAssets::class,
 				static function ( Container $services ): EditorAssets {
 					$lists = $services->get( NamedListRepository::class );
@@ -613,6 +638,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				PostNotificationMeta::class,
+				EditorAudienceEstimate::class,
 				EditorContactLookup::class,
 				EditorAssets::class,
 				ConfirmationController::class,

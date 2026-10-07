@@ -149,6 +149,11 @@ final class EditorAssets implements Registerable {
 					'subscriber' => EditorContactLookup::TYPE_SUBSCRIBER,
 				),
 			),
+			'estimate'      => array(
+				'path' => '/'
+					. EditorAudienceEstimate::REST_NAMESPACE
+					. EditorAudienceEstimate::ROUTE,
+			),
 		);
 	}
 

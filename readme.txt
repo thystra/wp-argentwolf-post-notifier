@@ -47,8 +47,11 @@ delegate either capability independently. Beta.1 adds a capability-gated post-ed
 sidebar for notification intent, content mode, CTA override, role and named-list
 selection, and typed individual include/exclude contacts. Individual contacts require
 exact-email lookup through an authenticated POST request; responses use masked
-addresses and do not provide a browsable subscriber directory. Audience estimates,
-template selection, previews, and pre-publish confirmation remain under development.
+addresses and do not provide a browsable subscriber directory. The editor can explicitly
+resolve the current unsaved audience configuration to aggregate eligible and skip counts
+without returning recipient identities; registered users with the neutral `site_default`
+preference remain fail-closed until a site policy defines that default. Template selection,
+previews, warnings, and pre-publish confirmation remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -99,6 +102,8 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Add WordPress-role and named-list audience selectors without exposing list membership or subscriber records.
 * Add typed individual include/exclude contacts through exact-email POST lookup with masked response addresses.
 * Limit saved-ID hydration to contacts already selected on the target post.
+* Add an aggregate-only resolved audience estimate for the current unsaved editor configuration.
+* Reuse the existing audience policy and return only eligible and aggregate skip counts.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =
