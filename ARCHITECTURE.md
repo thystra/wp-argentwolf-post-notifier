@@ -274,12 +274,25 @@ override.
 Beta.1 tranche 2 adds a capability-gated `PluginSidebar` to the post
 block editor. The sidebar reads unsaved metadata through the `core/editor` data store
 and updates it with `editPost`, so ordinary editor save/autosave behavior remains the
-only persistence path. This first UI slice exposes send intent, content mode, and CTA
-override plus a read-only summary of already-saved audience selections. It does not
-resolve recipients, create campaigns, or expose subscriber details. The runtime asset
-is enqueued only for the `post` editor when the current user has
-`send_post_notifications`; audience selectors, template selection, previews, tests,
-and pre-publish confirmation remain separate Beta.1 work.
+only persistence path. It exposes send intent, content mode, CTA override, and the
+saved audience configuration without resolving recipients or creating campaigns. The
+runtime asset is enqueued only for the `post` editor when the current user has
+`send_post_notifications`.
+
+Tranche 3 adds role and named-list audience-source controls. The editor bootstrap
+contains only WordPress role slug/label pairs and named-list ID/name pairs; list
+membership, descriptions, counts, and subscriber records are not disclosed merely
+because a user can send notifications.
+
+Tranche 4 adds typed individual include/exclude controls. Contact lookup requires
+`edit_post` for the target post plus `send_post_notifications`, accepts only exact email
+lookup rather than browse or fuzzy search, and transmits lookup inputs in authenticated
+POST bodies so raw addresses are not placed in request URLs. Responses contain typed
+entity IDs, display labels, and masked addresses. Saved-ID hydration is bounded and may
+return only IDs already present in that post's canonical audience configuration. The
+lookup does not change preferences, subscription state, suppression, or campaign state.
+Template selection, resolved audience estimates, previews, tests, warnings, and
+pre-publish confirmation remain separate Beta.1 work.
 
 ### 4.3 Public subscription block
 

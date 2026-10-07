@@ -33,6 +33,8 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	public function set_up(): void {
 		parent::set_up();
 
+		$this->reset_rest_state();
+
 		$meta = Plugin::instance()->container()->get( PostNotificationMeta::class );
 		self::assertInstanceOf( PostNotificationMeta::class, $meta );
 		$meta->register();
@@ -54,6 +56,30 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		Capabilities::install( true );
 		parent::tear_down();
+		$this->reset_rest_state();
+	}
+
+	/**
+	 * Reset REST server and cached post-type controller instances.
+	 *
+	 * WordPress caches the post REST controllers independently of the global REST
+	 * server. Integration tests unregister meta keys during teardown, so retaining
+	 * a controller can leave its cached response schema out of sync with the
+	 * metadata re-registered by the next test.
+	 *
+	 * @return void
+	 */
+	private function reset_rest_state(): void {
+		$GLOBALS['wp_rest_server'] = null;
+
+		$post_type = get_post_type_object( 'post' );
+		if ( ! $post_type instanceof \WP_Post_Type ) {
+			return;
+		}
+
+		$post_type->rest_controller           = null;
+		$post_type->revisions_rest_controller = null;
+		$post_type->autosave_rest_controller  = null;
 	}
 
 	/**
