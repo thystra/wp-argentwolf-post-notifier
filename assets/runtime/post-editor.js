@@ -31,6 +31,7 @@
 		! settings.metaKeys ||
 		! settings.values ||
 		! settings.audience ||
+		! settings.verification ||
 		! settings.contactLookup ||
 		! settings.estimate
 	) {
@@ -39,8 +40,14 @@
 
 	const { registerPlugin } = plugins;
 	const { PluginSidebar } = editor;
-	const { Button, CheckboxControl, PanelBody, SelectControl, TextControl } =
-		components;
+	const {
+		Button,
+		CheckboxControl,
+		Notice,
+		PanelBody,
+		SelectControl,
+		TextControl,
+	} = components;
 	const { useDispatch, useSelect } = data;
 	const { createElement, useEffect, useState } = element;
 	const { __, sprintf } = i18n;
@@ -48,6 +55,7 @@
 		metaKeys,
 		values,
 		audience: audienceChoices,
+		verification: verificationSettings,
 		contactLookup,
 		estimate: estimateSettings,
 	} = settings;
@@ -681,6 +689,19 @@
 				title: __( 'Post Notifications', 'argentwolf-post-notifier' ),
 				icon: 'email-alt',
 			},
+			verificationSettings.healthy === true
+				? null
+				: createElement(
+						Notice,
+						{
+							status: 'warning',
+							isDismissible: false,
+						},
+						__(
+							'Registered-user delivery is disabled because the authoritative email-verification provider is unavailable or unhealthy.',
+							'argentwolf-post-notifier'
+						)
+				  ),
 			createElement(
 				PanelBody,
 				{
@@ -804,6 +825,19 @@
 				estimateMessage === ''
 					? null
 					: createElement( 'p', null, estimateMessage ),
+				resolvedEstimate && resolvedEstimate.eligible === 0
+					? createElement(
+							Notice,
+							{
+								status: 'warning',
+								isDismissible: false,
+							},
+							__(
+								'The current audience resolves to zero eligible recipients.',
+								'argentwolf-post-notifier'
+							)
+					  )
+					: null,
 				resolvedEstimate
 					? createElement(
 							'div',

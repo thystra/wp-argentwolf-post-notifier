@@ -21,8 +21,11 @@ addresses and does not provide a browsable contact directory. The editor can exp
 resolve the current unsaved audience configuration to aggregate eligible and skip counts
 through the same reusable audience policy used by later campaign work; no resolved
 recipient identities are returned, and neutral `site_default` registered-user preferences
-remain fail-closed until a site policy defines that default. Templates, previews, warnings,
-and pre-publish confirmation remain later Beta.1 work.
+remain fail-closed until a site policy defines that default. The sidebar also warns when
+registered-user verification is unavailable or unhealthy and when an explicit estimate
+resolves to zero eligible recipients; detailed provider diagnostics remain administrator-only.
+Templates, previews, invalid-template validation, and pre-publish confirmation remain later
+Beta.1 work.
 Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.

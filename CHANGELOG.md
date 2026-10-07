@@ -24,6 +24,11 @@
 - Expand selected WordPress roles through a reusable audience-request builder and return
   only eligible plus stable aggregate skip counts; neutral `site_default` registered-user
   preferences remain fail-closed until a later site policy defines that default.
+- Warn authorized senders when registered-user verification is unavailable or unhealthy
+  while keeping provider diagnostics confined to the existing administrator notice.
+- Warn after an explicit audience estimate resolves to zero eligible recipients.
+- Defer editor verification-provider and audience-resolver construction until use so
+  later-loading alternate-provider filters participate in health and eligibility policy.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint

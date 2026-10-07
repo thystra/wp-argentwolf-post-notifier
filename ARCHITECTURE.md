@@ -303,8 +303,20 @@ audience selection invalidates the displayed estimate until the sender explicitl
 it. Registered users in the neutral `site_default` preference remain fail-closed until a
 later site-level policy explicitly defines that default.
 
-Template selection, previews, tests, warnings, and pre-publish confirmation remain
-separate Beta.1 work.
+Tranche 6 adds advisory editor warnings without changing delivery or campaign state.
+Authorized senders see a non-dismissible warning when registered-user verification is
+unavailable or unhealthy, but the editor bootstrap exposes only a Boolean health flag;
+provider descriptions, versions, error codes, and detailed diagnostics remain confined to
+the administrator notice. After an explicit audience estimate, a zero eligible-recipient
+result produces a separate warning based solely on the aggregate count.
+
+Verification-provider and audience-resolver construction used by editor integration is
+deferred until editor enqueue or estimate execution. This ensures alternate-provider
+filters registered by later-loading plugins are available before health or recipient
+eligibility is evaluated.
+
+Template selection, previews, tests, the invalid-template warning, and pre-publish
+confirmation remain separate Beta.1 work.
 
 ### 4.3 Public subscription block
 
