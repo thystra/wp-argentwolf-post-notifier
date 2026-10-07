@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Editor;
 
 use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use WP_Screen;
 
 /**
@@ -24,6 +25,14 @@ final class EditorAssets implements Registerable {
 	 * Runtime editor asset path relative to the plugin root.
 	 */
 	public const RUNTIME_SCRIPT = 'assets/runtime/post-editor.js';
+
+	/**
+	 * Construct the editor asset coordinator.
+	 *
+	 * @param NamedListRepository $named_lists Named-list read repository.
+	 */
+	public function __construct( private NamedListRepository $named_lists ) {
+	}
 
 	/**
 	 * Register WordPress hooks.
@@ -126,7 +135,83 @@ final class EditorAssets implements Registerable {
 					'full'        => ContentMode::Full->value,
 				),
 			),
+			'audience' => array(
+				'roles' => $this->role_choices(),
+				'lists' => $this->named_list_choices(),
+			),
 		);
+	}
+
+	/**
+	 * Return selectable WordPress roles without exposing user records.
+	 *
+	 * @return array<int,array{value:string,label:string}>
+	 */
+	private function role_choices(): array {
+		$choices = array();
+
+		foreach ( wp_roles()->roles as $slug => $role ) {
+			if ( ! is_string( $slug ) || ! is_array( $role ) ) {
+				continue;
+			}
+
+			$value = sanitize_key( $slug );
+			if ( '' === $value ) {
+				continue;
+			}
+
+			$name      = $role['name'] ?? $value;
+			$label     = is_string( $name ) ? translate_user_role( $name ) : $value;
+			$choices[] = array(
+				'value' => $value,
+				'label' => $label,
+			);
+		}
+
+		usort(
+			$choices,
+			static function ( array $left, array $right ): int {
+				$label_order = strnatcasecmp( $left['label'], $right['label'] );
+
+				return 0 !== $label_order
+					? $label_order
+					: strcmp( $left['value'], $right['value'] );
+			}
+		);
+
+		return $choices;
+	}
+
+	/**
+	 * Return named-list identifiers and labels only.
+	 *
+	 * List descriptions, member counts, and member data stay out of the editor
+	 * bootstrap contract so send authorization does not imply contact visibility.
+	 *
+	 * @return array<int,array{value:int,label:string}>
+	 */
+	private function named_list_choices(): array {
+		$choices = array();
+
+		foreach ( $this->named_lists->all() as $row ) {
+			$id   = absint( $row['id'] ?? 0 );
+			$name = $row['name'] ?? '';
+			if ( $id < 1 || ! is_string( $name ) ) {
+				continue;
+			}
+
+			$label = sanitize_text_field( $name );
+			if ( '' === $label ) {
+				continue;
+			}
+
+			$choices[] = array(
+				'value' => $id,
+				'label' => $label,
+			);
+		}
+
+		return $choices;
 	}
 }
 

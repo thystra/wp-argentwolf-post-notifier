@@ -11,6 +11,7 @@ use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use WP_UnitTestCase;
 
 /**
@@ -76,8 +77,18 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_authorized_post_editor_enqueues_sidebar_runtime(): void {
-		$service = Plugin::instance()->container()->get( EditorAssets::class );
+		$container = Plugin::instance()->container();
+		$lists     = $container->get( NamedListRepository::class );
+		$service   = $container->get( EditorAssets::class );
+		self::assertInstanceOf( NamedListRepository::class, $lists );
 		self::assertInstanceOf( EditorAssets::class, $service );
+
+		$list_id = $lists->create(
+			'Editorial digest',
+			'Internal description that must not reach the editor bootstrap.',
+			$this->administrator_id
+		);
+		self::assertGreaterThan( 0, $list_id );
 
 		$service->enqueue_assets();
 
@@ -95,6 +106,51 @@ final class EditorAssetsTest extends WP_UnitTestCase {
 		self::assertStringContainsString( PostNotificationMeta::AUDIENCE_CONFIG_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CONTENT_MODE_KEY, $inline );
 		self::assertStringContainsString( PostNotificationMeta::CTA_TEXT_KEY, $inline );
+		self::assertStringContainsString( 'Editorial digest', $inline );
+		self::assertStringContainsString( '"value":"administrator"', $inline );
+		self::assertStringNotContainsString( 'Internal description', $inline );
+		self::assertStringNotContainsString( 'member_count', $inline );
+	}
+
+	/**
+	 * Send authorization may expose list names without granting list administration.
+	 *
+	 * @return void
+	 */
+	public function test_delegated_sender_receives_named_list_choices_without_management(): void {
+		$container = Plugin::instance()->container();
+		$lists     = $container->get( NamedListRepository::class );
+		$service   = $container->get( EditorAssets::class );
+		self::assertInstanceOf( NamedListRepository::class, $lists );
+		self::assertInstanceOf( EditorAssets::class, $service );
+
+		$list_id = $lists->create(
+			'Sender-visible list',
+			'Hidden detail',
+			$this->administrator_id
+		);
+		self::assertGreaterThan( 0, $list_id );
+
+		$editor_id = self::factory()->user->create(
+			array( 'role' => 'editor' )
+		);
+		$editor    = get_userdata( $editor_id );
+		self::assertInstanceOf( \WP_User::class, $editor );
+		$editor->add_cap( Capabilities::SEND_NOTIFICATIONS );
+		wp_set_current_user( $editor_id );
+
+		self::assertTrue( current_user_can( Capabilities::SEND_NOTIFICATIONS ) );
+		self::assertFalse( current_user_can( Capabilities::MANAGE_LISTS ) );
+		self::assertFalse( current_user_can( Capabilities::MANAGE_SUBSCRIBERS ) );
+
+		$service->enqueue_assets();
+		self::assertTrue( wp_script_is( EditorAssets::SCRIPT_HANDLE, 'enqueued' ) );
+
+		$before = wp_scripts()->get_data( EditorAssets::SCRIPT_HANDLE, 'before' );
+		self::assertIsArray( $before );
+		$inline = implode( "\n", $before );
+		self::assertStringContainsString( 'Sender-visible list', $inline );
+		self::assertStringNotContainsString( 'Hidden detail', $inline );
 	}
 
 	/**

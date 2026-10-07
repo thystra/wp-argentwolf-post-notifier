@@ -16,17 +16,23 @@
  * @param {Object} settings   Server-provided persistence contract.
  */
 ( function ( plugins, editor, components, data, element, i18n, settings ) {
-	if ( ! settings || ! settings.metaKeys || ! settings.values ) {
+	if (
+		! settings ||
+		! settings.metaKeys ||
+		! settings.values ||
+		! settings.audience
+	) {
 		return;
 	}
 
 	const { registerPlugin } = plugins;
 	const { PluginSidebar } = editor;
-	const { PanelBody, SelectControl, TextControl } = components;
+	const { CheckboxControl, PanelBody, SelectControl, TextControl } =
+		components;
 	const { useDispatch, useSelect } = data;
 	const { createElement } = element;
 	const { __, sprintf } = i18n;
-	const { metaKeys, values } = settings;
+	const { metaKeys, values, audience: audienceChoices } = settings;
 
 	/**
 	 * Count one saved audience-selection array defensively.
@@ -39,13 +45,104 @@
 	}
 
 	/**
+	 * Return one audience-selection array defensively.
+	 *
+	 * @param {*} value Candidate selection value.
+	 * @return {Array} Canonical array-like editor value.
+	 */
+	function selectionValues( value ) {
+		return Array.isArray( value ) ? value : [];
+	}
+
+	/**
+	 * Normalize the six canonical audience-selection buckets.
+	 *
+	 * @param {*} audience Saved audience configuration.
+	 * @return {Object} Canonical editor audience object.
+	 */
+	function normalizedAudience( audience ) {
+		const config = audience && typeof audience === 'object' ? audience : {};
+
+		return {
+			role_slugs: selectionValues( config.role_slugs ),
+			named_list_ids: selectionValues( config.named_list_ids ),
+			included_user_ids: selectionValues( config.included_user_ids ),
+			included_subscriber_ids: selectionValues(
+				config.included_subscriber_ids
+			),
+			excluded_user_ids: selectionValues( config.excluded_user_ids ),
+			excluded_subscriber_ids: selectionValues(
+				config.excluded_subscriber_ids
+			),
+		};
+	}
+
+	/**
+	 * Toggle one selected role or list value without mutating editor state.
+	 *
+	 * @param {Array}   current Existing selection.
+	 * @param {*}       value   Selection value.
+	 * @param {boolean} checked Whether the value should be selected.
+	 *
+	 * @return {Array} Updated selection.
+	 */
+	function toggledSelection( current, value, checked ) {
+		const next = selectionValues( current ).filter(
+			( candidate ) => candidate !== value
+		);
+		if ( checked ) {
+			next.push( value );
+		}
+
+		return next;
+	}
+
+	/**
+	 * Render one checkbox group for an audience-source type.
+	 *
+	 * @param {string}   title     Group label.
+	 * @param {string}   emptyText Empty-state copy.
+	 * @param {Array}    choices   Server-provided choices.
+	 * @param {Array}    selected  Currently selected values.
+	 * @param {Function} onToggle  Selection callback.
+	 * @param {string}   keyPrefix React key prefix.
+	 * @return {Object} Fieldset element.
+	 */
+	function choiceFieldset(
+		title,
+		emptyText,
+		choices,
+		selected,
+		onToggle,
+		keyPrefix
+	) {
+		const controls = choices.map( ( choice ) =>
+			createElement( CheckboxControl, {
+				key: `${ keyPrefix }-${ choice.value }`,
+				label: choice.label,
+				checked: selected.includes( choice.value ),
+				onChange: ( checked ) => onToggle( choice.value, checked ),
+			} )
+		);
+
+		return createElement(
+			'fieldset',
+			null,
+			createElement( 'legend', null, title ),
+			controls.length > 0
+				? controls
+				: createElement( 'p', null, emptyText )
+		);
+	}
+
+	/**
 	 * Build a privacy-safe summary of canonical audience selections.
 	 *
 	 * @param {*} audience Saved audience configuration.
 	 * @return {string} Human-readable count summary.
 	 */
 	function audienceSummary( audience ) {
-		const config = audience && typeof audience === 'object' ? audience : {};
+		const config = normalizedAudience( audience );
 		const roles = selectionCount( config.role_slugs );
 		const lists = selectionCount( config.named_list_ids );
 		const inclusions =
@@ -108,9 +205,22 @@
 			typeof meta[ metaKeys.ctaText ] === 'string'
 				? meta[ metaKeys.ctaText ]
 				: '';
+		const audience = normalizedAudience( meta[ metaKeys.audienceConfig ] );
+		const roleChoices = Array.isArray( audienceChoices.roles )
+			? audienceChoices.roles
+			: [];
+		const listChoices = Array.isArray( audienceChoices.lists )
+			? audienceChoices.lists
+			: [];
 
 		const updateMeta = ( key, value ) => {
 			editPost( { meta: { [ key ]: value } } );
+		};
+		const updateAudienceField = ( field, value ) => {
+			updateMeta( metaKeys.audienceConfig, {
+				...audience,
+				[ field ]: value,
+			} );
 		};
 
 		return createElement(
@@ -215,16 +325,50 @@
 					title: __( 'Audience', 'argentwolf-post-notifier' ),
 					initialOpen: false,
 				},
-				createElement(
-					'p',
-					null,
-					audienceSummary( meta[ metaKeys.audienceConfig ] )
+				createElement( 'p', null, audienceSummary( audience ) ),
+				choiceFieldset(
+					__( 'WordPress roles', 'argentwolf-post-notifier' ),
+					__(
+						'No selectable roles are available.',
+						'argentwolf-post-notifier'
+					),
+					roleChoices,
+					audience.role_slugs,
+					( value, checked ) =>
+						updateAudienceField(
+							'role_slugs',
+							toggledSelection(
+								audience.role_slugs,
+								value,
+								checked
+							)
+						),
+					'role'
+				),
+				choiceFieldset(
+					__( 'Named lists', 'argentwolf-post-notifier' ),
+					__(
+						'No named lists are available.',
+						'argentwolf-post-notifier'
+					),
+					listChoices,
+					audience.named_list_ids,
+					( value, checked ) =>
+						updateAudienceField(
+							'named_list_ids',
+							toggledSelection(
+								audience.named_list_ids,
+								value,
+								checked
+							)
+						),
+					'list'
 				),
 				createElement(
 					'p',
 					null,
 					__(
-						'Detailed audience editing will be added in a later Beta.1 tranche.',
+						'Individual contact controls are deferred to preserve subscriber privacy boundaries.',
 						'argentwolf-post-notifier'
 					)
 				)
