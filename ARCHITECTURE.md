@@ -582,6 +582,19 @@ Arbitrary PHP and unbounded shortcode execution are not supported in templates.
 
 ## 5. Publication lifecycle
 
+Beta.2 tranche 1 implements the first runtime boundary of this design. AWPN observes
+`wp_after_insert_post`, after the completed core save, and only reserves an initial campaign
+when the final stored post is `publish`, the prior state was not `publish`, notification
+intent is explicitly `send`, the post is not a revision/autosave, and the stored GMT
+publication time is not materially in the future. Neutral `site_default` intent remains
+fail-closed until a site-wide send policy is defined.
+
+The reservation is an atomic insert into the frozen schema-1 campaigns table using
+`initial:{site_id}:{post_id}` and its existing unique `campaign_key` constraint. The row
+starts in `building` state. Subject, HTML, and text bodies are empty build-state placeholders,
+and no recipient rows are created. Later rendering and audience milestones populate the
+immutable content and recipient snapshots before any campaign may become queueable.
+
 ### 5.1 Immediate publication
 
 For a new or existing non-published post:

@@ -381,17 +381,26 @@ Acceptance criteria:
 
 Target: `0.1.0-beta.2`
 
-- [ ] Observe actual completed publication through the selected core hook path.
+Tranche 1 establishes the actual-publication observer and atomic initial-campaign reservation
+primitive. AWPN observes `wp_after_insert_post` after the completed core save, fails closed
+unless the saved post is an actual supported `publish` transition with explicit `send` intent
+and a due GMT publication time, and atomically reserves a schema-1 `building` campaign using
+`initial:{site_id}:{post_id}`. The building row intentionally contains no recipient rows and
+only placeholder message bodies; rendering, audience freezing, queueing, and delivery remain
+later milestones. Neutral `site_default` send intent remains fail-closed until an explicit
+site-wide send policy exists.
+
+- [x] Observe actual completed publication through the selected core hook path.
 - [ ] Ignore draft, pending, private, trash, auto-draft, revision, and future
       saves.
-- [ ] Create no campaign when a post is scheduled.
+- [x] Create no campaign when a post is scheduled.
 - [ ] Create no campaign when a scheduled post is edited.
-- [ ] Create one initial campaign on `future -> publish`.
-- [ ] Create one initial campaign on immediate non-publish -> publish.
-- [ ] Add defensive GMT publication-time check.
-- [ ] Add atomic unique initial campaign key.
-- [ ] Prevent resend on ordinary published-post updates.
-- [ ] Prevent duplicate initial campaign after unpublish/republish.
+- [x] Create one initial campaign on `future -> publish`.
+- [x] Create one initial campaign on immediate non-publish -> publish.
+- [x] Add defensive GMT publication-time check.
+- [x] Add atomic unique initial campaign key.
+- [x] Prevent resend on ordinary published-post updates.
+- [x] Prevent duplicate initial campaign after unpublish/republish.
 - [ ] Add explicit future update-campaign action only if included in the target
       release.
 - [ ] Add diagnostic logging that does not expose recipient data.
@@ -400,24 +409,24 @@ Target: `0.1.0-beta.2`
 Required tests:
 
 - [ ] Draft save produces no campaign.
-- [ ] Draft-to-future produces no campaign.
+- [x] Draft-to-future produces no campaign.
 - [ ] Future edit produces no campaign.
 - [ ] Schedule-date change produces no campaign.
 - [ ] On-time future-to-publish produces one campaign.
-- [ ] Late future-to-publish produces one campaign at actual publish.
+- [x] Late future-to-publish produces one campaign at actual publish.
 - [ ] Manual early publish produces one campaign at actual publish.
-- [ ] Immediate publish produces one campaign.
-- [ ] Published update produces no campaign.
-- [ ] Unpublish/republish produces no second initial campaign.
-- [ ] Duplicate hook calls produce one campaign.
+- [x] Immediate publish produces one campaign.
+- [x] Published update produces no campaign.
+- [x] Unpublish/republish produces no second initial campaign.
+- [x] Duplicate hook calls produce one campaign.
 - [ ] Concurrent publication observers produce one campaign.
 - [ ] WP-CLI/core publication path follows the same behavior.
 
 Acceptance criteria:
 
 - [ ] No scheduled-post email can be sent before actual publication.
-- [ ] Campaign idempotency is enforced by the database.
-- [ ] A missed WP-Cron run delays notification rather than sending early.
+- [x] Campaign idempotency is enforced by the database.
+- [x] A missed WP-Cron run delays notification rather than sending early.
 
 ## Milestone 8 — Content cutoff, templates, and preview
 

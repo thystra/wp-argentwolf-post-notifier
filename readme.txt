@@ -106,6 +106,8 @@ the dependency, and still checks provider health and API compatibility at runtim
 
 = 0.1.0-beta.2 =
 * Begin scheduled and immediate publication lifecycle development after completing the Beta.1 editor-workflow milestone.
+* Reserve one idempotent building campaign only after an eligible post is actually published.
+* Keep scheduling, recipients, rendering, queueing, and mail delivery outside the initial campaign-reservation path.
 
 = 0.1.0-beta.1 =
 * Begin revision-aware REST post metadata for the editor workflow.

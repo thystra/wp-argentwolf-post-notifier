@@ -35,8 +35,10 @@ save/reload, scheduling, scheduled-post edits, revisions, and autosaves without 
 campaign state. The Beta.1 editor workflow intentionally supports the block editor only;
 AWPN provides no notification-configuration UI in the Classic Editor. Template rendering,
 previews, storage, and test sends are deferred together to Milestone 8 so they share one
-canonical message-composition path. Beta.2 now targets the scheduled and immediate
-publication lifecycle; campaign creation is not yet implemented in the starting Beta.2 tree.
+canonical message-composition path. Beta.2 now includes the first scheduled/immediate
+publication primitive: an explicit-send post reserves one idempotent `building` campaign only
+after actual publication. The current tranche does not render message content, freeze
+recipients, queue work, or send mail.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
@@ -72,12 +74,13 @@ a reviewed fallback PSR-4 autoloader.
 
 ## Scheduled posts
 
-Scheduling a post must not create a campaign or send email. Notification intent
-is stored with the scheduled post. The campaign is created only when WordPress
-actually changes the post from `future` to `publish`.
+Scheduling a post does not create a campaign or send email. Notification intent is stored
+with the scheduled post. The Beta.2 publication observer reserves the initial `building`
+campaign only when WordPress actually changes the post from `future` to `publish`.
 
-If WP-Cron runs late, the notification is delayed until actual publication; it
-is never sent early merely because the editor selected a future date.
+If WP-Cron runs late, campaign reservation is delayed until actual publication; nothing is
+created early merely because the editor selected a future date. Rendering, recipient
+freezing, queueing, and mail delivery remain later milestones.
 
 ## Email verification
 
