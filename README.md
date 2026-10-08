@@ -145,6 +145,28 @@ resolution can refer to an already-existing campaign and does not mean any email
 queued or sent. Server/PHP error-log retention and access remain the site operator's
 responsibility. No remote telemetry is used.
 
+## Scheduled-publication Site Health (Beta.2)
+
+Under **Tools → Site Health → Status**, ArgentWolf Post Notifier registers two direct
+read-only checks:
+
+- **Scheduled publications:** reports a recommendation when at least one post with
+  explicit `send` intent remains `future` at least 15 minutes after its scheduled
+  GMT time. The check examines at most one matching post and does not display
+  post titles, recipient data, campaign content, or addresses. The action links
+  to WordPress's scheduled-post list; investigate WP-Cron or a configured system
+  cron runner if overdue publications persist. Neutral `site_default` intent and
+  `do_not_send` do not trigger this warning.
+- **Queue wake-ups:** reports the current Beta.2 state as informational. No
+  delivery queue, worker, or queue wake-up event exists yet, so an absent worker
+  event must not be treated as a site failure. A green informational result does
+  **not** mean email delivery is healthy or active. Queue and worker health
+  checks are deferred until those features are implemented.
+
+These checks do not schedule cron jobs, publish posts, create campaigns, or send
+mail. WordPress can publish an overdue post only when its regular publication
+process actually executes.
+
 ## Development
 
 A conventional local checkout is:
