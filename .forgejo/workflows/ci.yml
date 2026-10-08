@@ -192,6 +192,7 @@ jobs:
           scripts/run-plugin-check.sh
           tests/package-manifest.sh
           tests/concurrent-campaigns.sh
+          tests/wpcli-publication.sh
 
       - name: Install pinned WP-CLI
         run: |
@@ -288,6 +289,10 @@ jobs:
       - name: Qualify cross-process initial-campaign reservation
         run: |
           bash tests/concurrent-campaigns.sh "$RUNNER_TEMP/wordpress"
+
+      - name: Qualify installed-package WP-CLI publication lifecycle
+        run: |
+          bash tests/wpcli-publication.sh "$RUNNER_TEMP/wordpress"
 
       - name: Install pinned Plugin Check
         run: |

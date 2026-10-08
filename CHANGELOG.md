@@ -19,7 +19,10 @@
   the defensive future-time check for real stored GMT publication timestamps.
 - Add a disposable WordPress, multi-process reservation contention gate: hold an
   uncommitted initial campaign while five independent observers compete, then assert
-  one durable campaign and no recipient rows after commit (CI qualification pending).
+  one durable campaign and no recipient rows after commit (Forgejo PR #37 CI passed).
+- Add installed-package WP-CLI lifecycle qualification for immediate publication,
+  scheduled-post edits, due publication through core cron, and unpublish/republish
+  (new CI gate pending).
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 
