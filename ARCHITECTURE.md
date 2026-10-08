@@ -331,6 +331,18 @@ override. Provider-health and invalid-template warnings are repeated in the pre-
 surface. The panel is informational only: it does not resolve recipients, render email,
 submit mail, or create campaign state.
 
+Tranche 9 qualifies the editorial lifecycle rather than adding another production path.
+Integration tests exercise complete notification metadata through the core post REST
+controller for ordinary save/reload, draft-to-future scheduling, edits while the post
+remains scheduled, ordinary revisions, and autosaves. Each path also asserts that no
+campaign or campaign-recipient rows are created. The pre-publish panel reads the same edited
+metadata contract whose persistence is qualified by these tests.
+
+Beta.1 editor integration is block-editor-only. AWPN does not enqueue its editor runtime or
+provide notification-configuration controls in the Classic Editor. The protected post-meta
+contract remains server-side data, but Classic Editor users must not be presented as having
+an AWPN notification workflow.
+
 Preview and test-send actions remain separate Beta.1 work, while actual template storage,
 validation, rendering, and preview behavior remain in Milestone 8.
 

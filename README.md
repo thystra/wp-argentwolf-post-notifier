@@ -30,8 +30,12 @@ flagged instead of silently changed. The block editor now also presents a native
 pre-publish summary of the current notification intent, privacy-safe audience selections,
 content mode, template, CTA override, and relevant warning state. The summary is
 informational only and does not resolve recipients, render email, send mail, or create a
-campaign. Template rendering, previews, and storage remain Milestone 8 work; test sends
-remain later Beta.1 work. Campaign creation and persistence remain later milestones.
+campaign. Beta.1 qualification verifies that the complete editor configuration survives
+save/reload, scheduling, scheduled-post edits, revisions, and autosaves without creating
+campaign state. The Beta.1 editor workflow intentionally supports the block editor only;
+AWPN provides no notification-configuration UI in the Classic Editor. Template rendering,
+previews, and storage remain Milestone 8 work; test sends remain later Beta.1 work.
+Campaign creation and persistence remain later milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 

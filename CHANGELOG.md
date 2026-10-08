@@ -35,6 +35,10 @@
   instead of silently replacing editorial configuration.
 - Add a native pre-publish confirmation panel that summarizes the current notification
   metadata and warning state without resolving recipients or creating campaign state.
+- Qualify complete editor metadata across save/reload, scheduling, scheduled-post edits,
+  ordinary revisions, and autosaves while asserting that those paths create no campaign state.
+- Explicitly scope the Beta.1 notification workflow to the block editor; Classic Editor
+  receives no AWPN notification-configuration UI.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
