@@ -671,6 +671,15 @@ initial:{site_id}:{post_id}
 The database enforces uniqueness. Hook re-entry, retries, two web requests, or
 concurrent workers cannot create duplicate initial campaigns.
 
+Beta.2 adds a disposable-site concurrency test in the exact-package CI job.
+Independent PHP/WordPress processes invoke the publication observer against the
+same published fixture. The first process holds its inserted campaign key in an
+uncommitted database transaction while five others contend for it. The test
+requires that the contenders do not complete before commit, then all resolve
+the same campaign ID without changing its building state or creating recipients.
+This exercises the real InnoDB unique-index conflict path, not merely sequential
+hook re-entry. Qualification is pending a successful Forgejo run.
+
 Republishing an old post does not create another initial campaign. A future
 feature may create an explicit campaign kind such as:
 

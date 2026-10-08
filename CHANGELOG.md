@@ -17,6 +17,9 @@
   core publication path.
 - Accept WordPress's zero GMT date on a legitimate direct core publication while retaining
   the defensive future-time check for real stored GMT publication timestamps.
+- Add a disposable WordPress, multi-process reservation contention gate: hold an
+  uncommitted initial campaign while five independent observers compete, then assert
+  one durable campaign and no recipient rows after commit (CI qualification pending).
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 

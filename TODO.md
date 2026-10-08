@@ -428,6 +428,8 @@ Required tests:
 - [x] Unpublish/republish produces no second initial campaign.
 - [x] Duplicate hook calls produce one campaign.
 - [ ] Concurrent publication observers produce one campaign.
+      A disposable-site, cross-process InnoDB contention qualification is wired
+      into package CI; check off after the WordPress runtime job passes.
 - [ ] WP-CLI/core publication path follows the same behavior.
       Direct core `wp_publish_post()` behavior is qualified; WP-CLI remains pending.
 
