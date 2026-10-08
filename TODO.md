@@ -341,6 +341,13 @@ It repeats provider-health and invalid-template warnings where publication is co
 but does not resolve recipients automatically, render email, submit mail, or create campaign
 state.
 
+Tranche 9 qualifies the editor metadata lifecycle through core WordPress REST and revision
+paths. Complete notification configuration survives save/reload, scheduling, and edits while
+a post remains scheduled; ordinary revisions and autosaves preserve authorized metadata
+without mutating campaign state. The qualification explicitly asserts that these editor
+operations leave both campaign tables empty. Beta.1 intentionally supports the block editor
+only; the Classic Editor has no AWPN notification-configuration UI.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [x] Add native pre-publish confirmation panel.
@@ -357,15 +364,15 @@ state.
 - [x] Add missing-verification-provider warning.
 - [x] Add empty-audience warning.
 - [x] Add invalid-template warning.
-- [ ] Add classic editor fallback or explicitly document that it is unsupported.
-- [ ] Ensure autosaves and revisions do not alter campaign state.
+- [x] Add classic editor fallback or explicitly document that it is unsupported.
+- [x] Ensure autosaves and revisions do not alter campaign state.
 
 Acceptance criteria:
 
-- [ ] Editor state survives save, reload, schedule, and scheduled-post edits.
+- [x] Editor state survives save, reload, schedule, and scheduled-post edits.
 - [ ] Test and preview actions never create campaigns.
 - [x] Unauthorized users cannot alter notification metadata.
-- [ ] Pre-publish summary matches saved configuration.
+- [x] Pre-publish summary matches saved configuration.
 
 ## Milestone 7 — Scheduled and immediate publication lifecycle
 

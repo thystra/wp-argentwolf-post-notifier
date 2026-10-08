@@ -8,6 +8,8 @@
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
 use ArgentWolf\PostNotifier\Admin\Capabilities;
+use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Editor\ContentMode;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Editor\SendIntent;
 use ArgentWolf\PostNotifier\Plugin;
@@ -257,6 +259,123 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Confirm all editor metadata survives an ordinary save and REST reload.
+	 *
+	 * @return void
+	 */
+	public function test_editor_configuration_survives_save_and_reload(): void {
+		$post_id = self::factory()->post->create(
+			array( 'post_status' => 'draft' )
+		);
+		$configuration = $this->notification_configuration();
+
+		$response = $this->update_post_meta_via_rest(
+			$post_id,
+			$configuration
+		);
+
+		self::assertSame( 200, $response->get_status() );
+		$this->assert_configuration_reloaded( $post_id, $configuration );
+		$this->assert_no_campaign_state();
+	}
+
+	/**
+	 * Confirm scheduling and scheduled-post edits preserve editor metadata only.
+	 *
+	 * @return void
+	 */
+	public function test_scheduled_post_edits_preserve_configuration_without_campaign_state(): void {
+		$post_id = self::factory()->post->create(
+			array( 'post_status' => 'draft' )
+		);
+		$configuration = $this->notification_configuration();
+		$future_date   = wp_date(
+			'Y-m-d\\TH:i:s',
+			current_datetime()->getTimestamp() + DAY_IN_SECONDS,
+			wp_timezone()
+		);
+
+		$response = $this->update_post_via_rest(
+			$post_id,
+			array(
+				'status' => 'future',
+				'date'   => $future_date,
+				'title'  => 'Scheduled notification post',
+				'meta'   => $configuration,
+			)
+		);
+
+		self::assertSame( 200, $response->get_status() );
+		self::assertSame( 'future', get_post_status( $post_id ) );
+		$this->assert_configuration_reloaded( $post_id, $configuration );
+		$this->assert_no_campaign_state();
+
+		$configuration[ PostNotificationMeta::SEND_INTENT_KEY ] = SendIntent::DoNotSend->value;
+		$configuration[ PostNotificationMeta::CONTENT_MODE_KEY ] = ContentMode::Excerpt->value;
+		$configuration[ PostNotificationMeta::TEMPLATE_ID_KEY ] = 0;
+		$configuration[ PostNotificationMeta::CTA_TEXT_KEY ] = 'Updated scheduled CTA';
+		$configuration[ PostNotificationMeta::AUDIENCE_CONFIG_KEY ]['excluded_user_ids'] = array(
+			6,
+			11,
+		);
+
+		$response = $this->update_post_via_rest(
+			$post_id,
+			array(
+				'title' => 'Scheduled notification post updated',
+				'meta'  => $configuration,
+			)
+		);
+
+		self::assertSame( 200, $response->get_status() );
+		self::assertSame( 'future', get_post_status( $post_id ) );
+		$this->assert_configuration_reloaded( $post_id, $configuration );
+		$this->assert_no_campaign_state();
+	}
+
+	/**
+	 * Confirm ordinary revisions copy notification metadata without campaign state.
+	 *
+	 * @return void
+	 */
+	public function test_revision_preserves_notification_metadata_without_campaign_state(): void {
+		$post_id = self::factory()->post->create(
+			array( 'post_status' => 'draft' )
+		);
+		$configuration = $this->notification_configuration();
+
+		$response = $this->update_post_meta_via_rest(
+			$post_id,
+			$configuration
+		);
+		self::assertSame( 200, $response->get_status() );
+
+		$revisions = wp_get_post_revisions( $post_id );
+		self::assertNotEmpty( $revisions );
+
+		$revision = reset( $revisions );
+		self::assertInstanceOf( \WP_Post::class, $revision );
+
+		$revision_id = (int) $revision->ID;
+		self::assertGreaterThan( 0, $revision_id );
+		self::assertFalse( wp_is_post_autosave( $revision_id ) );
+		self::assertSame( $post_id, wp_is_post_revision( $revision_id ) );
+
+		foreach ( $configuration as $meta_key => $expected ) {
+			$actual = get_post_meta( $revision_id, $meta_key, true );
+
+			if ( PostNotificationMeta::TEMPLATE_ID_KEY === $meta_key ) {
+				self::assertSame( $expected, (int) $actual );
+				continue;
+			}
+
+			self::assertSame( $expected, $actual );
+		}
+
+		$this->assert_no_campaign_state();
+	}
+
+	/**
 	 * Confirm autosave metadata requires notification-send capability.
 	 *
 	 * @return void
@@ -295,6 +414,8 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 		foreach ( PostNotificationMeta::keys() as $meta_key ) {
 			self::assertNotContains( $meta_key, wp_post_revision_meta_keys( 'post' ) );
 		}
+
+		$this->assert_no_campaign_state();
 	}
 
 	/**
@@ -338,6 +459,118 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 			SendIntent::DoNotSend->value,
 			get_post_meta( $autosave_id, PostNotificationMeta::SEND_INTENT_KEY, true )
 		);
+
+		$this->assert_no_campaign_state();
+	}
+
+	/**
+	 * Return a representative complete editor notification configuration.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function notification_configuration(): array {
+		return array(
+			PostNotificationMeta::SEND_INTENT_KEY     => SendIntent::Send->value,
+			PostNotificationMeta::AUDIENCE_CONFIG_KEY => array(
+				'role_slugs'              => array( 'author', 'editor' ),
+				'named_list_ids'          => array( 3, 9 ),
+				'included_user_ids'       => array( 2, 8 ),
+				'included_subscriber_ids' => array( 7 ),
+				'excluded_user_ids'       => array( 6 ),
+				'excluded_subscriber_ids' => array( 4, 5 ),
+			),
+			PostNotificationMeta::CONTENT_MODE_KEY    => ContentMode::Full->value,
+			PostNotificationMeta::TEMPLATE_ID_KEY     => 17,
+			PostNotificationMeta::CTA_TEXT_KEY        => 'Read the full post',
+		);
+	}
+
+	/**
+	 * Assert that an edit-context REST reload returns the expected configuration.
+	 *
+	 * @param int                 $post_id       Post ID.
+	 * @param array<string,mixed> $configuration Expected notification metadata.
+	 * @return void
+	 */
+	private function assert_configuration_reloaded(
+		int $post_id,
+		array $configuration
+	): void {
+		$response = $this->get_post_via_rest( $post_id );
+		self::assertSame( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$meta = $data['meta'] ?? null;
+		self::assertIsArray( $meta );
+
+		foreach ( $configuration as $meta_key => $expected ) {
+			self::assertArrayHasKey( $meta_key, $meta );
+			self::assertSame( $expected, $meta[ $meta_key ] );
+		}
+	}
+
+	/**
+	 * Assert editor persistence operations have not created campaign state.
+	 *
+	 * @return void
+	 */
+	private function assert_no_campaign_state(): void {
+		global $wpdb;
+
+		$tables = TableNames::from_database( $wpdb );
+
+		$campaign_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i',
+				$tables->campaigns()
+			)
+		);
+		$recipient_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i',
+				$tables->campaign_recipients()
+			)
+		);
+
+		self::assertSame( 0, $campaign_count );
+		self::assertSame( 0, $recipient_count );
+	}
+
+	/**
+	 * Fetch one post through the core REST controller in edit context.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return \WP_REST_Response
+	 */
+	private function get_post_via_rest( int $post_id ): \WP_REST_Response {
+		$request = new WP_REST_Request( 'GET', '/wp/v2/posts/' . $post_id );
+		$request->set_param( 'context', 'edit' );
+		$response = rest_do_request( $request );
+		self::assertInstanceOf( \WP_REST_Response::class, $response );
+
+		return $response;
+	}
+
+	/**
+	 * Submit post fields through the core posts REST controller.
+	 *
+	 * @param int                 $post_id Post ID.
+	 * @param array<string,mixed> $params  Request parameters.
+	 * @return \WP_REST_Response
+	 */
+	private function update_post_via_rest(
+		int $post_id,
+		array $params
+	): \WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $post_id );
+		foreach ( $params as $key => $value ) {
+			$request->set_param( $key, $value );
+		}
+
+		$response = rest_do_request( $request );
+		self::assertInstanceOf( \WP_REST_Response::class, $response );
+
+		return $response;
 	}
 
 	/**
@@ -367,12 +600,10 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	 * @return \WP_REST_Response
 	 */
 	private function update_post_meta_via_rest( int $post_id, array $meta ): \WP_REST_Response {
-		$request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $post_id );
-		$request->set_param( 'meta', $meta );
-		$response = rest_do_request( $request );
-		self::assertInstanceOf( \WP_REST_Response::class, $response );
-
-		return $response;
+		return $this->update_post_via_rest(
+			$post_id,
+			array( 'meta' => $meta )
+		);
 	}
 }
 

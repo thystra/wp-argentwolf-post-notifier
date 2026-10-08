@@ -56,8 +56,11 @@ resolves to zero eligible recipients. The editor also exposes the saved template
 a bounded catalog, preserves unavailable custom selections, and warns when the selected
 template is no longer available. A native pre-publish panel summarizes the current
 notification metadata and warning state without resolving recipients, rendering email, or
-creating campaign state. Template rendering/previews and test sends remain under
-development.
+creating campaign state. Beta.1 qualification verifies that the complete notification
+configuration survives save/reload, scheduling, scheduled-post edits, revisions, and
+autosaves without creating campaign state. The Beta.1 notification workflow is block-editor
+only; the Classic Editor has no AWPN notification-configuration UI. Template
+rendering/previews and test sends remain under development.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -116,6 +119,8 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Add a bounded template selector with Site default as ID `0`.
 * Preserve and warn on unavailable saved custom template IDs instead of silently replacing them.
 * Add a native pre-publish notification summary that does not create campaign state.
+* Qualify save/reload, scheduling, scheduled-post edits, revisions, and autosaves without creating campaign state.
+* Explicitly limit the Beta.1 notification workflow to the block editor; Classic Editor has no AWPN configuration UI.
 * Ship the human-readable post-editor runtime asset in the deterministic package.
 
 = 0.1.0-alpha.5 =
