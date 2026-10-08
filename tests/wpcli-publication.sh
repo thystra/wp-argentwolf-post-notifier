@@ -97,14 +97,17 @@ check one "$immediate" "$initial_id" >/dev/null
 wp_test post update "$immediate" --post_status=publish --quiet
 check one "$immediate" "$initial_id" >/dev/null
 
-# Scheduling and a future-post edit must produce no initial campaign. Simulate
-# due time with a DB-only fixture change, then invoke WP-CLI's real cron runner.
+# Scheduling and a future-post edit must produce no initial campaign. When
+# transitioning a draft with an uninitialized GMT date, wp_update_post() resets
+# the supplied dates unless edit_date=1 is provided. Simulate due time with a
+# DB-only fixture change, then invoke WP-CLI's real cron runner.
 new_draft
 scheduled="$created_id"
 future_utc="$(date -u -d '+2 hours' '+%Y-%m-%d %H:%M:%S')"
 future_local="$(wp_local_from_gmt "$future_utc")"
 wp_test post update "$scheduled" --post_status=future \
-  --post_date="$future_local" --post_date_gmt="$future_utc" --quiet
+  --post_date="$future_local" --post_date_gmt="$future_utc" \
+  --edit_date=1 --quiet
 assert_post_status "$scheduled" future
 check none "$scheduled"
 wp_test post update "$scheduled" --post_title='AWPN scheduled edit' --quiet
@@ -120,7 +123,8 @@ check one "$scheduled" >/dev/null
 new_draft
 early="$created_id"
 wp_test post update "$early" --post_status=future \
-  --post_date="$future_local" --post_date_gmt="$future_utc" --quiet
+  --post_date="$future_local" --post_date_gmt="$future_utc" \
+  --edit_date=1 --quiet
 assert_post_status "$early" future
 check none "$early"
 now_utc="$(date -u '+%Y-%m-%d %H:%M:%S')"
