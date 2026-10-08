@@ -17,6 +17,14 @@ wp_test() {
   wp --path="$wp_root" "$@"
 }
 
+# Convert explicit UTC fixture timestamps to the site's local publication time.
+# WordPress checks post_date_gmt when deciding whether 'future' is valid, and
+# wp_update_post() can otherwise retain a draft's existing GMT value.
+wp_local_from_gmt() {
+  AWPN_CLI_TEST_GMT="$1" wp_test eval \
+    'echo get_date_from_gmt( getenv( "AWPN_CLI_TEST_GMT" ) );'
+}
+
 assert_post_status() {
   local post_id="$1"
   local expected="$2"
@@ -94,7 +102,9 @@ check one "$immediate" "$initial_id" >/dev/null
 new_draft
 scheduled="$created_id"
 future_utc="$(date -u -d '+2 hours' '+%Y-%m-%d %H:%M:%S')"
-wp_test post update "$scheduled" --post_status=future --post_date="$future_utc" --quiet
+future_local="$(wp_local_from_gmt "$future_utc")"
+wp_test post update "$scheduled" --post_status=future \
+  --post_date="$future_local" --post_date_gmt="$future_utc" --quiet
 assert_post_status "$scheduled" future
 check none "$scheduled"
 wp_test post update "$scheduled" --post_title='AWPN scheduled edit' --quiet
@@ -109,11 +119,14 @@ check one "$scheduled" >/dev/null
 # campaign exactly at the actual publish action, not while still scheduled.
 new_draft
 early="$created_id"
-wp_test post update "$early" --post_status=future --post_date="$future_utc" --quiet
+wp_test post update "$early" --post_status=future \
+  --post_date="$future_local" --post_date_gmt="$future_utc" --quiet
 assert_post_status "$early" future
 check none "$early"
 now_utc="$(date -u '+%Y-%m-%d %H:%M:%S')"
-wp_test post update "$early" --post_status=publish --post_date="$now_utc" --quiet
+now_local="$(wp_local_from_gmt "$now_utc")"
+wp_test post update "$early" --post_status=publish \
+  --post_date="$now_local" --post_date_gmt="$now_utc" --quiet
 assert_post_status "$early" publish
 check one "$early" >/dev/null
 
