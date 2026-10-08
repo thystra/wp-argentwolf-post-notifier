@@ -407,7 +407,13 @@ Tranche 5 adds privacy-safe campaign-reservation diagnostics: failure logging al
 fixed event/reason codes and numeric site/post IDs, while successful reservation-resolution
 logs require an explicit operator opt-in. A successful reservation may resolve an existing
 campaign; diagnostics never call it a new send. The observable hook and tests are added,
-with tranche 5 pending the Forgejo test matrix.
+with tranche 5 passing Forgejo CI and merged (2026-10-08).
+
+Tranche 6 adds WordPress Site Health reporting for explicitly opted-in scheduled posts
+remaining `future` at least 15 minutes after the GMT publication time. It also reports
+that queue wake-ups are intentionally not applicable before the delivery worker ships.
+No queue hooks, email sending, schema changes, or site-wide cron policy are introduced;
+tranche 6 requires Forgejo CI qualification.
 
 - [x] Observe actual completed publication through the selected core hook path.
 - [x] Ignore draft, pending, private, trash, auto-draft, revision, and future
@@ -422,10 +428,12 @@ with tranche 5 pending the Forgejo test matrix.
 - [x] Prevent duplicate initial campaign after unpublish/republish.
 - [ ] Add explicit future update-campaign action only if included in the target
       release.
-- [ ] Add diagnostic logging that does not expose recipient data.
-      Tranche 5 implementation and tests are ready for Forgejo qualification;
-      leave unchecked until the installed-package and WordPress matrix pass.
+- [x] Add diagnostic logging that does not expose recipient data.
+      Tranche 5 passed Forgejo CI and was merged (2026-10-08).
 - [ ] Add Site Health checks for overdue future posts and queue wake-ups.
+      Tranche 6 implements read-only overdue-post reporting and explicit pre-queue
+      informational status; Forgejo CI qualification is pending. Actual queue worker
+      wake-up monitoring remains deferred to the queue milestone.
 
 Required tests:
 

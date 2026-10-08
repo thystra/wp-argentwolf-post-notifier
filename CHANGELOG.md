@@ -25,7 +25,10 @@
   (Forgejo PR #38 CI passed and merged).
 - Add privacy-safe, fixed-code campaign reservation failure logs with numeric site/post IDs;
   expose an ID-only reservation-resolved action and optional debug logging without
-  exception text, message bodies, recipient data, or tokens (pending CI qualification).
+  exception text, message bodies, recipient data, or tokens (Forgejo CI passed; merged).
+- Add two read-only WordPress Site Health checks: detect overdue explicitly opted-in
+  scheduled posts after a 15-minute grace period, and explain that queue wake-ups
+  are not applicable before the delivery worker is implemented (pending CI qualification).
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 

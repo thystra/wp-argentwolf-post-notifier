@@ -30,6 +30,7 @@ use ArgentWolf\PostNotifier\Editor\EditorAudienceEstimate;
 use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
 use ArgentWolf\PostNotifier\Editor\EditorTemplateCatalog;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
+use ArgentWolf\PostNotifier\Health\PublicationSiteHealth;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
@@ -104,6 +105,10 @@ final class Plugin {
 			$container->set(
 				CampaignRepository::class,
 				static fn (): CampaignRepository => new CampaignRepository()
+			);
+			$container->set(
+				PublicationSiteHealth::class,
+				static fn (): PublicationSiteHealth => new PublicationSiteHealth()
 			);
 			$container->set(
 				CampaignDiagnostics::class,
@@ -671,6 +676,7 @@ final class Plugin {
 				UpgradeManager::class,
 				PostNotificationMeta::class,
 				CampaignDiagnostics::class,
+				PublicationSiteHealth::class,
 				PublicationObserver::class,
 				EditorAudienceEstimate::class,
 				EditorContactLookup::class,

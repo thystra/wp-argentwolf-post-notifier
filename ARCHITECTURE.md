@@ -621,6 +621,26 @@ explicitly define `ARGENTWOLF_POST_NOTIFIER_DEBUG_CAMPAIGNS` to boolean `true` i
 neutral send intent, and scheduling do not emit campaign diagnostics. The diagnostics
 layer adds no tables, recipient access, delivery behavior, or outside telemetry.
 
+### Beta.2 Site Health boundary
+
+WordPress's `site_status_tests` filter registers two direct, read-only checks.
+The overdue-publication check performs a bounded `WP_Query` for at most one
+supported `post` with `post_status=future`, explicit stored send intent `send`,
+and `post_date_gmt` at least 15 minutes past due. It reports `recommended` when
+an overdue post exists and includes only fixed operator text and an administrator
+link to the scheduled-post list. Otherwise it reports `good`. Neither test exposes
+post identifiers, titles, stored metadata, recipients, messages, nor URLs from
+post content; no campaign data is queried. It does not run WordPress cron or
+publish the post.
+
+The queue-wake-up check is a consciously informational `good` result while the
+Milestone 10 delivery worker does not exist. No queue event name is fabricated,
+no worker is scheduled, and no absence-of-hook failure is emitted. The result
+**must not** be interpreted as confirmation of queue reliability or email
+sending. Milestone 10 replaces this provisional status with a real wake-up and
+worker-health contract after implementation. An operator using an external cron
+runner is not falsely warned solely because `DISABLE_WP_CRON` is configured.
+
 ### 5.1 Immediate publication
 
 For a new or existing non-published post:
