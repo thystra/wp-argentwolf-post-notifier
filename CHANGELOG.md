@@ -12,6 +12,11 @@
   unpublish/republish.
 - Keep scheduled saves, neutral/do-not-send intent, future-GMT states, recipients,
   rendering, queueing, and mail delivery outside the campaign reservation path.
+- Qualify draft/pending/private/auto-draft/trash/revision saves, scheduled edits and date
+  changes, on-time and late scheduled publication, manual early publication, and the direct
+  core publication path.
+- Accept WordPress's zero GMT date on a legitimate direct core publication while retaining
+  the defensive future-time check for real stored GMT publication timestamps.
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 

@@ -390,11 +390,19 @@ only placeholder message bodies; rendering, audience freezing, queueing, and del
 later milestones. Neutral `site_default` send intent remains fail-closed until an explicit
 site-wide send policy exists.
 
+Tranche 2 qualifies the remaining ordinary lifecycle paths and closes a core compatibility
+edge case: direct `wp_publish_post()` can publish a draft while leaving WordPress's zero GMT
+date intact. Publish status remains authoritative; the defensive GMT guard now applies only
+when WordPress has a real stored GMT publication timestamp. Tests cover non-published saves,
+scheduled edits and date changes, on-time publication, manual early publication, and the
+direct core publish path. True concurrent-process qualification and WP-CLI-specific coverage
+remain separate work.
+
 - [x] Observe actual completed publication through the selected core hook path.
-- [ ] Ignore draft, pending, private, trash, auto-draft, revision, and future
+- [x] Ignore draft, pending, private, trash, auto-draft, revision, and future
       saves.
 - [x] Create no campaign when a post is scheduled.
-- [ ] Create no campaign when a scheduled post is edited.
+- [x] Create no campaign when a scheduled post is edited.
 - [x] Create one initial campaign on `future -> publish`.
 - [x] Create one initial campaign on immediate non-publish -> publish.
 - [x] Add defensive GMT publication-time check.
@@ -408,19 +416,20 @@ site-wide send policy exists.
 
 Required tests:
 
-- [ ] Draft save produces no campaign.
+- [x] Draft save produces no campaign.
 - [x] Draft-to-future produces no campaign.
-- [ ] Future edit produces no campaign.
-- [ ] Schedule-date change produces no campaign.
-- [ ] On-time future-to-publish produces one campaign.
+- [x] Future edit produces no campaign.
+- [x] Schedule-date change produces no campaign.
+- [x] On-time future-to-publish produces one campaign.
 - [x] Late future-to-publish produces one campaign at actual publish.
-- [ ] Manual early publish produces one campaign at actual publish.
+- [x] Manual early publish produces one campaign at actual publish.
 - [x] Immediate publish produces one campaign.
 - [x] Published update produces no campaign.
 - [x] Unpublish/republish produces no second initial campaign.
 - [x] Duplicate hook calls produce one campaign.
 - [ ] Concurrent publication observers produce one campaign.
 - [ ] WP-CLI/core publication path follows the same behavior.
+      Direct core `wp_publish_post()` behavior is qualified; WP-CLI remains pending.
 
 Acceptance criteria:
 
