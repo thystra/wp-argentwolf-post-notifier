@@ -18,6 +18,8 @@ use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
+use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
+use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -97,6 +99,21 @@ final class Plugin {
 			$container->set(
 				SchemaMigrator::class,
 				static fn (): SchemaMigrator => new SchemaMigrator()
+			);
+			$container->set(
+				CampaignRepository::class,
+				static fn (): CampaignRepository => new CampaignRepository()
+			);
+			$container->set(
+				PublicationObserver::class,
+				static function ( Container $services ): PublicationObserver {
+					$campaigns = $services->get( CampaignRepository::class );
+					if ( ! $campaigns instanceof CampaignRepository ) {
+						throw new LogicException( 'The campaign repository is invalid.' );
+					}
+
+					return new PublicationObserver( $campaigns );
+				}
 			);
 			$container->set(
 				EmailIdentity::class,
@@ -648,6 +665,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				PostNotificationMeta::class,
+				PublicationObserver::class,
 				EditorAudienceEstimate::class,
 				EditorContactLookup::class,
 				EditorAssets::class,

@@ -5,6 +5,13 @@
 
 - Begin scheduled and immediate publication lifecycle development after completing
   the Beta.1 editor-workflow milestone.
+- Observe completed core post saves through `wp_after_insert_post` and reserve an initial
+  campaign only for actual eligible publication.
+- Add database-authoritative initial-campaign idempotency with the frozen schema-1
+  `campaign_key`, including protection against hook re-entry, published edits, and
+  unpublish/republish.
+- Keep scheduled saves, neutral/do-not-send intent, future-GMT states, recipients,
+  rendering, queueing, and mail delivery outside the campaign reservation path.
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 
