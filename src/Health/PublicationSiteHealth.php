@@ -150,7 +150,6 @@ final class PublicationSiteHealth implements Registerable {
 				'ignore_sticky_posts'    => true,
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
-				'suppress_filters'       => true,
 				// Explicit send intent is stored in postmeta; restricting results to one ID
 				// does not eliminate scan cost on large unindexed postmeta tables.
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
