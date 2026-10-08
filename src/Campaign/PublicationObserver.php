@@ -135,7 +135,7 @@ final class PublicationObserver implements Registerable {
 		);
 
 		try {
-			$this->campaigns->create_initial_building(
+			$campaign_id = $this->campaigns->create_initial_building(
 				get_current_blog_id(),
 				$post_id,
 				(string) $post->post_modified_gmt,
@@ -153,7 +153,15 @@ final class PublicationObserver implements Registerable {
 				$post_id,
 				'persistence_error'
 			);
+			return;
 		}
+
+		// A duplicate observer may resolve an existing row; do not call it a new campaign.
+		do_action(
+			'argentwolf_post_notifier_campaign_reservation_resolved',
+			$post_id,
+			$campaign_id
+		);
 	}
 }
 

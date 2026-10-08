@@ -602,6 +602,25 @@ populating an otherwise-zero `post_date_gmt`. AWPN therefore treats `publish` as
 authority and applies the future-time rejection only when a real GMT publication timestamp is
 present. A nonzero malformed or materially future timestamp still fails closed.
 
+### Beta.2 reservation diagnostics
+
+Unexpected initial-campaign persistence failures cannot reverse a WordPress publication.
+The publication observer emits `argentwolf_post_notifier_campaign_creation_failed` with the
+numeric post ID and the fixed `persistence_error` code, and the registered campaign diagnostic
+handler records a single line in the server PHP error log. Arbitrary reasons supplied by
+other listeners are reduced to `unknown_error`; no throwable message, stack trace, email,
+recipient, subject, body, token, URL, raw request parameter, IP address, or user agent is
+interpolated. Logs contain only fixed event/status codes and numeric site/post IDs.
+
+A successful attempt emits `argentwolf_post_notifier_campaign_reservation_resolved` with
+numeric post/campaign IDs. It may have resolved a previously reserved row; the event does
+**not** mean a new campaign was created or any email was queued. Logging this successful
+resolution is disabled by default, even when `WP_DEBUG_LOG` is enabled. Operators may
+explicitly define `ARGENTWOLF_POST_NOTIFIER_DEBUG_CAMPAIGNS` to boolean `true` in
+`wp-config.php` to turn on these ID-only debug lines. Ordinary non-publication saves,
+neutral send intent, and scheduling do not emit campaign diagnostics. The diagnostics
+layer adds no tables, recipient access, delivery behavior, or outside telemetry.
+
 ### 5.1 Immediate publication
 
 For a new or existing non-published post:
