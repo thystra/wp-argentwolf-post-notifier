@@ -398,6 +398,12 @@ scheduled edits and date changes, on-time publication, manual early publication,
 direct core publish path. True concurrent-process qualification and WP-CLI-specific coverage
 remain separate work.
 
+Tranche 3 qualifies real multi-process MySQL contention against the installed
+distribution in Forgejo CI (PR #37). Tranche 4 adds a separate WP-CLI lifecycle
+gate against the same disposable installed package: draft configuration, immediate
+and manual-early publish, published edit, unpublish/republish, scheduled edits, and due publication
+through `wp cron event run`. Tranche 4 remains pending CI qualification.
+
 - [x] Observe actual completed publication through the selected core hook path.
 - [x] Ignore draft, pending, private, trash, auto-draft, revision, and future
       saves.
@@ -427,11 +433,13 @@ Required tests:
 - [x] Published update produces no campaign.
 - [x] Unpublish/republish produces no second initial campaign.
 - [x] Duplicate hook calls produce one campaign.
-- [ ] Concurrent publication observers produce one campaign.
-      A disposable-site, cross-process InnoDB contention qualification is wired
-      into package CI; check off after the WordPress runtime job passes.
+- [x] Concurrent publication observers produce one campaign.
+      The disposable-site, cross-process InnoDB contention qualification passed
+      Forgejo CI on PR #37 (reported 2026-10-08).
 - [ ] WP-CLI/core publication path follows the same behavior.
-      Direct core `wp_publish_post()` behavior is qualified; WP-CLI remains pending.
+      Direct core `wp_publish_post()` is qualified. An installed-package WP-CLI
+      test now exercises separate `wp post` commands and `wp cron event run`;
+      leave this open until the new CI gate passes.
 
 Acceptance criteria:
 

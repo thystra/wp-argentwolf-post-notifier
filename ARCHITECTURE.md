@@ -1193,6 +1193,18 @@ The release test suite must prove:
 15. Scheduled publication through WP-CLI or another valid core path follows the
     same rules.
 
+The package CI runtime supplements PHPUnit with two disposable-site integration
+gates: (1) independent PHP/WordPress processes contending on the initial-campaign
+key under an actual InnoDB row lock; and (2) independent WP-CLI commands for
+post creation, metadata configuration, immediate and manual-early publish, scheduled edits,
+`wp cron event run publish_future_post`, and unpublish/republish. The CLI test
+changes a scheduled fixture's stored timestamp directly only to simulate an
+overdue WordPress cron event; this database-only fixture change must not itself
+fire publication hooks. Tests assert campaign uniqueness, preserved ID, the
+`building` state, empty message bodies, and no recipients before queue work.
+Both gates operate on an installed distribution package and delete fixtures
+afterwards. Neither test simulates email delivery.
+
 ## 17. Initial non-goals
 
 Deferred unless separately approved:
