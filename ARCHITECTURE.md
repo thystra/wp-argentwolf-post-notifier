@@ -595,6 +595,13 @@ starts in `building` state. Subject, HTML, and text bodies are empty build-state
 and no recipient rows are created. Later rendering and audience milestones populate the
 immutable content and recipient snapshots before any campaign may become queueable.
 
+Beta.2 tranche 2 qualifies non-published status saves, scheduled edits and date changes,
+on-time and late scheduled publication, manual early publication, and direct core publication.
+WordPress's direct `wp_publish_post()` helper can transition a draft to `publish` without
+populating an otherwise-zero `post_date_gmt`. AWPN therefore treats `publish` as the primary
+authority and applies the future-time rejection only when a real GMT publication timestamp is
+present. A nonzero malformed or materially future timestamp still fails closed.
+
 ### 5.1 Immediate publication
 
 For a new or existing non-published post:
