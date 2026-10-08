@@ -348,6 +348,11 @@ without mutating campaign state. The qualification explicitly asserts that these
 operations leave both campaign tables empty. Beta.1 intentionally supports the block editor
 only; the Classic Editor has no AWPN notification-configuration UI.
 
+Milestone 6 closes without a temporary preview or test-send implementation. Both actions are
+explicitly deferred to Milestone 8 so they use the canonical content renderer, HTML/plain-text
+templates, token handling, and message composition path rather than introducing a disposable
+Beta.1 rendering path.
+
 - [x] Register authorized REST-visible post metadata.
 - [x] Add block-editor sidebar controls.
 - [x] Add native pre-publish confirmation panel.
@@ -359,8 +364,7 @@ only; the Classic Editor has no AWPN notification-configuration UI.
 - [x] Add content-mode selector.
 - [x] Add template selector.
 - [x] Add call-to-action override.
-- [ ] Add preview-email action.
-- [ ] Add send-test-email action.
+- [x] Defer preview-email and send-test-email actions to Milestone 8.
 - [x] Add missing-verification-provider warning.
 - [x] Add empty-audience warning.
 - [x] Add invalid-template warning.
@@ -370,7 +374,6 @@ only; the Classic Editor has no AWPN notification-configuration UI.
 Acceptance criteria:
 
 - [x] Editor state survives save, reload, schedule, and scheduled-post edits.
-- [ ] Test and preview actions never create campaigns.
 - [x] Unauthorized users cannot alter notification metadata.
 - [x] Pre-publish summary matches saved configuration.
 
@@ -435,6 +438,8 @@ Target: `0.1.0-beta.3`
 - [ ] Require unsubscribe/manage token placement in templates or append a safe
       mandatory footer.
 - [ ] Add live preview with a selected post.
+- [ ] Add preview-email action backed by the canonical rendered message.
+- [ ] Add send-test-email action backed by the canonical renderer and mail transport.
 - [ ] Add restore-default-template action.
 - [ ] Add custom subject, heading, body, footer, and CTA settings.
 - [ ] Sanitize and validate templates.
@@ -446,6 +451,7 @@ Acceptance criteria:
 - [ ] Email output does not include editor-only cutoff markers.
 - [ ] HTML and plain-text messages contain working local URLs.
 - [ ] Templates cannot execute arbitrary PHP.
+- [ ] Preview and test-send actions never create campaigns or campaign recipients.
 
 ## Milestone 9 — Campaign audience resolver
 

@@ -39,6 +39,8 @@
   ordinary revisions, and autosaves while asserting that those paths create no campaign state.
 - Explicitly scope the Beta.1 notification workflow to the block editor; Classic Editor
   receives no AWPN notification-configuration UI.
+- Defer preview and test-send actions to the Milestone 8 canonical rendering and message
+  composition path rather than adding a temporary Beta.1 renderer.
 - Ship the human-readable sidebar runtime asset in the deterministic plugin package.
 
 ## 0.1.0-alpha.5 — 2026-10-06 development checkpoint
