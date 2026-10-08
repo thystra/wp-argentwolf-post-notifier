@@ -1,7 +1,12 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-beta.1 — Unreleased
+## 0.1.0-beta.2 — Unreleased
+
+- Begin scheduled and immediate publication lifecycle development after completing
+  the Beta.1 editor-workflow milestone.
+
+## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 
 - Begin the editor-workflow milestone with a revision-aware REST post-meta contract.
 - Add independently delegable `send_post_notifications` authorization while keeping

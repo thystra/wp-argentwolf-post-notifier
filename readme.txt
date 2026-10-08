@@ -4,7 +4,7 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-beta.1
+Stable tag: 0.1.0-beta.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -103,6 +103,9 @@ available from WordPress.org. This plugin requires version 1.0.2 or later, decla
 the dependency, and still checks provider health and API compatibility at runtime.
 
 == Changelog ==
+
+= 0.1.0-beta.2 =
+* Begin scheduled and immediate publication lifecycle development after completing the Beta.1 editor-workflow milestone.
 
 = 0.1.0-beta.1 =
 * Begin revision-aware REST post metadata for the editor workflow.
