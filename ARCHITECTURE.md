@@ -343,8 +343,10 @@ provide notification-configuration controls in the Classic Editor. The protected
 contract remains server-side data, but Classic Editor users must not be presented as having
 an AWPN notification workflow.
 
-Preview and test-send actions remain separate Beta.1 work, while actual template storage,
-validation, rendering, and preview behavior remain in Milestone 8.
+Preview and test-send actions are intentionally deferred to Milestone 8. They must consume
+the same canonical post-content renderer, validated HTML/plain-text templates, token
+handling, and composed message contract used by real notification content. Preview and test
+send must remain non-campaign operations and must not create campaign or recipient rows.
 
 ### 4.3 Public subscription block
 

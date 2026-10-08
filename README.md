@@ -34,8 +34,9 @@ campaign. Beta.1 qualification verifies that the complete editor configuration s
 save/reload, scheduling, scheduled-post edits, revisions, and autosaves without creating
 campaign state. The Beta.1 editor workflow intentionally supports the block editor only;
 AWPN provides no notification-configuration UI in the Classic Editor. Template rendering,
-previews, and storage remain Milestone 8 work; test sends remain later Beta.1 work.
-Campaign creation and persistence remain later milestones.
+previews, storage, and test sends are deferred together to Milestone 8 so they share one
+canonical message-composition path. Campaign creation and persistence remain later
+milestones.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
