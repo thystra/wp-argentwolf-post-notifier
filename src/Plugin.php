@@ -18,6 +18,7 @@ use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
+use ArgentWolf\PostNotifier\Campaign\CampaignDiagnostics;
 use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
@@ -103,6 +104,10 @@ final class Plugin {
 			$container->set(
 				CampaignRepository::class,
 				static fn (): CampaignRepository => new CampaignRepository()
+			);
+			$container->set(
+				CampaignDiagnostics::class,
+				static fn (): CampaignDiagnostics => new CampaignDiagnostics()
 			);
 			$container->set(
 				PublicationObserver::class,
@@ -665,6 +670,7 @@ final class Plugin {
 			array(
 				UpgradeManager::class,
 				PostNotificationMeta::class,
+				CampaignDiagnostics::class,
 				PublicationObserver::class,
 				EditorAudienceEstimate::class,
 				EditorContactLookup::class,

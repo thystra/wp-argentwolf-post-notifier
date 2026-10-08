@@ -402,7 +402,12 @@ Tranche 3 qualifies real multi-process MySQL contention against the installed
 distribution in Forgejo CI (PR #37). Tranche 4 adds a separate WP-CLI lifecycle
 gate against the same disposable installed package: draft configuration, immediate
 and manual-early publish, published edit, unpublish/republish, scheduled edits, and due publication
-through `wp cron event run`. Tranche 4 remains pending CI qualification.
+through `wp cron event run`. Tranche 4 passed Forgejo CI on PR #38 and was merged (2026-10-08).
+Tranche 5 adds privacy-safe campaign-reservation diagnostics: failure logging always uses
+fixed event/reason codes and numeric site/post IDs, while successful reservation-resolution
+logs require an explicit operator opt-in. A successful reservation may resolve an existing
+campaign; diagnostics never call it a new send. The observable hook and tests are added,
+with tranche 5 pending the Forgejo test matrix.
 
 - [x] Observe actual completed publication through the selected core hook path.
 - [x] Ignore draft, pending, private, trash, auto-draft, revision, and future
@@ -418,6 +423,8 @@ through `wp cron event run`. Tranche 4 remains pending CI qualification.
 - [ ] Add explicit future update-campaign action only if included in the target
       release.
 - [ ] Add diagnostic logging that does not expose recipient data.
+      Tranche 5 implementation and tests are ready for Forgejo qualification;
+      leave unchecked until the installed-package and WordPress matrix pass.
 - [ ] Add Site Health checks for overdue future posts and queue wake-ups.
 
 Required tests:
@@ -436,10 +443,9 @@ Required tests:
 - [x] Concurrent publication observers produce one campaign.
       The disposable-site, cross-process InnoDB contention qualification passed
       Forgejo CI on PR #37 (reported 2026-10-08).
-- [ ] WP-CLI/core publication path follows the same behavior.
-      Direct core `wp_publish_post()` is qualified. An installed-package WP-CLI
-      test now exercises separate `wp post` commands and `wp cron event run`;
-      leave this open until the new CI gate passes.
+- [x] WP-CLI/core publication path follows the same behavior.
+      Direct core `wp_publish_post()` and installed-package `wp post`/`wp cron`
+      lifecycle tests passed Forgejo CI on PR #38 (2026-10-08).
 
 Acceptance criteria:
 

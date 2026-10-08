@@ -125,6 +125,26 @@ slug and text domain are `argentwolf-post-notifier`. Public code identifiers
 use the `ArgentWolf\PostNotifier` namespace or the
 `argentwolf_post_notifier_` prefix.
 
+## Campaign reservation diagnostics
+
+When an eligible first publication cannot reserve its initial campaign, AWPN writes a
+fixed-code event to the PHP error log containing only the site ID and post ID. Neither
+recipient data nor exception text is logged. The post remains published; a failed
+reservation must be investigated and does not represent an email delivery attempt.
+
+Successful reservation **resolution** is silent by default. To log ID-only successful
+resolutions for troubleshooting, an operator may add the following to `wp-config.php`
+(before WordPress is loaded):
+
+```php
+define( 'ARGENTWOLF_POST_NOTIFIER_DEBUG_CAMPAIGNS', true );
+```
+
+Remove the definition or set it to `false` to disable the additional logs. A successful
+resolution can refer to an already-existing campaign and does not mean any email was
+queued or sent. Server/PHP error-log retention and access remain the site operator's
+responsibility. No remote telemetry is used.
+
 ## Development
 
 A conventional local checkout is:

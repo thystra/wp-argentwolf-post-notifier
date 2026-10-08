@@ -22,7 +22,10 @@
   one durable campaign and no recipient rows after commit (Forgejo PR #37 CI passed).
 - Add installed-package WP-CLI lifecycle qualification for immediate publication,
   scheduled-post edits, due publication through core cron, and unpublish/republish
-  (new CI gate pending).
+  (Forgejo PR #38 CI passed and merged).
+- Add privacy-safe, fixed-code campaign reservation failure logs with numeric site/post IDs;
+  expose an ID-only reservation-resolved action and optional debug logging without
+  exception text, message bodies, recipient data, or tokens (pending CI qualification).
 
 ## 0.1.0-beta.1 — 2026-10-07 development checkpoint
 
