@@ -107,12 +107,21 @@ final class PublicationObserver implements Registerable {
 			return;
 		}
 
-		$published_at = get_post_datetime( $post, 'date', 'gmt' );
-		if (
-			false === $published_at
-			|| $published_at->getTimestamp() > time() + self::CLOCK_SKEW_SECONDS
-		) {
-			return;
+		/*
+		 * Draft/pending posts can legitimately retain WordPress's zero GMT date
+		 * when wp_publish_post() is used directly because that core helper only
+		 * transitions status. Publish status remains the primary authority; when
+		 * a real GMT publication timestamp exists, reject only malformed or
+		 * materially future values.
+		 */
+		if ( '0000-00-00 00:00:00' !== $post->post_date_gmt ) {
+			$published_at = get_post_datetime( $post, 'date', 'gmt' );
+			if (
+				false === $published_at
+				|| $published_at->getTimestamp() > time() + self::CLOCK_SKEW_SECONDS
+			) {
+				return;
+			}
 		}
 
 		$content_mode = ContentMode::from(

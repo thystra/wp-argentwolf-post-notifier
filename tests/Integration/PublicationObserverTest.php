@@ -155,6 +155,209 @@ final class PublicationObserverTest extends WP_UnitTestCase {
 		self::assertNotNull( $this->campaign_for_post( $post_id ) );
 	}
 
+
+	/**
+	 * Confirm every non-published save path stays outside campaign creation.
+	 *
+	 * @return void
+	 */
+	public function test_non_published_status_and_revision_saves_create_no_campaign(): void {
+		foreach ( array( 'draft', 'pending', 'private' ) as $status ) {
+			$post_id = $this->create_configured_draft();
+
+			self::assertSame(
+				$post_id,
+				wp_update_post(
+					array(
+						'ID'          => $post_id,
+						'post_status' => $status,
+						'post_title'  => 'Non-published status ' . $status,
+					)
+				)
+			);
+			self::assertSame( $status, get_post_status( $post_id ) );
+			self::assertNull( $this->campaign_for_post( $post_id ) );
+		}
+
+		$auto_draft_id = self::factory()->post->create(
+			array( 'post_status' => 'auto-draft' )
+		);
+		update_post_meta(
+			$auto_draft_id,
+			PostNotificationMeta::SEND_INTENT_KEY,
+			SendIntent::Send->value
+		);
+		update_post_meta(
+			$auto_draft_id,
+			PostNotificationMeta::CONTENT_MODE_KEY,
+			ContentMode::Full->value
+		);
+		self::assertSame(
+			$auto_draft_id,
+			wp_update_post(
+				array(
+					'ID'          => $auto_draft_id,
+					'post_status' => 'auto-draft',
+					'post_title'  => 'Auto draft updated',
+				)
+			)
+		);
+		self::assertSame( 'auto-draft', get_post_status( $auto_draft_id ) );
+		self::assertNull( $this->campaign_for_post( $auto_draft_id ) );
+
+		$trash_id = $this->create_configured_draft();
+		self::assertInstanceOf( \WP_Post::class, wp_trash_post( $trash_id ) );
+		self::assertSame( 'trash', get_post_status( $trash_id ) );
+		self::assertNull( $this->campaign_for_post( $trash_id ) );
+
+		$revision_parent = $this->create_configured_draft();
+		$revision_id     = wp_insert_post(
+			array(
+				'post_type'    => 'revision',
+				'post_status'  => 'inherit',
+				'post_parent'  => $revision_parent,
+				'post_title'   => 'Notification revision fixture',
+				'post_content' => 'Revision content',
+			)
+		);
+		self::assertGreaterThan( 0, $revision_id );
+		self::assertSame( 'revision', get_post_type( $revision_id ) );
+		self::assertNull( $this->campaign_for_post( $revision_parent ) );
+		self::assertNull( $this->campaign_for_post( $revision_id ) );
+	}
+
+	/**
+	 * Confirm edits and schedule-date changes remain editorial state only.
+	 *
+	 * @return void
+	 */
+	public function test_scheduled_edits_and_date_changes_create_no_campaign(): void {
+		$post_id      = $this->create_configured_draft();
+		$original_gmt = $this->schedule_post(
+			$post_id,
+			time() + DAY_IN_SECONDS
+		);
+
+		self::assertNull( $this->campaign_for_post( $post_id ) );
+
+		self::assertSame(
+			$post_id,
+			wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => 'Scheduled post edited',
+				)
+			)
+		);
+		self::assertSame( 'future', get_post_status( $post_id ) );
+		self::assertNull( $this->campaign_for_post( $post_id ) );
+
+		$changed_gmt = $this->schedule_post(
+			$post_id,
+			time() + ( 2 * DAY_IN_SECONDS )
+		);
+		self::assertNotSame( $original_gmt, $changed_gmt );
+
+		$post = get_post( $post_id );
+		self::assertInstanceOf( \WP_Post::class, $post );
+		self::assertSame( $changed_gmt, $post->post_date_gmt );
+		self::assertNull( $this->campaign_for_post( $post_id ) );
+	}
+
+	/**
+	 * Confirm the core due-time path creates one initial campaign.
+	 *
+	 * @return void
+	 */
+	public function test_on_time_future_publication_creates_one_campaign(): void {
+		$post_id = $this->create_configured_draft();
+		$this->schedule_post( $post_id, time() + DAY_IN_SECONDS );
+		$this->set_post_date_directly( $post_id, time() );
+
+		check_and_publish_future_post( $post_id );
+
+		self::assertSame( 'publish', get_post_status( $post_id ) );
+		self::assertSame( 1, $this->campaign_count_for_post( $post_id ) );
+	}
+
+	/**
+	 * Confirm manually publishing a scheduled post early creates the campaign then.
+	 *
+	 * @return void
+	 */
+	public function test_manual_early_publish_creates_one_campaign(): void {
+		$post_id = $this->create_configured_draft();
+		$this->schedule_post( $post_id, time() + DAY_IN_SECONDS );
+		self::assertNull( $this->campaign_for_post( $post_id ) );
+
+		$now_gmt = gmdate( 'Y-m-d H:i:s' );
+		self::assertSame(
+			$post_id,
+			wp_update_post(
+				array(
+					'ID'            => $post_id,
+					'post_status'   => 'publish',
+					'post_date'     => get_date_from_gmt( $now_gmt ),
+					'post_date_gmt' => $now_gmt,
+					'edit_date'     => true,
+				)
+			)
+		);
+
+		self::assertSame( 'publish', get_post_status( $post_id ) );
+		self::assertSame( 1, $this->campaign_count_for_post( $post_id ) );
+	}
+
+	/**
+	 * Confirm the direct core publication function follows the same observer path.
+	 *
+	 * @return void
+	 */
+	public function test_direct_core_publish_path_creates_one_campaign(): void {
+		$post_id = $this->create_configured_draft();
+
+		wp_publish_post( $post_id );
+
+		self::assertSame( 'publish', get_post_status( $post_id ) );
+		self::assertSame( 1, $this->campaign_count_for_post( $post_id ) );
+	}
+
+	/**
+	 * Confirm independent repository instances resolve the same initial row.
+	 *
+	 * This is not the separate true-concurrency qualification; it proves the
+	 * database idempotency primitive is shared across repository instances.
+	 *
+	 * @return void
+	 */
+	public function test_repository_instances_resolve_the_same_initial_campaign(): void {
+		global $wpdb;
+
+		$post_id = $this->create_configured_draft();
+		$post    = get_post( $post_id );
+		self::assertInstanceOf( \WP_Post::class, $post );
+
+		$first  = new CampaignRepository( $wpdb );
+		$second = new CampaignRepository( $wpdb );
+
+		$first_id = $first->create_initial_building(
+			get_current_blog_id(),
+			$post_id,
+			(string) $post->post_modified_gmt,
+			ContentMode::Full
+		);
+		$second_id = $second->create_initial_building(
+			get_current_blog_id(),
+			$post_id,
+			(string) $post->post_modified_gmt,
+			ContentMode::Full
+		);
+
+		self::assertGreaterThan( 0, $first_id );
+		self::assertSame( $first_id, $second_id );
+		self::assertSame( 1, $this->campaign_count_for_post( $post_id ) );
+	}
+
 	/**
 	 * Confirm neutral and explicit do-not-send intent both fail closed.
 	 *
@@ -317,6 +520,65 @@ final class PublicationObserverTest extends WP_UnitTestCase {
 		$observer->observe_publication( $post_id, $post, true, $post_before );
 
 		self::assertNull( $this->campaign_for_post( $post_id ) );
+	}
+
+
+	/**
+	 * Schedule one post at an explicit UTC timestamp.
+	 *
+	 * @param int $post_id   Post ID.
+	 * @param int $timestamp Unix timestamp.
+	 * @return string Scheduled GMT datetime.
+	 */
+	private function schedule_post( int $post_id, int $timestamp ): string {
+		$future_gmt = gmdate( 'Y-m-d H:i:s', $timestamp );
+
+		self::assertSame(
+			$post_id,
+			wp_update_post(
+				array(
+					'ID'            => $post_id,
+					'post_status'   => 'future',
+					'post_date'     => get_date_from_gmt( $future_gmt ),
+					'post_date_gmt' => $future_gmt,
+					'edit_date'     => true,
+				)
+			)
+		);
+		self::assertSame( 'future', get_post_status( $post_id ) );
+
+		return $future_gmt;
+	}
+
+	/**
+	 * Move a scheduled fixture to an exact publication time without firing save hooks.
+	 *
+	 * @param int $post_id   Post ID.
+	 * @param int $timestamp Unix timestamp.
+	 * @return string Stored GMT datetime.
+	 */
+	private function set_post_date_directly( int $post_id, int $timestamp ): string {
+		global $wpdb;
+
+		$gmt = gmdate( 'Y-m-d H:i:s', $timestamp );
+
+		// Test fixture setup intentionally bypasses save hooks.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->update(
+			$wpdb->posts,
+			array(
+				'post_date'     => get_date_from_gmt( $gmt ),
+				'post_date_gmt' => $gmt,
+			),
+			array( 'ID' => $post_id )
+		);
+		// phpcs:enable
+
+		self::assertNotFalse( $result );
+		clean_post_cache( $post_id );
+
+		return $gmt;
 	}
 
 	/**
