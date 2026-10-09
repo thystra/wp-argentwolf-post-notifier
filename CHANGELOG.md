@@ -3,6 +3,14 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add administrator-managed, site-default plain-text customization for email
+  subject, heading, intro/outro copy, CTA label and an optional footer note.
+  Accept only `{{site_name}}` and `{{post_title}}` operator tokens; reject
+  malformed template fields and header injection. Escape custom text in HTML
+  and preserve the non-removable unsubscribe/manage footer in both formats.
+  The admin screen is nonce- and `manage_options`-gated; restore-defaults is
+  supported. Preview, test sends, recipient tokens and delivery remain deferred.
+
 - Introduce side-effect-free default HTML/plain-text email message composition
   from the canonical fragments, with a small internal token allowlist and
   mandatory local unsubscribe/manage links appended outside the fixed bodies.

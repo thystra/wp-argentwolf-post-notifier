@@ -78,9 +78,15 @@ not complete HTML/plain-text emails. Tranche 4 adds fixed responsive-width HTML
 and plain-text defaults through `EmailTemplateComposer`, including mandatory
 same-site unsubscribe and manage links that must be supplied by the trusted
 caller. The fixed body placeholders are restricted to site name, post title,
-post URL and canonical content. No editable custom templates, settings,
-subscriber-token generation, preview endpoint, recipient creation, campaign
-snapshot or post-notification delivery is added. Classic `<!--more-->` support
+post URL and canonical content. Tranche 5 adds a **Settings → Post Notifier Templates** administrator screen for
+site-default plain-text subject, heading, text before/after the article, CTA
+label and optional footer note. Only `{{site_name}}` and `{{post_title}}` are
+valid custom tokens. Custom text is escaped in HTML; it cannot replace the
+canonical article fragment or remove the mandatory subscriber links. Invalid
+saved options revert safely to defaults. This is not the future named template
+library (editor template IDs remain unchanged). Subscriber-token generation,
+preview endpoints, recipient creation, campaign snapshots and post-notification
+delivery remain deferred. Classic `<!--more-->` support
 and persistent content settings are still pending.
 
 ## Planned features

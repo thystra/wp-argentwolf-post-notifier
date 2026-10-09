@@ -39,6 +39,8 @@ main() {
 		'argentwolf-post-notifier/src/Version.php' \
 		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateComposer.php' \
+		'argentwolf-post-notifier/src/Content/EmailTemplateSettings.php' \
+		'argentwolf-post-notifier/src/Admin/NotificationTemplateSettingsPage.php' \
 		'argentwolf-post-notifier/assets/runtime/subscribe-editor.js' \
 		'argentwolf-post-notifier/assets/runtime/post-editor.js' \
 		'argentwolf-post-notifier/blocks/subscribe/block.json' \

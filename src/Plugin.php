@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier;
 
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
+use ArgentWolf\PostNotifier\Admin\NotificationTemplateSettingsPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
@@ -25,6 +26,7 @@ use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
+use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -129,13 +131,31 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EmailTemplateSettings::class,
+				static fn (): EmailTemplateSettings => new EmailTemplateSettings()
+			);
+			$container->set(
 				EmailTemplateComposer::class,
 				static function ( Container $services ): EmailTemplateComposer {
 					$renderer = $services->get( EmailContentRenderer::class );
 					if ( ! $renderer instanceof EmailContentRenderer ) {
 						throw new LogicException( 'The email fragment renderer is invalid.' );
 					}
-					return new EmailTemplateComposer( $renderer );
+					$settings = $services->get( EmailTemplateSettings::class );
+					if ( ! $settings instanceof EmailTemplateSettings ) {
+						throw new LogicException( 'The email template settings are invalid.' );
+					}
+					return new EmailTemplateComposer( $renderer, $settings );
+				}
+			);
+			$container->set(
+				NotificationTemplateSettingsPage::class,
+				static function ( Container $services ): NotificationTemplateSettingsPage {
+					$settings = $services->get( EmailTemplateSettings::class );
+					if ( ! $settings instanceof EmailTemplateSettings ) {
+						throw new LogicException( 'The email template settings are invalid.' );
+					}
+					return new NotificationTemplateSettingsPage( $settings );
 				}
 			);
 			$container->set(
@@ -716,6 +736,7 @@ final class Plugin {
 				ConfirmationController::class,
 				ManageSubscriptionController::class,
 				SubscriberAdminPage::class,
+				NotificationTemplateSettingsPage::class,
 				SubscriberCsvImportPage::class,
 				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,

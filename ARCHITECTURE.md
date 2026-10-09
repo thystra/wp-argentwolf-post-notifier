@@ -51,7 +51,11 @@ Beta.3 tranche 1 registers the editor-only Email Cutoff marker block. Its
 public render callback always returns the empty string. Tranche 2 adds a
 selection-only service: it returns a `source`, `format`, and `content` without
 rendering dynamic blocks, shortcodes, or messages, or making campaign writes.
-Email templates, previews, snapshots, and delivery remain unimplemented.
+Tranche 3 renders static safe fragments, and tranche 4 supplies an inert default
+HTML/plain-text message composer with mandatory subscriber footer links. Tranche
+5 adds administrator-managed text-only customization; preview endpoints,
+recipient-specific links, snapshots, and post-notification delivery remain
+unimplemented.
 
 ## 2.1 Canonical naming
 
@@ -605,8 +609,23 @@ remote assets. A mandatory subscribe-management footer is appended **after**
 both fixed bodies; it cannot be omitted through a template token choice.
 These internal placeholders are not yet the configurable custom-template
 syntax and do not replace the broader future allowlist described below.
-Custom templates, CTA overrides, settings persistence, preview routes,
-campaign snapshots and mail transport remain future work. No persistent site
+Tranche 5 introduces `EmailTemplateSettings` and a settings screen under
+**Settings → Post Notifier Templates**, gated by WordPress `manage_options`.
+It persists only six validated plain-text fields (subject, heading, text before
+and after the article, CTA label, optional footer note) in a non-autoloaded
+WordPress option. The only operator tokens are `{{site_name}}` and
+`{{post_title}}`; unknown, malformed, oversized, and header-injection strings
+are rejected. Newlines are permitted only in the descriptive text fields;
+all literal text is HTML-escaped before it enters the fixed HTML layout.
+The canonical sanitized content fragment is never editable through the template
+option. Immutable unsubscribe/manage links remain appended **after** custom
+notes in both formats. A nonce-protected administrator action saves or restores
+all settings atomically; invalid persisted settings fall back to the defaults.
+This is a site-default template text override, **not** the future named-template
+library referenced by editor `template_id` values. No preview endpoint or test
+mail action is enabled by this tranche.
+Preview routes, campaign snapshots, recipient tokens and mail transport remain
+future work. No persistent site
 settings for More or generated-excerpt word count are added in this tranche;
 caller parameters are bounded. Classic `<!--more-->` text markers remain
 unsupported.
