@@ -475,6 +475,11 @@ No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 
 Target: `0.1.0-beta.3`
 
+Tranche 1 candidate registers an editor-visible Email Cutoff block and defines
+its strictly empty frontend render result. It does **not** yet interpret the
+marker while composing email content. The block and distribution test remain
+pending Forgejo CI qualification before these checkboxes can be completed.
+
 - [ ] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
 - [ ] Render the cutoff block as no public output.
