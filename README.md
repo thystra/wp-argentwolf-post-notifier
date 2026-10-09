@@ -74,9 +74,14 @@ It supports static core text blocks, headings, lists and quotations while
 omitting dynamic/third-party blocks, embeds, shortcodes, images, and unsupported
 markup without executing callbacks. Relative site links are made absolute and
 links survive in plain text as visible URLs. These are **content fragments**,
-not complete HTML/plain-text emails. No templates, unsubscribe footer, preview,
-recipient creation, campaign snapshot, or post-notification delivery is added.
-Classic `<!--more-->` support and persistent content settings are still pending.
+not complete HTML/plain-text emails. Tranche 4 adds fixed responsive-width HTML
+and plain-text defaults through `EmailTemplateComposer`, including mandatory
+same-site unsubscribe and manage links that must be supplied by the trusted
+caller. The fixed body placeholders are restricted to site name, post title,
+post URL and canonical content. No editable custom templates, settings,
+subscriber-token generation, preview endpoint, recipient creation, campaign
+snapshot or post-notification delivery is added. Classic `<!--more-->` support
+and persistent content settings are still pending.
 
 ## Planned features
 

@@ -477,11 +477,12 @@ Target: `0.1.0-beta.3`
 
 Tranche 1 registers the editor-visible Email Cutoff block with empty public
 rendering (PR #42, CI 106 green, merged). Tranche 2 adds the deterministic
-source selector (merged and Forgejo CI green). Tranche 3 introduces the
-canonical inert fragment renderer with sanitized HTML/plain-text pairs;
-its integration and package checks must pass Forgejo CI before closeout.
-These fragments intentionally omit dynamic blocks, unsupported blocks, media,
-embeds and shortcode execution. Full templates, required links, previews,
+source selector (merged and Forgejo CI green). Tranche 3 adds the canonical
+inert fragment renderer with sanitized HTML/plain-text pairs (merged and
+Forgejo CI green). These fragments intentionally omit dynamic blocks,
+unsupported blocks, media, embeds and shortcode execution. Tranche 4
+introduces fixed default HTML/plain-text composition and mandatory subscriber
+links; Forgejo CI qualification is pending. Editable templates, previews,
 campaign snapshots and sending remain separate tranches. A persistent
 site-default More preference and excerpt length remain future settings work.
 
@@ -491,14 +492,15 @@ site-default More preference and excerpt length remain future settings work.
 - [x] Implement cutoff precedence:
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
 - [ ] Add configurable generated-excerpt length.
-- [ ] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
-- [ ] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
+- [x] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
+- [x] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
       and unsupported blocks in Forgejo CI.
-- [ ] Build responsive default HTML template.
-- [ ] Build plain-text template.
-- [ ] Add allow-listed template tokens.
-- [ ] Require unsubscribe/manage token placement in templates or append a safe
-      mandatory footer.
+- [ ] Qualify responsive default HTML template in Forgejo CI.
+- [ ] Qualify fixed default plain-text template in Forgejo CI.
+- [ ] Qualify the fixed-body internal token allowlist in Forgejo CI; retain
+      broader configurable template token handling for a later tranche.
+- [ ] Qualify mandatory footer with both already-created same-site subscriber
+      control URLs; link generation remains outside this service.
 - [ ] Add live preview with a selected post.
 - [ ] Add preview-email action backed by the canonical rendered message.
 - [ ] Add send-test-email action backed by the canonical renderer and mail transport.
