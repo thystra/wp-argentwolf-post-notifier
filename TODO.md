@@ -476,21 +476,24 @@ No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 Target: `0.1.0-beta.3`
 
 Tranche 1 registers the editor-visible Email Cutoff block with empty public
-rendering (PR #42, CI 106 green, merged). Tranche 2 adds a selection-only
-service that records which content source should be rendered later. It does
-not execute dynamic blocks or shortcodes, render HTML emails, or send mail.
-A configured site-default More preference and excerpt length remain future
-settings work; this tranche accepts those values as caller inputs.
+rendering (PR #42, CI 106 green, merged). Tranche 2 adds the deterministic
+source selector (merged and Forgejo CI green). Tranche 3 introduces the
+canonical inert fragment renderer with sanitized HTML/plain-text pairs;
+its integration and package checks must pass Forgejo CI before closeout.
+These fragments intentionally omit dynamic blocks, unsupported blocks, media,
+embeds and shortcode execution. Full templates, required links, previews,
+campaign snapshots and sending remain separate tranches. A persistent
+site-default More preference and excerpt length remain future settings work.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
 - [x] Render the cutoff block as no public output.
-- [ ] Implement cutoff precedence:
+- [x] Implement cutoff precedence:
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
 - [ ] Add configurable generated-excerpt length.
-- [ ] Add safe block parsing and rendering.
-- [ ] Define behavior for dynamic blocks, embeds, shortcodes, and unsupported
-      blocks.
+- [ ] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
+- [ ] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
+      and unsupported blocks in Forgejo CI.
 - [ ] Build responsive default HTML template.
 - [ ] Build plain-text template.
 - [ ] Add allow-listed template tokens.

@@ -575,11 +575,24 @@ For a marker nested inside a container, the selector returns only static
 plain text preceding it rather than potentially malformed partial block HTML.
 Generated excerpts also use static plain text and bounded word trimming.
 The service does not execute dynamic block callbacks, embeds, or shortcodes.
-Its `format=blocks` output is still untrusted markup and MUST NOT be sent as
-HTML until the later canonical renderer sanitizes it. No persistent site
-settings for More or generated-excerpt word count are added in this tranche.
-Classic `<!--more-->` text markers are not interpreted yet. Rendering must
-still account for dynamic blocks, unsafe markup, and plain-text conversion.
+Its `format=blocks` output is untrusted markup and MUST NOT be used
+independently as email HTML. The canonical `EmailContentRenderer` consumes the
+selector and returns one selected source as sanitized HTML and plain text.
+The renderer interprets saved **static** block inner content only: paragraph,
+heading, list, list-item, quote, pullquote, separator, preformatted and verse.
+Group/column containers are flattened to supported children. Unknown blocks,
+dynamic blocks, core embed/shortcode/html blocks, media and images are omitted
+rather than executed; registered shortcodes are stripped without invoking
+callbacks. Raw Classic Editor markup is sanitized with an explicit tag and
+attribute allowlist, unsafe URLs are removed, and relative links become absolute
+site URLs. Plain text is derived from that sanitized result and retains visible
+link destinations. No image loads or remote fetches occur in composition.
+
+These are **content fragments**, not complete email messages. They are not
+suitable for sending until templates, CTA, required unsubscribe/manage links,
+and message snapshots are implemented. No persistent site settings for More or
+generated-excerpt word count are added in this tranche; caller parameters are
+bounded. Classic `<!--more-->` text markers remain unsupported.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is

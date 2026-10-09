@@ -68,8 +68,15 @@ truncation inside nested blocks conservatively returns plain text instead of
 broken HTML. A caller can specify whether More is enabled and the bounded
 word count for generated excerpts; a persistent site-settings UI is not yet
 implemented. Classic `<!--more-->` markers are not interpreted in this tranche.
-Templates, final HTML/plain-text rendering, previews, recipient creation, and
-post-notification sending remain future work.
+Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
+selector and returns sanitized HTML plus a corresponding plain-text fragment.
+It supports static core text blocks, headings, lists and quotations while
+omitting dynamic/third-party blocks, embeds, shortcodes, images, and unsupported
+markup without executing callbacks. Relative site links are made absolute and
+links survive in plain text as visible URLs. These are **content fragments**,
+not complete HTML/plain-text emails. No templates, unsubscribe footer, preview,
+recipient creation, campaign snapshot, or post-notification delivery is added.
+Classic `<!--more-->` support and persistent content settings are still pending.
 
 ## Planned features
 
