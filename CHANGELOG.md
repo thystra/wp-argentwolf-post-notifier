@@ -3,6 +3,14 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add an inert canonical email-fragment renderer that consumes the selection service
+  and returns sanitized HTML plus matching plain text. Only static core text
+  blocks and limited formatting are retained; dynamic/third-party blocks,
+  embedded content, image requests, and shortcode execution are excluded.
+- Normalize relative site links for email and preserve link destinations in
+  the plain-text variant. Add installed-WordPress integration coverage and
+  package manifest validation for the renderer; templates and mail stay deferred.
+
 - Add a selection-only content source resolver with deterministic precedence:
   full, Email Cutoff, core More, manual excerpt, generated excerpt. Keep all
   rendering and recipient/delivery effects deferred to later tranches.

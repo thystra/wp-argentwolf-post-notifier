@@ -37,6 +37,7 @@ main() {
 		'argentwolf-post-notifier/uninstall.php' \
 		'argentwolf-post-notifier/src/Plugin.php' \
 		'argentwolf-post-notifier/src/Version.php' \
+		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \
 		'argentwolf-post-notifier/assets/runtime/subscribe-editor.js' \
 		'argentwolf-post-notifier/assets/runtime/post-editor.js' \
 		'argentwolf-post-notifier/blocks/subscribe/block.json' \
