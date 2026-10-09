@@ -4,7 +4,7 @@ Tags: email, notifications, posts, subscribers
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-beta.2
+Stable tag: 0.1.0-beta.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,6 +13,8 @@ Development foundation for verified, unsubscribe-capable post notification campa
 == Description ==
 
 ArgentWolf Post Notifier is currently a beta development build.
+Beta.3 adds an editor-visible Email Cutoff marker that emits no public output;
+email composition, preview and post-notification delivery are not yet available.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous
@@ -111,7 +113,7 @@ the dependency, and still checks provider health and API compatibility at runtim
 
 == Changelog ==
 
-= 0.1.0-beta.2 =
+= 0.1.0-beta.3 =
 * Begin scheduled and immediate publication lifecycle development after completing the Beta.1 editor-workflow milestone.
 * Reserve one idempotent building campaign only after an eligible post is actually published.
 * Keep scheduling, recipients, rendering, queueing, and mail delivery outside the initial campaign-reservation path.

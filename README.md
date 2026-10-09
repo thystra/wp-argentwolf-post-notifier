@@ -57,6 +57,14 @@ The source tree includes a verified project-local Composer installer helper.
 The runtime package has no third-party PHP dependency in this beta and retains
 a reviewed fallback PSR-4 autoloader.
 
+## Beta.3 content-cutoff groundwork
+
+The first Beta.3 tranche adds the editor-visible `Email Cutoff` marker block.
+The marker is stored in post block content and deliberately produces no public
+HTML. It is **not yet consumed by a mail renderer**: excerpt selection,
+templates, previews, and post-notification sending remain future work. Adding
+this marker to a post cannot create campaign recipients or deliver mail.
+
 ## Planned features
 
 - Select registered recipients by WordPress role, named list, or individual

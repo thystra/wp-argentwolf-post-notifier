@@ -21,6 +21,7 @@ use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignDiagnostics;
 use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
+use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -540,6 +541,10 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EmailCutoffBlock::class,
+				static fn (): EmailCutoffBlock => new EmailCutoffBlock()
+			);
+			$container->set(
 				SubscribeBlock::class,
 				static function ( Container $services ): SubscribeBlock {
 					$context = $services->get( SignupFormContext::class );
@@ -699,6 +704,7 @@ final class Plugin {
 						PendingSubscriberCleanup::class,
 						PublicSignupController::class,
 						SubscribeBlock::class,
+						EmailCutoffBlock::class,
 					)
 				);
 			}

@@ -39,7 +39,9 @@ main() {
 		'argentwolf-post-notifier/src/Version.php' \
 		'argentwolf-post-notifier/assets/runtime/subscribe-editor.js' \
 		'argentwolf-post-notifier/assets/runtime/post-editor.js' \
-		'argentwolf-post-notifier/blocks/subscribe/block.json'
+		'argentwolf-post-notifier/blocks/subscribe/block.json' \
+		'argentwolf-post-notifier/blocks/email-cutoff/block.json' \
+		'argentwolf-post-notifier/assets/runtime/email-cutoff-editor.js'
 	do
 		if ! printf '%s\n' "${listing}" | grep -Fxq "${required}"; then
 			printf 'ERROR: required package path is missing: %s\n' "${required}" >&2

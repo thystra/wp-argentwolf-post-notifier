@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "argentwolf-post-notifier/email-cutoff",
+  "version": "0.1.0-beta.3",
+  "title": "Email Cutoff",
+  "category": "design",
+  "icon": "editor-break",
+  "description": "Mark the end of excerpt content for future post-notification emails; invisible on the public site.",
+  "textdomain": "argentwolf-post-notifier",
+  "supports": {
+    "html": false,
+    "multiple": false
+  },
+  "editorScript": "argentwolf-post-notifier-email-cutoff-editor"
+}

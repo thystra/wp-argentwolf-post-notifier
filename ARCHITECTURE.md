@@ -47,6 +47,11 @@ are present. These campaign rows have no recipients or rendered message bodies:
 content rendering, recipient freezing, queue processing, and post-notification
 delivery remain future milestones. The beta checkpoint is not a public release.
 
+Beta.3 tranche 1 begins with an editor-only Email Cutoff marker block. Its
+public render callback returns the empty string even if saved content is
+unexpected. Email content truncation, templates, previews, snapshots, and
+post-notification delivery are not yet implemented.
+
 ## 2.1 Canonical naming
 
 The public product and vendor name is **ArgentWolf Post Notifier**. The project

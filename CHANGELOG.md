@@ -1,7 +1,16 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-beta.2 — Unreleased
+## 0.1.0-beta.3 — In development
+
+- Start the content-cutoff milestone with an editor-visible Email Cutoff marker
+  (`argentwolf-post-notifier/email-cutoff`) that renders no public output.
+- Include the block metadata and human-readable editor script in the deterministic
+  package, with WordPress integration coverage for registration and invisibility.
+- Keep email content composition, templates, previews, and mail delivery deferred
+  to later Beta.3 tranches; do not populate recipients or message bodies.
+
+## 0.1.0-beta.2 — 2026-10-09 development checkpoint
 
 - Begin scheduled and immediate publication lifecycle development after completing
   the Beta.1 editor-workflow milestone.
