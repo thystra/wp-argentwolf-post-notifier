@@ -475,16 +475,15 @@ No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 
 Target: `0.1.0-beta.3`
 
-Tranche 1 registers the editor-visible Email Cutoff block with empty public
-rendering (PR #42, CI 106 green, merged). Tranche 2 adds the deterministic
-source selector (merged and Forgejo CI green). Tranche 3 adds the canonical
-inert fragment renderer with sanitized HTML/plain-text pairs (merged and
-Forgejo CI green). These fragments intentionally omit dynamic blocks,
-unsupported blocks, media, embeds and shortcode execution. Tranche 4
-introduces fixed default HTML/plain-text composition and mandatory subscriber
-links; Forgejo CI qualification is pending. Editable templates, previews,
-campaign snapshots and sending remain separate tranches. A persistent
-site-default More preference and excerpt length remain future settings work.
+Tranche 1 registers the editor-visible Email Cutoff marker (PR #42, CI 106,
+merged). Tranche 2 implements deterministic source selection; tranche 3
+provides safe static-fragment rendering; and tranche 4 adds fixed default
+HTML/plain-text composition with mandatory links. All four are merged.
+Tranche 5 adds restricted site-default text customization and restore-defaults,
+pending its own Forgejo qualification. Named template selection, preview,
+recipient-specific token generation, snapshots and sending remain later work.
+A persistent site-default More preference and excerpt length remain future
+settings work.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
@@ -495,18 +494,19 @@ site-default More preference and excerpt length remain future settings work.
 - [x] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
 - [x] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
       and unsupported blocks in Forgejo CI.
-- [ ] Qualify responsive default HTML template in Forgejo CI.
-- [ ] Qualify fixed default plain-text template in Forgejo CI.
-- [ ] Qualify the fixed-body internal token allowlist in Forgejo CI; retain
+- [x] Qualify responsive default HTML template in Forgejo CI.
+- [x] Qualify fixed default plain-text template in Forgejo CI.
+- [x] Qualify the fixed-body internal token allowlist in Forgejo CI; retain
       broader configurable template token handling for a later tranche.
-- [ ] Qualify mandatory footer with both already-created same-site subscriber
+- [x] Qualify mandatory footer with both already-created same-site subscriber
       control URLs; link generation remains outside this service.
 - [ ] Add live preview with a selected post.
 - [ ] Add preview-email action backed by the canonical rendered message.
 - [ ] Add send-test-email action backed by the canonical renderer and mail transport.
-- [ ] Add restore-default-template action.
-- [ ] Add custom subject, heading, body, footer, and CTA settings.
-- [ ] Sanitize and validate templates.
+- [ ] Qualify administrator restore-defaults action in Forgejo CI.
+- [ ] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
+- [ ] Qualify site-default template setting sanitation, token rejection and access control.
+- [ ] Add named reusable template configuration and safe customization beyond text-only fields.
 - [ ] Snapshot rendered campaign content.
 
 Acceptance criteria:

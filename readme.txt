@@ -14,7 +14,8 @@ Development foundation for verified, unsubscribe-capable post notification campa
 
 ArgentWolf Post Notifier is currently a beta development build.
 Beta.3 adds an editor-visible Email Cutoff marker that emits no public output;
-email composition, preview and post-notification delivery are not yet available.
+inert HTML/plain-text composition and text-only administrator customization are
+available, but preview and post-notification delivery are not yet enabled.
 
 The plugin establishes its bootstrap, service container, lifecycle handlers,
 verification-provider contract, development tooling, tests, continuous

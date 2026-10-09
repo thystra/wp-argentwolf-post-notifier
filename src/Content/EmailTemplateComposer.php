@@ -14,8 +14,8 @@ use LogicException;
  * Compose inert notification messages from the canonical fragment renderer.
  *
  * This service only creates strings. It neither resolves an audience nor
- * persists campaigns, generates links, or transmits email. Templates are fixed
- * here until separately validated administrator template settings are added.
+ * persists campaigns, generates links, or transmits email. Optional text-only
+ * customizations are validated separately and cannot remove subscriber links.
  */
 final class EmailTemplateComposer {
 	/**
@@ -23,14 +23,27 @@ final class EmailTemplateComposer {
 	 *
 	 * @var array<int,string>
 	 */
-	public const BODY_TOKENS = array( 'site_name', 'post_title', 'post_url', 'content' );
+	public const BODY_TOKENS = array(
+		'site_name',
+		'post_title',
+		'post_url',
+		'content',
+		'heading',
+		'before',
+		'after',
+		'cta',
+	);
 
 	/**
 	 * Use one canonical renderer for the HTML and plain-text representations.
 	 *
-	 * @param EmailContentRenderer $renderer Canonical inert fragment renderer.
+	 * @param EmailContentRenderer       $renderer Canonical inert fragment renderer.
+	 * @param EmailTemplateSettings|null $settings Validated template settings.
 	 */
-	public function __construct( private EmailContentRenderer $renderer ) {
+	public function __construct(
+		private EmailContentRenderer $renderer,
+		private ?EmailTemplateSettings $settings = null
+	) {
 	}
 
 	/**
@@ -75,33 +88,49 @@ final class EmailTemplateComposer {
 		);
 		$title     = sanitize_text_field( wp_strip_all_tags( $post_title ) );
 		$site_name = sanitize_text_field( get_bloginfo( 'name' ) );
+		$settings  = ( $this->settings ?? new EmailTemplateSettings() )->get();
+		$tokens    = array(
+			'{{site_name}}'  => $site_name,
+			'{{post_title}}' => $title,
+		);
+		$heading   = strtr( $settings['heading'], $tokens );
+		$before    = strtr( $settings['before'], $tokens );
+		$after     = strtr( $settings['after'], $tokens );
+		$cta       = strtr( $settings['cta'], $tokens );
+		$note      = strtr( $settings['footer_note'], $tokens );
 
 		$html_values = array(
 			'site_name'  => esc_html( $site_name ),
 			'post_title' => esc_html( $title ),
 			'post_url'   => esc_url( $post_url ),
 			'content'    => $fragments['html'],
+			'heading'    => esc_html( $heading ),
+			'before'     => $this->html_paragraph( $before ),
+			'after'      => $this->html_paragraph( $after ),
+			'cta'        => esc_html( $cta ),
 		);
 		$text_values = array(
 			'site_name'  => $site_name,
 			'post_title' => $title,
 			'post_url'   => $post_url,
 			'content'    => $fragments['text'],
+			'heading'    => $heading,
+			'before'     => $this->text_paragraph( $before ),
+			'after'      => $this->text_paragraph( $after ),
+			'cta'        => $cta,
 		);
 
 		// The footer is outside both templates and cannot be removed by them.
 		$html  = $this->replace_body_tokens( $this->html_body_template(), $html_values );
+		$html .= $this->html_paragraph( $note );
 		$html .= $this->mandatory_html_footer( $unsubscribe_url, $manage_url );
 		$text  = $this->replace_body_tokens( $this->text_body_template(), $text_values );
+		$text .= $this->text_paragraph( $note );
 		$text .= $this->mandatory_text_footer( $unsubscribe_url, $manage_url );
 
 		return array(
 			'source'  => $fragments['source'],
-			'subject' => sprintf(
-				/* translators: %s: Title of the newly published post. */
-				__( 'New post: %s', 'argentwolf-post-notifier' ),
-				$title
-			),
+			'subject' => strtr( $settings['subject'], $tokens ),
 			'html'    => $html,
 			'text'    => $text,
 		);
@@ -149,10 +178,9 @@ final class EmailTemplateComposer {
 			. '<tr><td align="center" style="padding:20px">'
 			. '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
 			. 'width="100%" style="max-width:640px">'
-			. '<tr><td><p>{{site_name}}</p><h2>{{post_title}}</h2>'
-			. '<div>{{content}}</div><p><a href="{{post_url}}">'
-			. esc_html__( 'Read the post', 'argentwolf-post-notifier' )
-			. '</a></p></td></tr></table></td></tr></table>';
+			. '<tr><td><p>{{site_name}}</p><h2>{{heading}}</h2>'
+			. '<div>{{before}}{{content}}{{after}}</div><p><a href="{{post_url}}">'
+			. '{{cta}}</a></p></td></tr></table></td></tr></table>';
 	}
 
 	/**
@@ -161,7 +189,31 @@ final class EmailTemplateComposer {
 	 * @return string
 	 */
 	private function text_body_template(): string {
-		return "{{site_name}}\n{{post_title}}\n\n{{content}}\n\n{{post_url}}\n";
+		return "{{site_name}}\n{{heading}}\n\n{{before}}{{content}}\n"
+			. "{{after}}{{cta}}: {{post_url}}\n";
+	}
+
+	/**
+	 * Escape a custom plain-text field for the fixed HTML wrapper.
+	 *
+	 * @param string $text Text containing no HTML.
+	 * @return string
+	 */
+	private function html_paragraph( string $text ): string {
+		if ( '' === $text ) {
+			return '';
+		}
+		return '<p>' . nl2br( esc_html( $text ), false ) . '</p>';
+	}
+
+	/**
+	 * Keep optional plain-text fields separated from article content.
+	 *
+	 * @param string $text Plain text to include.
+	 * @return string
+	 */
+	private function text_paragraph( string $text ): string {
+		return '' === $text ? '' : $text . "\n\n";
 	}
 
 	/**
