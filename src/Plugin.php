@@ -24,6 +24,7 @@ use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
+use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -125,6 +126,16 @@ final class Plugin {
 						throw new LogicException( 'The content selector is invalid.' );
 					}
 					return new EmailContentRenderer( $selector );
+				}
+			);
+			$container->set(
+				EmailTemplateComposer::class,
+				static function ( Container $services ): EmailTemplateComposer {
+					$renderer = $services->get( EmailContentRenderer::class );
+					if ( ! $renderer instanceof EmailContentRenderer ) {
+						throw new LogicException( 'The email fragment renderer is invalid.' );
+					}
+					return new EmailTemplateComposer( $renderer );
 				}
 			);
 			$container->set(

@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Introduce side-effect-free default HTML/plain-text email message composition
+  from the canonical fragments, with a small internal token allowlist and
+  mandatory local unsubscribe/manage links appended outside the fixed bodies.
+  Require caller-supplied, already-created same-site links; keep template editing,
+  preview routes, audience resolution, snapshots, and sending deferred.
+
 - Add an inert canonical email-fragment renderer that consumes the selection service
   and returns sanitized HTML plus matching plain text. Only static core text
   blocks and limited formatting are retained; dynamic/third-party blocks,

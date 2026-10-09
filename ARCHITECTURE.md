@@ -588,11 +588,28 @@ attribute allowlist, unsafe URLs are removed, and relative links become absolute
 site URLs. Plain text is derived from that sanitized result and retains visible
 link destinations. No image loads or remote fetches occur in composition.
 
-These are **content fragments**, not complete email messages. They are not
-suitable for sending until templates, CTA, required unsubscribe/manage links,
-and message snapshots are implemented. No persistent site settings for More or
-generated-excerpt word count are added in this tranche; caller parameters are
-bounded. Classic `<!--more-->` text markers remain unsupported.
+These are **content fragments**, not complete email messages. Tranche 4
+introduces `EmailTemplateComposer`, which composes fixed default responsive-width
+HTML and plain-text messages by calling that same canonical fragment renderer
+once. This is an inert composition service: it does not create campaigns,
+recipients, snapshots, tokens, transport messages, or queue work. It requires
+three already-created absolute same-site HTTP(S) URLs: the published post,
+unsubscribe and manage-notifications links. Invalid links fail closed. The
+caller must not use placeholder or invented recipient bearer URLs in actual
+sending.
+
+The fixed default body templates interpolate only `{{site_name}}`,
+`{{post_title}}`, `{{post_url}}`, and `{{content}}` using output-context-specific
+escaping. The HTML layout has no external styles, imagery, tracking URLs, or
+remote assets. A mandatory subscribe-management footer is appended **after**
+both fixed bodies; it cannot be omitted through a template token choice.
+These internal placeholders are not yet the configurable custom-template
+syntax and do not replace the broader future allowlist described below.
+Custom templates, CTA overrides, settings persistence, preview routes,
+campaign snapshots and mail transport remain future work. No persistent site
+settings for More or generated-excerpt word count are added in this tranche;
+caller parameters are bounded. Classic `<!--more-->` text markers remain
+unsupported.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is
