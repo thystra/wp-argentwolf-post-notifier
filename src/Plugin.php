@@ -22,6 +22,7 @@ use ArgentWolf\PostNotifier\Campaign\CampaignDiagnostics;
 use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
+use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -110,6 +111,10 @@ final class Plugin {
 			$container->set(
 				PublicationSiteHealth::class,
 				static fn (): PublicationSiteHealth => new PublicationSiteHealth()
+			);
+			$container->set(
+				EmailContentSelector::class,
+				static fn (): EmailContentSelector => new EmailContentSelector()
 			);
 			$container->set(
 				CampaignDiagnostics::class,

@@ -3,6 +3,10 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add a selection-only content source resolver with deterministic precedence:
+  full, Email Cutoff, core More, manual excerpt, generated excerpt. Keep all
+  rendering and recipient/delivery effects deferred to later tranches.
+
 - Start the content-cutoff milestone with an editor-visible Email Cutoff marker
   (`argentwolf-post-notifier/email-cutoff`) that renders no public output.
 - Include the block metadata and human-readable editor script in the deterministic
