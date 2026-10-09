@@ -59,9 +59,11 @@ notification metadata and warning state without resolving recipients, rendering 
 creating campaign state. Beta.1 qualification verifies that the complete notification
 configuration survives save/reload, scheduling, scheduled-post edits, revisions, and
 autosaves without creating campaign state. The Beta.1 notification workflow is block-editor
-only; the Classic Editor has no AWPN notification-configuration UI. Template rendering,
-previews, and test sends are deferred together to the Milestone 8 canonical message
-composition path.
+only; the Classic Editor has no AWPN notification-configuration UI. Beta.2 reserves a
+single non-deliverable `building` campaign after actual publication and includes
+privacy-safe diagnostics plus read-only Site Health checks. Template rendering,
+recipient freezing, queue processing, notification delivery, previews, and test
+sends remain later milestones.
 
 The intended design creates an explicit immutable campaign only after WordPress
 actually publishes a post. Scheduling a post must not create a campaign or send
@@ -83,13 +85,18 @@ This beta is intended for development and controlled testing.
 2. Activate ArgentWolf Post Notifier through the Plugins screen.
 3. Confirm that activation completes without warnings.
 
-No notification campaign features are available yet.
+This beta reserves a non-deliverable `building` campaign shell when an explicitly
+opted-in post actually publishes. It does not select notification recipients,
+render notification content, queue messages, or deliver post-notification email.
 
 == Frequently Asked Questions ==
 
 = Does this beta send post-notification email? =
 
-No. This development build does not yet create or deliver publication campaigns.
+This development build reserves one `building` campaign shell after an eligible
+post is actually published; it does not yet send post-notification email. The
+standalone-subscriber confirmation and CSV invitation flows can separately send
+transactional messages through WordPress mail.
 
 = Does scheduling a post send anything? =
 
@@ -108,6 +115,9 @@ the dependency, and still checks provider health and API compatibility at runtim
 * Begin scheduled and immediate publication lifecycle development after completing the Beta.1 editor-workflow milestone.
 * Reserve one idempotent building campaign only after an eligible post is actually published.
 * Keep scheduling, recipients, rendering, queueing, and mail delivery outside the initial campaign-reservation path.
+* Qualify concurrent reservation and WP-CLI scheduled, immediate, and republish paths.
+* Add privacy-safe campaign reservation diagnostics with optional ID-only success logging.
+* Add read-only Site Health checks for overdue opted-in posts and pre-queue status.
 
 = 0.1.0-beta.1 =
 * Begin revision-aware REST post metadata for the editor workflow.

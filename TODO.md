@@ -412,8 +412,10 @@ with tranche 5 passing Forgejo CI and merged (2026-10-08).
 Tranche 6 adds WordPress Site Health reporting for explicitly opted-in scheduled posts
 remaining `future` at least 15 minutes after the GMT publication time. It also reports
 that queue wake-ups are intentionally not applicable before the delivery worker ships.
-No queue hooks, email sending, schema changes, or site-wide cron policy are introduced;
-tranche 6 requires Forgejo CI qualification.
+No queue hooks, post-notification email sending, schema changes, or site-wide cron
+policy are introduced. Tranche 6 was subsequently merged after the Plugin Check
+correction (2026-10-08); verification against the exact post-merge `main` CI
+revision remains a checkpoint/tag gate rather than an implementation TODO.
 
 - [x] Observe actual completed publication through the selected core hook path.
 - [x] Ignore draft, pending, private, trash, auto-draft, revision, and future
@@ -427,13 +429,14 @@ tranche 6 requires Forgejo CI qualification.
 - [x] Prevent resend on ordinary published-post updates.
 - [x] Prevent duplicate initial campaign after unpublish/republish.
 - [ ] Add explicit future update-campaign action only if included in the target
-      release.
+      release. Deferred beyond Beta.2; this optional feature is not a Beta.2
+      milestone blocker.
 - [x] Add diagnostic logging that does not expose recipient data.
       Tranche 5 passed Forgejo CI and was merged (2026-10-08).
-- [ ] Add Site Health checks for overdue future posts and queue wake-ups.
-      Tranche 6 implements read-only overdue-post reporting and explicit pre-queue
-      informational status; Forgejo CI qualification is pending. Actual queue worker
-      wake-up monitoring remains deferred to the queue milestone.
+- [x] Add Site Health checks for overdue future posts and queue wake-ups.
+      Tranche 6 reports read-only overdue-post status and explicit pre-queue
+      informational status; merged 2026-10-08. Actual queue worker wake-up
+      monitoring remains deferred until the worker exists.
 
 Required tests:
 
@@ -457,9 +460,16 @@ Required tests:
 
 Acceptance criteria:
 
-- [ ] No scheduled-post email can be sent before actual publication.
+- [x] No scheduled-post notification email can be sent before actual publication.
+      Beta.2 reserves shells only and has no post-notification sender; this
+      invariant must be requalified when the queue worker is implemented.
 - [x] Campaign idempotency is enforced by the database.
-- [x] A missed WP-Cron run delays notification rather than sending early.
+- [x] A missed WP-Cron run delays campaign reservation rather than sending early.
+
+Beta.2 source-checkpoint audit: see `docs/reviews/beta2-checkpoint-2026-10-08.md`.
+The implementation checklist is complete. Verify the exact final `main` SHA,
+post-merge CI and distribution checksum before an optional annotated source tag.
+No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 
 ## Milestone 8 — Content cutoff, templates, and preview
 

@@ -5,8 +5,9 @@ ArgentWolf Post Notifier is a planned GPL-licensed WordPress plugin for sending
 verified, unsubscribe-capable email notifications when posts are actually
 published.
 
-The current tree has entered `0.1.0-beta.2` development after completing the
-Beta.1 editor-workflow milestone. The verification-provider contract, frozen schema
+The `0.1.0-beta.2` implementation checkpoint completes the scheduled and immediate
+publication lifecycle while remaining a development build, not a public release.
+The earlier Beta.1 milestone established the editor workflow. The verification-provider contract, frozen schema
 foundation, standalone double opt-in, subscriber administration, registered-user
 preferences, global suppression, named lists, bounded CSV intake, structured audit
 events, and reusable audience resolver are present. Beta.1 established the editor workflow
@@ -35,10 +36,13 @@ save/reload, scheduling, scheduled-post edits, revisions, and autosaves without 
 campaign state. The Beta.1 editor workflow intentionally supports the block editor only;
 AWPN provides no notification-configuration UI in the Classic Editor. Template rendering,
 previews, storage, and test sends are deferred together to Milestone 8 so they share one
-canonical message-composition path. Beta.2 now includes the first scheduled/immediate
-publication primitive: an explicit-send post reserves one idempotent `building` campaign only
-after actual publication. The current tranche does not render message content, freeze
-recipients, queue work, or send mail.
+canonical message-composition path. Beta.2 adds an actual-publication observer:
+an explicit-send post reserves one idempotent `building` campaign after WordPress
+publishes it. Concurrency and WP-CLI paths are qualified; privacy-safe campaign
+diagnostics and read-only Site Health checks are included. The checkpoint does
+not render notification messages, freeze recipients, queue work, or deliver
+post-notification mail. Confirmation and invitation emails for standalone
+subscribers are separate, already-implemented workflows.
 The intended public distribution channel, once the plugin is complete and
 operational, is the WordPress.org Plugin Directory.
 
@@ -50,7 +54,7 @@ operational, is the WordPress.org Plugin Directory.
 - Node.js 20.19 or newer (or 22.13 or newer) and npm 10.2.3 or newer for editor tooling.
 
 The source tree includes a verified project-local Composer installer helper.
-The runtime package has no third-party PHP dependency in this alpha and retains
+The runtime package has no third-party PHP dependency in this beta and retains
 a reviewed fallback PSR-4 autoloader.
 
 ## Planned features

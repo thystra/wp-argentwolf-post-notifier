@@ -29,17 +29,23 @@ customer-relationship-management, or bulk email-delivery platform.
 This document defines the agreed design. It does not claim that the described
 components are implemented.
 
-The repository is now in `0.1.0-beta.1` development. Alpha.2 established the
-verification-provider contract, alpha.3 froze the persistent data foundation, alpha.4
-completed standalone double opt-in and administration, and alpha.5 completed the
-pre-campaign audience-policy layer: registered-user preferences, global suppression,
-secure standalone management, named lists, bounded CSV intake, deterministic audience
-resolution, and structured administrative audit events. Beta.1 begins the editor
-workflow. Its first tranche stores editorial notification configuration as protected,
-revision-aware post metadata exposed only in REST edit context. Per-post writes require
-permission to edit the target post plus the independently delegable
-`send_post_notifications` capability. Campaign creation, recipient persistence, and
-delivery remain later milestones.
+The repository has completed the implementation tranches planned for
+`0.1.0-beta.2`. Alpha.2 established the verification-provider contract; alpha.3
+froze the persistent data foundation; alpha.4 and alpha.5 added standalone
+double opt-in, administration, registered-user preferences, suppression, named
+lists, bounded CSV intake, audience resolution, and administrative audit events.
+Beta.1 added revision-aware editorial notification metadata, a capability-gated
+block-editor workflow, aggregate audience estimates, and pre-publish confirmation.
+
+Beta.2 observes completed WordPress publication saves and atomically reserves a
+single `building` campaign for eligible posts with explicit `send` intent. Draft
+and scheduled edits create no campaign; ordinary published edits and
+unpublish/republish cannot reserve a second initial campaign. Cross-process
+contention and WP-CLI publication paths have dedicated CI qualification.
+Privacy-safe reservation diagnostics and read-only publication Site Health checks
+are present. These campaign rows have no recipients or rendered message bodies:
+content rendering, recipient freezing, queue processing, and post-notification
+delivery remain future milestones. The beta checkpoint is not a public release.
 
 ## 2.1 Canonical naming
 
