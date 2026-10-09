@@ -475,14 +475,16 @@ No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 
 Target: `0.1.0-beta.3`
 
-Tranche 1 candidate registers an editor-visible Email Cutoff block and defines
-its strictly empty frontend render result. It does **not** yet interpret the
-marker while composing email content. The block and distribution test remain
-pending Forgejo CI qualification before these checkboxes can be completed.
+Tranche 1 registers the editor-visible Email Cutoff block with empty public
+rendering (PR #42, CI 106 green, merged). Tranche 2 adds a selection-only
+service that records which content source should be rendered later. It does
+not execute dynamic blocks or shortcodes, render HTML emails, or send mail.
+A configured site-default More preference and excerpt length remain future
+settings work; this tranche accepts those values as caller inputs.
 
-- [ ] Register Email Cutoff block:
+- [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
-- [ ] Render the cutoff block as no public output.
+- [x] Render the cutoff block as no public output.
 - [ ] Implement cutoff precedence:
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
 - [ ] Add configurable generated-excerpt length.

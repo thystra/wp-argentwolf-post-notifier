@@ -47,10 +47,11 @@ are present. These campaign rows have no recipients or rendered message bodies:
 content rendering, recipient freezing, queue processing, and post-notification
 delivery remain future milestones. The beta checkpoint is not a public release.
 
-Beta.3 tranche 1 begins with an editor-only Email Cutoff marker block. Its
-public render callback returns the empty string even if saved content is
-unexpected. Email content truncation, templates, previews, snapshots, and
-post-notification delivery are not yet implemented.
+Beta.3 tranche 1 registers the editor-only Email Cutoff marker block. Its
+public render callback always returns the empty string. Tranche 2 adds a
+selection-only service: it returns a `source`, `format`, and `content` without
+rendering dynamic blocks, shortcodes, or messages, or making campaign writes.
+Email templates, previews, snapshots, and delivery remain unimplemented.
 
 ## 2.1 Canonical naming
 
@@ -564,9 +565,21 @@ argentwolf-post-notifier/email-cutoff
 The block renders nothing on the public post and appears in the editor as a
 divider indicating that the email ends at that location.
 
-Content extraction uses the block parser rather than regular-expression
-matching. Rendering must account for dynamic blocks, shortcodes, unsafe markup,
-embedded media, and plain-text conversion.
+The selection service uses `parse_blocks()` and `serialize_blocks()` rather
+than regular-expression cutoff matching. Its `full`, `email_cutoff`, `more`,
+`manual_excerpt`, and `generated_excerpt` sources have explicit tests.
+`full` mode overrides all markers; Email Cutoff outranks More even if it is
+later in the post. More can be disabled by the caller. The first applicable
+marker determines the content prefix, with presentation markers removed.
+For a marker nested inside a container, the selector returns only static
+plain text preceding it rather than potentially malformed partial block HTML.
+Generated excerpts also use static plain text and bounded word trimming.
+The service does not execute dynamic block callbacks, embeds, or shortcodes.
+Its `format=blocks` output is still untrusted markup and MUST NOT be sent as
+HTML until the later canonical renderer sanitizes it. No persistent site
+settings for More or generated-excerpt word count are added in this tranche.
+Classic `<!--more-->` text markers are not interpreted yet. Rendering must
+still account for dynamic blocks, unsafe markup, and plain-text conversion.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is

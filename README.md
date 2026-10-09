@@ -59,11 +59,17 @@ a reviewed fallback PSR-4 autoloader.
 
 ## Beta.3 content-cutoff groundwork
 
-The first Beta.3 tranche adds the editor-visible `Email Cutoff` marker block.
+Beta.3 tranche 1 adds the editor-visible `Email Cutoff` marker block.
 The marker is stored in post block content and deliberately produces no public
-HTML. It is **not yet consumed by a mail renderer**: excerpt selection,
-templates, previews, and post-notification sending remain future work. Adding
-this marker to a post cannot create campaign recipients or deliver mail.
+HTML. Tranche 2 adds `EmailContentSelector`, a **selection-only** service that
+resolves full content, Email Cutoff, core More, manual excerpt, and generated
+excerpt in that order. It returns unrendered block markup or static plain text;
+truncation inside nested blocks conservatively returns plain text instead of
+broken HTML. A caller can specify whether More is enabled and the bounded
+word count for generated excerpts; a persistent site-settings UI is not yet
+implemented. Classic `<!--more-->` markers are not interpreted in this tranche.
+Templates, final HTML/plain-text rendering, previews, recipient creation, and
+post-notification sending remain future work.
 
 ## Planned features
 
