@@ -500,7 +500,8 @@ settings work.
       broader configurable template token handling for a later tranche.
 - [x] Qualify mandatory footer with both already-created same-site subscriber
       control URLs; link generation remains outside this service.
-- [ ] Add live preview with a selected post.
+- [ ] Add live/unsaved preview with a selected post.
+- [ ] Qualify read-only administrator preview of saved templates and a published post in Forgejo CI.
 - [ ] Add preview-email action backed by the canonical rendered message.
 - [ ] Add send-test-email action backed by the canonical renderer and mail transport.
 - [ ] Qualify administrator restore-defaults action in Forgejo CI.

@@ -84,9 +84,13 @@ label and optional footer note. Only `{{site_name}}` and `{{post_title}}` are
 valid custom tokens. Custom text is escaped in HTML; it cannot replace the
 canonical article fragment or remove the mandatory subscriber links. Invalid
 saved options revert safely to defaults. This is not the future named template
-library (editor template IDs remain unchanged). Subscriber-token generation,
-preview endpoints, recipient creation, campaign snapshots and post-notification
-delivery remain deferred. Classic `<!--more-->` support
+library (editor template IDs remain unchanged). Tranche 6 adds a read-only administrator post preview under the same settings
+screen, using saved settings and a published post. It displays a sandboxed,
+noninteractive HTML pane and a plain-text pane. Subscriber links in previews
+are clearly labeled synthetic local examples, not usable unsubscribe links;
+no subscriber tokens are created. Preview does not create campaigns, recipients,
+or send mail. Live unsaved editing previews, test sends, campaign snapshots,
+subscriber-token generation, and delivery remain deferred. Classic `<!--more-->` support
 and persistent content settings are still pending.
 
 ## Planned features

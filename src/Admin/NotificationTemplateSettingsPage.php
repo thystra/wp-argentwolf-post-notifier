@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
+use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use InvalidArgumentException;
 
@@ -21,6 +22,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/** POST action for save and restore-defaults. */
 	public const SAVE_ACTION = 'argentwolf_post_notifier_save_template_text';
 
+	/** Read-only administrator preview action. */
+	public const PREVIEW_ACTION = 'argentwolf_post_notifier_preview_template';
+
 	/** Required WordPress permission. */
 	public const CAPABILITY = 'manage_options';
 
@@ -28,8 +32,12 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	 * Construct the administration settings screen.
 	 *
 	 * @param EmailTemplateSettings $settings Validated option store.
+	 * @param EmailTemplatePreview  $preview  Read-only message composer.
 	 */
-	public function __construct( private EmailTemplateSettings $settings ) {
+	public function __construct(
+		private EmailTemplateSettings $settings,
+		private EmailTemplatePreview $preview
+	) {
 	}
 
 	/**
@@ -133,7 +141,107 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		wp_nonce_field( self::SAVE_ACTION );
 		echo '<input type="hidden" name="awpn_restore" value="1">';
 		submit_button( __( 'Restore defaults', 'argentwolf-post-notifier' ), 'secondary' );
-		echo '</form></div>';
+		echo '</form>';
+		$this->render_preview();
+		echo '</div>';
+	}
+
+	/**
+	 * Preview the saved template and one published post without sending mail.
+	 *
+	 * @return void
+	 */
+	private function render_preview(): void {
+		// Read-only input; a verified nonce is required before any preview runs.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$post_id = isset( $_GET['awpn_preview_post'] ) ? absint( $_GET['awpn_preview_post'] ) : 0;
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		if ( 0 !== $post_id ) {
+			check_admin_referer( self::PREVIEW_ACTION, 'awpn_preview_nonce' );
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'              => 'post',
+				'post_status'            => 'publish',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'posts_per_page'         => 20,
+				'orderby'                => 'date',
+				'order'                  => 'DESC',
+			)
+		);
+
+		echo '<hr><h2>';
+		echo esc_html__( 'Preview notification email', 'argentwolf-post-notifier' );
+		echo '</h2><p>';
+		echo esc_html__(
+			'Saved settings are used. Links are examples only; no subscriber tokens are created.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p>';
+		echo '<form method="get" action="' . esc_url( admin_url( 'options-general.php' ) ) . '">';
+		echo '<input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '">';
+		wp_nonce_field( self::PREVIEW_ACTION, 'awpn_preview_nonce' );
+		echo '<label for="awpn_preview_post">';
+		echo esc_html__( 'Published post', 'argentwolf-post-notifier' );
+		echo '</label> <select id="awpn_preview_post" name="awpn_preview_post" required>';
+		echo '<option value="">';
+		echo esc_html__( 'Select a post', 'argentwolf-post-notifier' );
+		echo '</option>';
+		foreach ( $posts as $post ) {
+			if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+				continue;
+			}
+			echo '<option value="' . esc_attr( (string) $post->ID ) . '" ';
+			echo selected( $post_id, $post->ID, false ) . '>';
+			echo esc_html( get_the_title( $post ) );
+			echo '</option>';
+		}
+		echo '</select> ';
+		submit_button(
+			__( 'Preview email', 'argentwolf-post-notifier' ),
+			'secondary',
+			'submit',
+			false
+		);
+		echo '</form>';
+
+		if ( 0 === $post_id ) {
+			return;
+		}
+
+		try {
+			$message = $this->preview->preview( $post_id );
+		} catch ( InvalidArgumentException ) {
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'This post is unavailable for preview.', 'argentwolf-post-notifier' );
+			echo '</p></div>';
+			return;
+		}
+
+		echo '<p><strong>' . esc_html__( 'Subject:', 'argentwolf-post-notifier' ) . '</strong> ';
+		echo esc_html( $message['subject'] ) . '</p>';
+		echo '<p><strong>';
+		echo esc_html__( 'Content source:', 'argentwolf-post-notifier' );
+		echo '</strong> ';
+		echo esc_html( $message['source'] ) . '</p>';
+		echo '<p>';
+		echo esc_html__(
+			// phpcs:ignore Generic.Files.LineLength.TooLong -- Preserve the gettext source string.
+			'Preview only: subscriber links are nonfunctional examples. Nothing was sent or queued.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p>';
+		echo '<h3>' . esc_html__( 'HTML preview', 'argentwolf-post-notifier' ) . '</h3>';
+		echo '<iframe title="';
+		echo esc_attr__( 'Notification HTML preview', 'argentwolf-post-notifier' );
+		echo '" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:420px;';
+		echo 'border:1px solid #8c8f94;pointer-events:none" srcdoc="';
+		echo esc_attr( $message['html'] ) . '"></iframe>';
+		echo '<h3>' . esc_html__( 'Plain-text preview', 'argentwolf-post-notifier' ) . '</h3>';
+		echo '<textarea class="large-text code" rows="14" readonly>';
+		echo esc_textarea( $message['text'] ) . '</textarea>';
 	}
 
 	/**

@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add read-only administrator preview of published posts to template settings.
+  Compose HTML and text through the canonical message composer and persisted
+  settings; require administrator access and nonce on preview requests. Keep
+  subscriber URLs visibly synthetic and disable interaction in the HTML pane.
+  Preview creates no recipient tokens, campaigns, recipients, or mail.
+
 - Add administrator-managed, site-default plain-text customization for email
   subject, heading, intro/outro copy, CTA label and an optional footer note.
   Accept only `{{site_name}}` and `{{post_title}}` operator tokens; reject
