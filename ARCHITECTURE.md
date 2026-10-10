@@ -653,6 +653,20 @@ full mode and Email Cutoff remain authoritative. Saved and unsaved previews and
 restricted test emails all consume the stored policy through the same canonical
 composer. Classic `<!--more-->` text markers remain unsupported.
 
+Tranche 11 introduces `EmailNamedTemplateLibrary`, a single non-autoloaded
+site option holding at most 20 named templates and an ID high-water mark.
+Plugin-managed IDs occupy 1,000,000,000 through 1,000,009,999, distinct from
+the zero site-default sentinel and ordinary externally filtered editor choices.
+The administrator-only nonce-guarded form permits create, update, and delete;
+updates preserve IDs and deletions do not rewind the high-water mark. Labels
+are bounded and text fields use the identical `EmailTemplateSettings` token
+and safety validator. Corrupted stored library values fail closed and cannot
+be overwritten through normal management actions. Only stable ID and label
+enter the editor bootstrap; no template text is disclosed there. Selection
+rendering, immutable campaign snapshots, and recipient delivery are still out
+of scope. Concurrent administrator write serialization remains to be covered
+before campaigns rely on named-template IDs as immutable dispatch inputs.
+
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is
 disabled.

@@ -26,6 +26,7 @@ use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
+use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
@@ -139,6 +140,16 @@ final class Plugin {
 				static fn (): EmailTemplateSettings => new EmailTemplateSettings()
 			);
 			$container->set(
+				EmailNamedTemplateLibrary::class,
+				static function ( Container $services ): EmailNamedTemplateLibrary {
+					$settings = $services->get( EmailTemplateSettings::class );
+					if ( ! $settings instanceof EmailTemplateSettings ) {
+						throw new LogicException( 'The template settings validator is invalid.' );
+					}
+					return new EmailNamedTemplateLibrary( $settings );
+				}
+			);
+			$container->set(
 				EmailExcerptSettings::class,
 				static fn (): EmailExcerptSettings => new EmailExcerptSettings()
 			);
@@ -215,12 +226,17 @@ final class Plugin {
 					if ( ! $more_settings instanceof EmailMoreSettings ) {
 						throw new LogicException( 'The More-block settings are invalid.' );
 					}
+					$named = $services->get( EmailNamedTemplateLibrary::class );
+					if ( ! $named instanceof EmailNamedTemplateLibrary ) {
+						throw new LogicException( 'The named template library is invalid.' );
+					}
 					return new NotificationTemplateSettingsPage(
 						$settings,
 						$preview,
 						$mailer,
 						$excerpt_settings,
-						$more_settings
+						$more_settings,
+						$named
 					);
 				}
 			);
@@ -690,7 +706,13 @@ final class Plugin {
 			);
 			$container->set(
 				EditorTemplateCatalog::class,
-				static fn (): EditorTemplateCatalog => new EditorTemplateCatalog()
+				static function ( Container $services ): EditorTemplateCatalog {
+					$named = $services->get( EmailNamedTemplateLibrary::class );
+					if ( ! $named instanceof EmailNamedTemplateLibrary ) {
+						throw new LogicException( 'The named template library is invalid.' );
+					}
+					return new EditorTemplateCatalog( $named );
+				}
 			);
 			$container->set(
 				EditorAssets::class,

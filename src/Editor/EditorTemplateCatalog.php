@@ -7,13 +7,14 @@
 
 namespace ArgentWolf\PostNotifier\Editor;
 
+use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use Throwable;
 
 /**
  * Bounded editor-visible template-choice catalog.
  *
- * Beta.1 owns only template selection metadata. Milestone 8 may populate this
- * catalog with real templates without changing the post metadata contract.
+ * Plugin-managed named templates share this catalog with external providers.
+ * The original numeric post-meta selection contract remains unchanged.
  */
 final class EditorTemplateCatalog {
 	/**
@@ -25,6 +26,14 @@ final class EditorTemplateCatalog {
 	 * Maximum custom choices exposed in the editor bootstrap.
 	 */
 	private const MAX_CHOICES = 200;
+
+	/**
+	 * Include WordPress-persisted named templates in the original editor selector.
+	 *
+	 * @param EmailNamedTemplateLibrary|null $named Named template library.
+	 */
+	public function __construct( private ?EmailNamedTemplateLibrary $named = null ) {
+	}
 
 	/**
 	 * Return normalized editor-visible template choices.
@@ -42,6 +51,16 @@ final class EditorTemplateCatalog {
 			),
 		);
 
+		$custom = array();
+		if ( null !== $this->named ) {
+			foreach ( $this->named->all() as $item ) {
+				$custom[ $item['id'] ] = array(
+					'value' => $item['id'],
+					'label' => $item['name'],
+				);
+			}
+		}
+
 		try {
 			/**
 			 * Filter editor-visible custom template choices.
@@ -56,14 +75,12 @@ final class EditorTemplateCatalog {
 				array()
 			);
 		} catch ( Throwable ) {
-			return $choices;
+			$candidates = array();
 		}
 
 		if ( ! is_array( $candidates ) ) {
-			return $choices;
+			$candidates = array();
 		}
-
-		$custom = array();
 
 		foreach ( $candidates as $candidate ) {
 			if ( ! is_array( $candidate ) ) {
@@ -73,7 +90,13 @@ final class EditorTemplateCatalog {
 			$id    = $this->positive_id( $candidate['id'] ?? null );
 			$label = $candidate['label'] ?? null;
 
-			if ( $id < 1 || ! is_string( $label ) || isset( $custom[ $id ] ) ) {
+			if (
+				$id < 1
+				|| ! is_string( $label )
+				|| isset( $custom[ $id ] )
+				|| ( $id >= EmailNamedTemplateLibrary::FIRST_ID
+					&& $id <= EmailNamedTemplateLibrary::LAST_ID )
+			) {
 				continue;
 			}
 

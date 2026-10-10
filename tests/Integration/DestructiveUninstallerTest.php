@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Database\DestructiveUninstaller;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaInspector;
@@ -51,6 +52,7 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 		update_option( DestructiveUninstaller::DELETE_DATA_OPTION, '1', false );
 		update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
 		EmailIdentity::ensure_hash_key();
+		update_option( EmailNamedTemplateLibrary::OPTION, array( 'invalid' ), false );
 
 		try {
 			$uninstaller->run();
@@ -64,6 +66,7 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 			self::assertFalse( get_option( 'argentwolf_post_notifier_version', false ) );
 			self::assertFalse( get_option( SchemaMigrator::SCHEMA_OPTION, false ) );
 			self::assertFalse( get_option( EmailIdentity::HASH_KEY_OPTION, false ) );
+			self::assertFalse( get_option( EmailNamedTemplateLibrary::OPTION, false ) );
 			self::assertFalse(
 				get_option( DestructiveUninstaller::DELETE_DATA_OPTION, false )
 			);

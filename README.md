@@ -75,6 +75,14 @@ whether `core/more` cuts off notification content. Disabling it falls through to
 manual or generated excerpts, while full-content mode and explicit Email Cutoff
 continue to take precedence. The saved preference is shared by previews and
 test emails; Classic `<!--more-->` markers are not interpreted.
+Tranche 11 adds a small administrator-managed named-template library (up to 20
+active entries). Administrators can create, edit, and delete named variants
+using the same six validated text fields as the site default; each template
+receives a stable reserved ID exposed to the existing post-editor selector.
+Deleting a template does not reuse its ID. The library does **not yet change**
+email rendering based on a post's selected template ID: that binding, as well
+as campaign-content snapshots, remains a later tranche. Unsupported templates
+must not silently fall back during campaign creation.
 Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
 selector and returns sanitized HTML plus a corresponding plain-text fragment.
 It supports static core text blocks, headings, lists and quotations while

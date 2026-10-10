@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add a bounded, administrator-managed named-template library with stable,
+  non-reused IDs in a reserved namespace. Reuse the canonical six-field text
+  validator, expose safe labels through the existing editor template selector,
+  and retain the legacy extension filter. Selected-template rendering and
+  campaign snapshots remain separate future steps.
+
 - Add a site-wide More-block preference, enabled by default to preserve existing
   behavior. Provide a dedicated administrator-only nonce-guarded save/reset
   action and strict on/off validation. Apply the saved preference through the
