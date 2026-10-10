@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
+use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
 use ArgentWolf\PostNotifier\Content\EmailTemplateTestMailer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
@@ -31,6 +32,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/** Independent POST action for More-block selection. */
 	public const MORE_ACTION = 'argentwolf_post_notifier_save_more_setting';
 
+	/** Independent POST action for named reusable template administration. */
+	public const NAMED_ACTION = 'argentwolf_post_notifier_save_named_template';
+
 	/** Read-only administrator preview action. */
 	public const PREVIEW_ACTION = 'argentwolf_post_notifier_preview_template';
 
@@ -49,18 +53,20 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/**
 	 * Construct the administration settings screen.
 	 *
-	 * @param EmailTemplateSettings   $settings Validated option store.
-	 * @param EmailTemplatePreview    $preview  Read-only message composer.
-	 * @param EmailTemplateTestMailer $mailer   Restricted test-email sender.
-	 * @param EmailExcerptSettings    $excerpts Generated excerpt word count.
-	 * @param EmailMoreSettings       $more     Site-wide More-block preference.
+	 * @param EmailTemplateSettings     $settings Validated option store.
+	 * @param EmailTemplatePreview      $preview  Read-only message composer.
+	 * @param EmailTemplateTestMailer   $mailer   Restricted test-email sender.
+	 * @param EmailExcerptSettings      $excerpts Generated excerpt word count.
+	 * @param EmailMoreSettings         $more     Site-wide More-block preference.
+	 * @param EmailNamedTemplateLibrary $named    Persistent named template library.
 	 */
 	public function __construct(
 		private EmailTemplateSettings $settings,
 		private EmailTemplatePreview $preview,
 		private EmailTemplateTestMailer $mailer,
 		private EmailExcerptSettings $excerpts,
-		private EmailMoreSettings $more
+		private EmailMoreSettings $more,
+		private EmailNamedTemplateLibrary $named
 	) {
 	}
 
@@ -74,6 +80,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'admin_post_' . self::EXCERPT_ACTION, array( $this, 'handle_excerpt_save' ) );
 		add_action( 'admin_post_' . self::MORE_ACTION, array( $this, 'handle_more_save' ) );
+		add_action( 'admin_post_' . self::NAMED_ACTION, array( $this, 'handle_named_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
 		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
 		add_action( 'wp_ajax_' . self::TEST_SEND_ACTION, array( $this, 'handle_test_send' ) );
@@ -183,6 +190,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 				'more_saved',
 				'more_restored',
 				'more_invalid',
+				'named_saved',
+				'named_deleted',
+				'named_invalid',
 			),
 			true
 		) ) {
@@ -207,10 +217,19 @@ final class NotificationTemplateSettingsPage implements Registerable {
 					'Invalid More-block preference; no changes saved.',
 					'argentwolf-post-notifier'
 				);
+			} elseif ( 'named_saved' === $status ) {
+				$message = __( 'Named template saved.', 'argentwolf-post-notifier' );
+			} elseif ( 'named_deleted' === $status ) {
+				$message = __( 'Named template deleted.', 'argentwolf-post-notifier' );
+			} elseif ( 'named_invalid' === $status ) {
+				$message = __(
+					'Named template was rejected; no changes saved.',
+					'argentwolf-post-notifier'
+				);
 			}
 			$notice_class = in_array(
 				$status,
-				array( 'invalid', 'excerpt_invalid', 'more_invalid' ),
+				array( 'invalid', 'excerpt_invalid', 'more_invalid', 'named_invalid' ),
 				true
 			)
 				? 'error' : 'success';
@@ -261,6 +280,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '</form>';
 		$this->render_excerpt_settings();
 		$this->render_more_settings();
+		$this->render_named_templates();
 		$this->render_preview();
 		echo '</div>';
 	}
@@ -326,6 +346,94 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo ' value="1" formnovalidate>';
 		echo esc_html__( 'Restore enabled default', 'argentwolf-post-notifier' );
 		echo '</button></form>';
+	}
+
+	/**
+	 * Render bounded named-template creation and update forms.
+	 *
+	 * IDs are stable even when an older template is deleted. This tranche makes
+	 * them available in the editor, but does not yet render selected templates.
+	 *
+	 * @return void
+	 */
+	private function render_named_templates(): void {
+		$templates = $this->named->all();
+		echo '<hr><h2>';
+		echo esc_html__( 'Named reusable templates', 'argentwolf-post-notifier' );
+		echo '</h2><p>';
+		echo esc_html__(
+			'Named templates appear in the post editor but do not yet affect email rendering.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p>';
+		foreach ( $templates as $template ) {
+			echo '<details><summary>';
+			echo esc_html( $template['name'] );
+			echo ' (#' . esc_html( (string) $template['id'] ) . ')';
+			echo '</summary>';
+			$this->render_named_form( $template );
+			echo '</details>';
+		}
+		if ( count( $templates ) < EmailNamedTemplateLibrary::MAX_TEMPLATES ) {
+			echo '<h3>';
+			echo esc_html__( 'Create named template', 'argentwolf-post-notifier' );
+			echo '</h3>';
+			$this->render_named_form( null );
+		}
+	}
+
+	/**
+	 * Render only canonical text fields for one named template form.
+	 *
+	 * @param array|null $template Existing item or null for a new template.
+	 * @return void
+	 */
+	private function render_named_form( ?array $template ): void {
+		$id       = null === $template ? 0 : $template['id'];
+		$name     = null === $template ? '' : $template['name'];
+		$settings = null === $template ? $this->settings->defaults() : $template['settings'];
+		$labels   = array(
+			'subject'     => __( 'Subject', 'argentwolf-post-notifier' ),
+			'heading'     => __( 'Heading', 'argentwolf-post-notifier' ),
+			'before'      => __( 'Before article', 'argentwolf-post-notifier' ),
+			'after'       => __( 'After article', 'argentwolf-post-notifier' ),
+			'cta'         => __( 'Read-post link', 'argentwolf-post-notifier' ),
+			'footer_note' => __( 'Footer note', 'argentwolf-post-notifier' ),
+		);
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::NAMED_ACTION ) . '">';
+		echo '<input type="hidden" name="awpn_named_id" value="' . esc_attr( (string) $id ) . '">';
+		wp_nonce_field( self::NAMED_ACTION );
+		echo '<p><label>';
+		echo esc_html__( 'Template name', 'argentwolf-post-notifier' );
+		echo ' <input class="regular-text" type="text" maxlength="80" required';
+		echo ' name="awpn_named_name" value="' . esc_attr( $name ) . '"></label></p>';
+		echo '<table class="form-table" role="presentation"><tbody>';
+		foreach ( $labels as $field => $label ) {
+			echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td>';
+			$field_name = 'awpn_named_text[' . $field . ']';
+			if ( in_array( $field, array( 'before', 'after', 'footer_note' ), true ) ) {
+				echo '<textarea class="large-text" rows="2" name="';
+				echo esc_attr( $field_name ) . '">';
+				echo esc_textarea( $settings[ $field ] ) . '</textarea>';
+			} else {
+				echo '<input class="regular-text" type="text" name="';
+				echo esc_attr( $field_name ) . '" value="';
+				echo esc_attr( $settings[ $field ] ) . '">';
+			}
+			echo '</td></tr>';
+		}
+		echo '</tbody></table>';
+		if ( 0 === $id ) {
+			submit_button( __( 'Create named template', 'argentwolf-post-notifier' ) );
+		} else {
+			submit_button( __( 'Save named template', 'argentwolf-post-notifier' ) );
+			echo '<button class="button" type="submit" name="awpn_named_delete"';
+			echo ' value="1" formnovalidate>';
+			echo esc_html__( 'Delete template', 'argentwolf-post-notifier' );
+			echo '</button>';
+		}
+		echo '</form>';
 	}
 
 	/**
@@ -579,6 +687,53 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			} catch ( InvalidArgumentException ) {
 				$status = 'excerpt_invalid';
 			}
+		}
+		wp_safe_redirect(
+			add_query_arg(
+				'awpn_status',
+				$status,
+				admin_url( 'options-general.php?page=' . self::PAGE_SLUG )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Persist only complete, validated named-template records.
+	 *
+	 * @return void
+	 * @throws InvalidArgumentException For invalid submissions; caught within this handler.
+	 */
+	public function handle_named_save(): void {
+		$this->require_capability();
+		check_admin_referer( self::NAMED_ACTION );
+		$status = 'named_saved';
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$id_value = isset( $_POST['awpn_named_id'] ) && is_string( $_POST['awpn_named_id'] )
+			? wp_unslash( $_POST['awpn_named_id'] ) : '';
+		$name     = isset( $_POST['awpn_named_name'] ) && is_string( $_POST['awpn_named_name'] )
+			? wp_unslash( $_POST['awpn_named_name'] ) : '';
+		$fields   = isset( $_POST['awpn_named_text'] ) && is_array( $_POST['awpn_named_text'] )
+			? wp_unslash( $_POST['awpn_named_text'] ) : array();
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		try {
+			if ( 1 !== preg_match( '/^(?:0|[1-9][0-9]*)$/D', $id_value ) ) {
+				throw new InvalidArgumentException( 'Invalid named template ID.' );
+			}
+			$id = (int) $id_value;
+			if ( isset( $_POST['awpn_named_delete'] ) ) {
+				if ( 0 === $id ) {
+					throw new InvalidArgumentException( 'Cannot delete the site default.' );
+				}
+				$this->named->delete( $id );
+				$status = 'named_deleted';
+			} elseif ( 0 === $id ) {
+				$this->named->create( $name, $fields );
+			} else {
+				$this->named->update( $id, $name, $fields );
+			}
+		} catch ( InvalidArgumentException ) {
+			$status = 'named_invalid';
 		}
 		wp_safe_redirect(
 			add_query_arg(

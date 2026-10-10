@@ -489,8 +489,11 @@ delivery remain later work. The administrator test-email submission in PR #49
 is merged and CI-qualified. A separately validated, site-wide generated-excerpt
 word count is merged and CI-qualified in PR #50. Tranche 10 introduces a separate
 site-wide More-block policy with a strict on/off setting, an administrator-only
-save/reset form, and canonical preview/test-mail integration; qualification is
-pending Forgejo CI.
+save/reset form, and canonical preview/test-mail integration; merged and CI
+qualified in PR #51. Tranche 11 adds the bounded administrator-managed named
+library and existing editor catalog mapping. Rendering selected templates,
+write serialization, safe layout customization and immutable campaign content
+remain later independent work.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
@@ -499,8 +502,8 @@ pending Forgejo CI.
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
 - [x] Qualify configurable generated-excerpt word count (1–500), including
       persistence, reset, and canonical preview/test-mail use in Forgejo CI (PR #50).
-- [ ] Qualify persistent site-wide More-block policy, strict on/off validation,
-      reset, precedence, and canonical preview/test-mail use in Forgejo CI.
+- [x] Qualify persistent site-wide More-block policy, strict on/off validation,
+      reset, precedence, and canonical preview/test-mail use in Forgejo CI (PR #51).
 - [x] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
 - [x] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
       and unsupported blocks in Forgejo CI.
@@ -518,7 +521,11 @@ pending Forgejo CI.
 - [x] Qualify administrator restore-defaults action in Forgejo CI.
 - [x] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
 - [x] Qualify site-default template setting sanitation, token rejection and access control.
-- [ ] Add named reusable template configuration and safe customization beyond text-only fields.
+- [ ] Qualify bounded named reusable template storage, stable IDs, authorized
+      CRUD and editor choices through Forgejo CI (tranche 11).
+- [ ] Resolve a selected named template into canonical previews and test email,
+      failing closed for deleted IDs and external-only selections.
+- [ ] Add safe layout and theme customization beyond the text-only fields.
 - [ ] Snapshot rendered campaign content.
 
 Acceptance criteria:
