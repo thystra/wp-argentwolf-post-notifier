@@ -1402,4 +1402,19 @@ Key references:
 - Plugin privacy:
   `https://developer.wordpress.org/plugins/privacy/`
 
+### Beta.3 administrator test mail
+
+`EmailTemplateTestMailer` calls the existing read-only `EmailTemplatePreview`
+service (which uses `EmailTemplateComposer`) and submits a `MailMessage` using
+the existing `MailTransport`. A request must pass the administrator nonce and
+capability checks and a published-post edit check. The recipient is fixed to
+the authenticated administrator account email, and the subject/body visibly
+identify the mail as a test. The HTML body and plain-text alternative are
+produced by the same composer; the temporary `phpmailer_init` hook attaches
+`AltBody` for WordPress's mail transport and is removed in a `finally` block.
+A successful submission starts a 60-second per-user cooldown. Example
+subscriber links are never treated as active tokenized URLs. No test-send
+operation resolves an audience, reserves a campaign, persists settings, or
+enqueues notification delivery. Success means transport acceptance only.
+
 <!-- EOF: ~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->

@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
+use ArgentWolf\PostNotifier\Content\EmailTemplateTestMailer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use InvalidArgumentException;
 
@@ -28,6 +29,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/** Read-only AJAX action for unsaved settings. */
 	public const LIVE_PREVIEW_ACTION = 'argentwolf_post_notifier_live_template_preview';
 
+	/** Administrator-only AJAX action for an actual test-email submission. */
+	public const TEST_SEND_ACTION = 'argentwolf_post_notifier_send_template_test';
+
 	/** Browser script handle. */
 	public const LIVE_PREVIEW_SCRIPT = 'argentwolf-post-notifier-live-template-preview';
 
@@ -37,12 +41,14 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/**
 	 * Construct the administration settings screen.
 	 *
-	 * @param EmailTemplateSettings $settings Validated option store.
-	 * @param EmailTemplatePreview  $preview  Read-only message composer.
+	 * @param EmailTemplateSettings   $settings Validated option store.
+	 * @param EmailTemplatePreview    $preview  Read-only message composer.
+	 * @param EmailTemplateTestMailer $mailer  Restricted test-email sender.
 	 */
 	public function __construct(
 		private EmailTemplateSettings $settings,
-		private EmailTemplatePreview $preview
+		private EmailTemplatePreview $preview,
+		private EmailTemplateTestMailer $mailer
 	) {
 	}
 
@@ -56,6 +62,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
 		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
+		add_action( 'wp_ajax_' . self::TEST_SEND_ACTION, array( $this, 'handle_test_send' ) );
 	}
 
 	/**
@@ -79,10 +86,12 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			self::LIVE_PREVIEW_SCRIPT,
 			'awpnTemplatePreview',
 			array(
-				'url'     => admin_url( 'admin-ajax.php' ),
-				'action'  => self::LIVE_PREVIEW_ACTION,
-				'nonce'   => wp_create_nonce( self::LIVE_PREVIEW_ACTION ),
-				'strings' => array(
+				'url'        => admin_url( 'admin-ajax.php' ),
+				'action'     => self::LIVE_PREVIEW_ACTION,
+				'nonce'      => wp_create_nonce( self::LIVE_PREVIEW_ACTION ),
+				'testAction' => self::TEST_SEND_ACTION,
+				'testNonce'  => wp_create_nonce( self::TEST_SEND_ACTION ),
+				'strings'    => array(
 					'select'   => __(
 						'Select a published post first.',
 						'argentwolf-post-notifier'
@@ -267,6 +276,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		);
 		echo '<button type="button" class="button button-secondary" id="awpn_preview_unsaved">';
 		echo esc_html__( 'Preview unsaved edits', 'argentwolf-post-notifier' );
+		echo '</button> ';
+		echo '<button type="button" class="button button-secondary" id="awpn_send_test_email">';
+		echo esc_html__( 'Send test email to my account', 'argentwolf-post-notifier' );
 		echo '</button>';
 		echo '<p id="awpn_preview_feedback" role="status" aria-live="polite"></p>';
 		echo '<div id="awpn_live_preview" hidden></div>';
@@ -359,6 +371,71 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			return;
 		}
 		wp_send_json_success( $message );
+	}
+
+	/**
+	 * Submit exactly one explicitly labeled test to the administrator's address.
+	 *
+	 * @return void
+	 */
+	public function handle_test_send(): void {
+		check_ajax_referer( self::TEST_SEND_ACTION, 'nonce' );
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Test email is not permitted.', 'argentwolf-post-notifier' ),
+				),
+				403
+			);
+			return;
+		}
+
+		$post_id = isset( $_POST['post_id'] ) && is_string( $_POST['post_id'] )
+			? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+		// Raw values are validated before any sanitization can conceal bad input.
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$fields = isset( $_POST['awpn_template'] ) && is_array( $_POST['awpn_template'] )
+			? wp_unslash( $_POST['awpn_template'] ) : null;
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( 0 === $post_id || ! is_array( $fields ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __(
+						'A post and valid template fields are required.',
+						'argentwolf-post-notifier'
+					),
+				),
+				400
+			);
+			return;
+		}
+		try {
+			$result = $this->mailer->send( $post_id, $fields );
+		} catch ( InvalidArgumentException ) {
+			wp_send_json_error(
+				array(
+					'message' => __(
+						'Test-email request was rejected.',
+						'argentwolf-post-notifier'
+					),
+				),
+				400
+			);
+			return;
+		}
+		if ( ! $result->is_submitted() ) {
+			wp_send_json_error(
+				array(
+					'message' => __(
+						'Mail transport did not accept the test.',
+						'argentwolf-post-notifier'
+					),
+				),
+				502
+			);
+			return;
+		}
+		wp_send_json_success( array( 'submitted' => true ) );
 	}
 
 	/**

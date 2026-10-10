@@ -481,7 +481,9 @@ rendering (PR #44); and tranche 4 adds mandatory-footer HTML/plain-text
 composition (PR #45). Tranche 5 adds safe administrator text settings (PR #46)
 and tranche 6 a saved-settings preview of published posts (PR #47). These are
 merged and CI-qualified. Tranche 7 adds nonce-protected **unsaved** text preview
-using the same composer; it remains pending Forgejo qualification. Named
+using the same composer (PR #48, CI-qualified). Tranche 8 adds a constrained
+administrator-only test-email submission to the current account address,
+using the same composer and existing mail transport. Named
 template selection, recipient-specific token generation, campaign snapshots,
 test sends, and delivery remain later work. Persistent More/excerpt-length
 settings are still future work.
@@ -501,10 +503,11 @@ settings are still future work.
       broader configurable template token handling for a later tranche.
 - [x] Qualify mandatory footer with both already-created same-site subscriber
       control URLs; link generation remains outside this service.
-- [ ] Add live/unsaved preview with a selected post.
+- [x] Add live/unsaved preview with a selected post (PR #48).
 - [x] Qualify read-only administrator preview of saved templates and a published post in Forgejo CI.
 - [ ] Add preview-email action backed by the canonical rendered message.
-- [ ] Add send-test-email action backed by the canonical renderer and mail transport.
+- [ ] Qualify administrator-only send-test-email in CI using the canonical
+      composer and existing mail transport; never enumerate recipients.
 - [x] Qualify administrator restore-defaults action in Forgejo CI.
 - [x] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
 - [x] Qualify site-default template setting sanitation, token rejection and access control.

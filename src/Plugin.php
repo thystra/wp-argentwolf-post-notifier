@@ -28,6 +28,7 @@ use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
+use ArgentWolf\PostNotifier\Content\EmailTemplateTestMailer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -160,6 +161,20 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EmailTemplateTestMailer::class,
+				static function ( Container $services ): EmailTemplateTestMailer {
+					$preview   = $services->get( EmailTemplatePreview::class );
+					$transport = $services->get( MailTransport::class );
+					if ( ! $preview instanceof EmailTemplatePreview ) {
+						throw new LogicException( 'The template preview service is invalid.' );
+					}
+					if ( ! $transport instanceof MailTransport ) {
+						throw new LogicException( 'The mail transport is invalid.' );
+					}
+					return new EmailTemplateTestMailer( $preview, $transport );
+				}
+			);
+			$container->set(
 				NotificationTemplateSettingsPage::class,
 				static function ( Container $services ): NotificationTemplateSettingsPage {
 					$settings = $services->get( EmailTemplateSettings::class );
@@ -170,7 +185,11 @@ final class Plugin {
 					if ( ! $preview instanceof EmailTemplatePreview ) {
 						throw new LogicException( 'The template preview service is invalid.' );
 					}
-					return new NotificationTemplateSettingsPage( $settings, $preview );
+					$mailer = $services->get( EmailTemplateTestMailer::class );
+					if ( ! $mailer instanceof EmailTemplateTestMailer ) {
+						throw new LogicException( 'The test-mail service is invalid.' );
+					}
+					return new NotificationTemplateSettingsPage( $settings, $preview, $mailer );
 				}
 			);
 			$container->set(

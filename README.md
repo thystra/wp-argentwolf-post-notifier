@@ -264,4 +264,17 @@ Development is supported through these project funding links:
 Financial support does not change the GPL license or grant exclusive control
 over the open-source project.
 
+### Test email from template settings (Beta.3)
+
+Administrators can send an explicitly labeled test of a selected published
+post using the current unsaved template fields. The only recipient is their
+WordPress account email address; there is no arbitrary-address input. The
+message uses the canonical HTML composer with a plain-text alternative and a
+`[TEST]` subject prefix. Subscriber management links are local preview examples
+**without valid tokens** and are not functional; test emails are not for
+forwarding as real notifications. A one-minute cooldown applies after a
+successful transport submission. Submitting a test does not save settings,
+create campaigns or recipients, or queue notification delivery. A successful
+submission does not guarantee inbox delivery.
+
 <!-- EOF: ~/src/wp-argentwolf-post-notifier/README.md -->
