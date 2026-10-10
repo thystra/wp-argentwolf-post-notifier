@@ -3,12 +3,16 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add guarded administrator-only test-email submission to the signed-in account,
+  using canonical HTML/plain-text composition, explicit test labels, and a short
+  cooldown; no campaign or recipient records are created.
+
 - Add administrator preview of unsaved template text through a nonce- and
   capability-guarded AJAX endpoint. Validate each proposed field in memory,
   render the selected published post with the canonical composer, and return
   sandboxed HTML/plain text without saving settings, creating recipients or
   campaigns, generating subscriber tokens, or sending mail. Existing saved
-  previews remain available; the live preview gate is pending CI.
+  previews remain available; qualified in PR #48.
 
 - Add read-only administrator preview of published posts to template settings.
   Compose HTML and text through the canonical message composer and persisted

@@ -15,6 +15,42 @@
 		return;
 	}
 
+	const testButton = document.getElementById( 'awpn_send_test_email' );
+	if ( testButton ) {
+		testButton.addEventListener( 'click', async function () {
+			if ( ! select.value ) {
+				feedback.textContent = awpnTemplatePreview.strings.select;
+				return;
+			}
+			testButton.disabled = true;
+			feedback.textContent = awpnTemplatePreview.strings.sending;
+			const data = new FormData( form );
+			data.set( 'action', awpnTemplatePreview.testAction );
+			data.set( 'nonce', awpnTemplatePreview.testNonce );
+			data.set( 'post_id', select.value );
+			try {
+				const response = await fetch( awpnTemplatePreview.url, {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: data,
+				} );
+				const payload = await response.json();
+				if ( ! response.ok || ! payload.success ) {
+					throw new Error(
+						payload.data?.message ||
+							awpnTemplatePreview.strings.failed
+					);
+				}
+				feedback.textContent = awpnTemplatePreview.strings.sent;
+			} catch ( error ) {
+				feedback.textContent =
+					error.message || awpnTemplatePreview.strings.failed;
+			} finally {
+				testButton.disabled = false;
+			}
+		} );
+	}
+
 	button.addEventListener( 'click', async function () {
 		if ( ! select.value ) {
 			feedback.textContent = awpnTemplatePreview.strings.select;
