@@ -640,10 +640,13 @@ all settings atomically; invalid persisted settings fall back to the defaults.
 This is a site-default template text override, **not** the future named-template
 library referenced by editor `template_id` values. No preview endpoint or test
 mail action is enabled by this tranche.
-Preview routes, campaign snapshots, recipient tokens and mail transport remain
-future work. No persistent site
-settings for More or generated-excerpt word count are added in this tranche;
-caller parameters are bounded. Classic `<!--more-->` text markers remain
+Saved and unsaved administrator previews and the restricted test-mail action
+now use the same canonical composer. Recipient-specific tokens, campaign content
+snapshots, and campaign delivery remain future work. A separate persisted generated-excerpt word-count setting is introduced in
+Beta.3 tranche 9, with a 1–500 bound and the original 55-word default. The
+existing canonical preview and test-mail service reads this option; the form for
+unsaved template text continues to use the currently saved excerpt count.
+Persistent control of More handling remains future work. Classic `<!--more-->` text markers remain
 unsupported.
 
 The rendered email appends a configurable call to action that points to a local

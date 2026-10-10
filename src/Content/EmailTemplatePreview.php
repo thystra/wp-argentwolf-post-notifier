@@ -23,8 +23,12 @@ final class EmailTemplatePreview {
 	 * Use the same composer as all future notification messages.
 	 *
 	 * @param EmailTemplateComposer $composer Canonical message composer.
+	 * @param EmailExcerptSettings  $excerpts Validated generated excerpt length.
 	 */
-	public function __construct( private EmailTemplateComposer $composer ) {
+	public function __construct(
+		private EmailTemplateComposer $composer,
+		private EmailExcerptSettings $excerpts
+	) {
 	}
 
 	/**
@@ -70,7 +74,7 @@ final class EmailTemplatePreview {
 			$post->post_excerpt,
 			$mode,
 			true,
-			EmailContentSelector::DEFAULT_EXCERPT_WORDS,
+			$this->excerpts->get(),
 			$template_override
 		);
 	}

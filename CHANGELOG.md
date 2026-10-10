@@ -3,6 +3,11 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add a separately validated generated-excerpt word-count option (1–500,
+  55 by default), with administrator-only save/reset and a dedicated nonce.
+  Apply the stored length through the canonical preview and restricted test-mail
+  paths. No changes to campaigns, recipients, or email delivery behavior.
+
 - Add guarded administrator-only test-email submission to the signed-in account,
   using canonical HTML/plain-text composition, explicit test labels, and a short
   cooldown; no campaign or recipient records are created.

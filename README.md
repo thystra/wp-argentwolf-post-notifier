@@ -66,8 +66,10 @@ resolves full content, Email Cutoff, core More, manual excerpt, and generated
 excerpt in that order. It returns unrendered block markup or static plain text;
 truncation inside nested blocks conservatively returns plain text instead of
 broken HTML. A caller can specify whether More is enabled and the bounded
-word count for generated excerpts; a persistent site-settings UI is not yet
-implemented. Classic `<!--more-->` markers are not interpreted in this tranche.
+word count for generated excerpts. A separate, nonce-protected administrator
+setting now accepts 1–500 words (55 by default); it affects generated excerpts
+only, not full posts, Email Cutoff, More, or manual excerpts. The setting is used
+by both saved/unsaved template previews and administrator test emails. Classic `<!--more-->` markers are not interpreted in this tranche.
 Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
 selector and returns sanitized HTML plus a corresponding plain-text fragment.
 It supports static core text blocks, headings, lists and quotations while
