@@ -149,17 +149,21 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 			require_once ABSPATH . 'wp-admin/includes/template.php';
 		}
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$old_get = $_GET;
-		$_GET = array(
+		$old_get     = $_GET;
+		$old_request = $_REQUEST;
+		$_GET        = array(
 			'awpn_preview_post'  => (string) $post_id,
 			'awpn_preview_nonce' => wp_create_nonce( NotificationTemplateSettingsPage::PREVIEW_ACTION ),
 		);
+		// A simulated GET does not automatically rebuild PHP's request superglobal.
+		$_REQUEST = array_merge( $old_request, $_GET );
 		try {
 			ob_start();
 			Plugin::instance()->container()->get( NotificationTemplateSettingsPage::class )->render();
 			$html = ob_get_clean();
 		} finally {
-			$_GET = $old_get;
+			$_GET     = $old_get;
+			$_REQUEST = $old_request;
 		}
 		self::assertStringContainsString( 'sandbox=""', $html );
 		self::assertStringContainsString( 'pointer-events:none', $html );
