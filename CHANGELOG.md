@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add a site-wide More-block preference, enabled by default to preserve existing
+  behavior. Provide a dedicated administrator-only nonce-guarded save/reset
+  action and strict on/off validation. Apply the saved preference through the
+  canonical saved/unsaved preview and restricted test-mail composer, without
+  changing full-content or Email Cutoff precedence or creating campaigns.
+
 - Add a separately validated generated-excerpt word-count option (1–500,
   55 by default), with administrator-only save/reset and a dedicated nonce.
   Apply the stored length through the canonical preview and restricted test-mail

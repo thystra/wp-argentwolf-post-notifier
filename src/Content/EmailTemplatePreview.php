@@ -24,10 +24,12 @@ final class EmailTemplatePreview {
 	 *
 	 * @param EmailTemplateComposer $composer Canonical message composer.
 	 * @param EmailExcerptSettings  $excerpts Validated generated excerpt length.
+	 * @param EmailMoreSettings     $more     Site-wide core More-block preference.
 	 */
 	public function __construct(
 		private EmailTemplateComposer $composer,
-		private EmailExcerptSettings $excerpts
+		private EmailExcerptSettings $excerpts,
+		private EmailMoreSettings $more
 	) {
 	}
 
@@ -73,7 +75,7 @@ final class EmailTemplatePreview {
 			home_url( '/?awpn_preview_only=manage' ),
 			$post->post_excerpt,
 			$mode,
-			true,
+			$this->more->enabled(),
 			$this->excerpts->get(),
 			$template_override
 		);

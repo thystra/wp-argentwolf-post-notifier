@@ -646,8 +646,12 @@ snapshots, and campaign delivery remain future work. A separate persisted genera
 Beta.3 tranche 9, with a 1–500 bound and the original 55-word default. The
 existing canonical preview and test-mail service reads this option; the form for
 unsaved template text continues to use the currently saved excerpt count.
-Persistent control of More handling remains future work. Classic `<!--more-->` text markers remain
-unsupported.
+Tranche 10 adds a separately validated site-wide More-block policy, enabled
+by default to preserve historical behavior. Administrators can disable More
+handling to allow manual or generated excerpts to win, or restore the default;
+full mode and Email Cutoff remain authoritative. Saved and unsaved previews and
+restricted test emails all consume the stored policy through the same canonical
+composer. Classic `<!--more-->` text markers remain unsupported.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is

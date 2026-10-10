@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
+use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
 use ArgentWolf\PostNotifier\Content\EmailTemplateTestMailer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
@@ -26,6 +27,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 
 	/** Independent POST action for generated excerpt length. */
 	public const EXCERPT_ACTION = 'argentwolf_post_notifier_save_excerpt_words';
+
+	/** Independent POST action for More-block selection. */
+	public const MORE_ACTION = 'argentwolf_post_notifier_save_more_setting';
 
 	/** Read-only administrator preview action. */
 	public const PREVIEW_ACTION = 'argentwolf_post_notifier_preview_template';
@@ -49,12 +53,14 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	 * @param EmailTemplatePreview    $preview  Read-only message composer.
 	 * @param EmailTemplateTestMailer $mailer   Restricted test-email sender.
 	 * @param EmailExcerptSettings    $excerpts Generated excerpt word count.
+	 * @param EmailMoreSettings       $more     Site-wide More-block preference.
 	 */
 	public function __construct(
 		private EmailTemplateSettings $settings,
 		private EmailTemplatePreview $preview,
 		private EmailTemplateTestMailer $mailer,
-		private EmailExcerptSettings $excerpts
+		private EmailExcerptSettings $excerpts,
+		private EmailMoreSettings $more
 	) {
 	}
 
@@ -67,6 +73,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'admin_post_' . self::EXCERPT_ACTION, array( $this, 'handle_excerpt_save' ) );
+		add_action( 'admin_post_' . self::MORE_ACTION, array( $this, 'handle_more_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
 		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
 		add_action( 'wp_ajax_' . self::TEST_SEND_ACTION, array( $this, 'handle_test_send' ) );
@@ -173,6 +180,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 				'excerpt_saved',
 				'excerpt_restored',
 				'excerpt_invalid',
+				'more_saved',
+				'more_restored',
+				'more_invalid',
 			),
 			true
 		) ) {
@@ -190,8 +200,19 @@ final class NotificationTemplateSettingsPage implements Registerable {
 					'Invalid excerpt length; no changes saved.',
 					'argentwolf-post-notifier'
 				);
+			} elseif ( 'more_saved' === $status || 'more_restored' === $status ) {
+				$message = __( 'More-block preference updated.', 'argentwolf-post-notifier' );
+			} elseif ( 'more_invalid' === $status ) {
+				$message = __(
+					'Invalid More-block preference; no changes saved.',
+					'argentwolf-post-notifier'
+				);
 			}
-			$notice_class = in_array( $status, array( 'invalid', 'excerpt_invalid' ), true )
+			$notice_class = in_array(
+				$status,
+				array( 'invalid', 'excerpt_invalid', 'more_invalid' ),
+				true
+			)
 				? 'error' : 'success';
 			echo '<div class="notice notice-' . esc_attr( $notice_class ) . '"><p>';
 			echo esc_html( $message );
@@ -239,6 +260,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		submit_button( __( 'Restore defaults', 'argentwolf-post-notifier' ), 'secondary' );
 		echo '</form>';
 		$this->render_excerpt_settings();
+		$this->render_more_settings();
 		$this->render_preview();
 		echo '</div>';
 	}
@@ -269,6 +291,40 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '<button class="button" type="submit" name="awpn_excerpt_reset"';
 		echo ' value="1" formnovalidate>';
 		echo esc_html__( 'Restore 55-word default', 'argentwolf-post-notifier' );
+		echo '</button></form>';
+	}
+
+	/**
+	 * Render the separate, persisted WordPress More-block preference.
+	 *
+	 * @return void
+	 */
+	private function render_more_settings(): void {
+		echo '<hr><h2>';
+		echo esc_html__( 'WordPress More block', 'argentwolf-post-notifier' );
+		echo '</h2><p>';
+		echo esc_html__(
+			// phpcs:ignore Generic.Files.LineLength.TooLong -- Preserve gettext source text.
+			'When enabled, a More block can limit notification content unless an Email Cutoff takes precedence.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p><form method="post" action="';
+		echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::MORE_ACTION ) . '">';
+		wp_nonce_field( self::MORE_ACTION );
+		echo '<label for="awpn_more_enabled">';
+		echo esc_html__( 'Honor More blocks', 'argentwolf-post-notifier' );
+		echo '</label> <select id="awpn_more_enabled" name="awpn_more_enabled">';
+		echo '<option value="1" ' . selected( $this->more->enabled(), true, false ) . '>';
+		echo esc_html__( 'Enabled (default)', 'argentwolf-post-notifier' );
+		echo '</option><option value="0" ';
+		echo selected( $this->more->enabled(), false, false ) . '>';
+		echo esc_html__( 'Disabled', 'argentwolf-post-notifier' );
+		echo '</option></select>';
+		submit_button( __( 'Save More preference', 'argentwolf-post-notifier' ) );
+		echo '<button class="button" type="submit" name="awpn_more_reset"';
+		echo ' value="1" formnovalidate>';
+		echo esc_html__( 'Restore enabled default', 'argentwolf-post-notifier' );
 		echo '</button></form>';
 	}
 
@@ -522,6 +578,45 @@ final class NotificationTemplateSettingsPage implements Registerable {
 				$this->excerpts->save( $value );
 			} catch ( InvalidArgumentException ) {
 				$status = 'excerpt_invalid';
+			}
+		}
+		wp_safe_redirect(
+			add_query_arg(
+				'awpn_status',
+				$status,
+				admin_url( 'options-general.php?page=' . self::PAGE_SLUG )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Save or reset only the separately validated More-block preference.
+	 *
+	 * @return void
+	 */
+	public function handle_more_save(): void {
+		$this->require_capability();
+		check_admin_referer( self::MORE_ACTION );
+		$status = 'more_saved';
+		if ( isset( $_POST['awpn_more_reset'] ) ) {
+			$this->more->restore_defaults();
+			$status = 'more_restored';
+		} else {
+			// Preserve the raw value so invalid flags cannot silently turn into false.
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$value = null;
+			if (
+				isset( $_POST['awpn_more_enabled'] )
+				&& is_string( $_POST['awpn_more_enabled'] )
+			) {
+				$value = wp_unslash( $_POST['awpn_more_enabled'] );
+			}
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			try {
+				$this->more->save( $value );
+			} catch ( InvalidArgumentException ) {
+				$status = 'more_invalid';
 			}
 		}
 		wp_safe_redirect(

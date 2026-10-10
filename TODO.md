@@ -487,16 +487,20 @@ using the same composer and existing mail transport. Named
 template selection, recipient-specific token generation, campaign snapshots,
 delivery remain later work. The administrator test-email submission in PR #49
 is merged and CI-qualified. A separately validated, site-wide generated-excerpt
-word count is implemented in tranche 9; it remains pending Forgejo qualification.
-Persistent More-marker preferences remain future work.
+word count is merged and CI-qualified in PR #50. Tranche 10 introduces a separate
+site-wide More-block policy with a strict on/off setting, an administrator-only
+save/reset form, and canonical preview/test-mail integration; qualification is
+pending Forgejo CI.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
 - [x] Render the cutoff block as no public output.
 - [x] Implement cutoff precedence:
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
-- [ ] Qualify configurable generated-excerpt word count (1–500), including
-      persistence, reset, and canonical preview/test-mail use in Forgejo CI.
+- [x] Qualify configurable generated-excerpt word count (1–500), including
+      persistence, reset, and canonical preview/test-mail use in Forgejo CI (PR #50).
+- [ ] Qualify persistent site-wide More-block policy, strict on/off validation,
+      reset, precedence, and canonical preview/test-mail use in Forgejo CI.
 - [x] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
 - [x] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
       and unsupported blocks in Forgejo CI.
