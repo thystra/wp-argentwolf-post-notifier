@@ -52,15 +52,16 @@ final class EmailTemplateComposer {
 	 * All links are supplied by a trusted caller and must point to this site.
 	 * The unsubscribe and management footer is mandatory, not a user template.
 	 *
-	 * @param string $post_content    Original saved post content.
-	 * @param string $post_title      Post title, never interpreted as markup.
-	 * @param string $post_url        Public post permalink on this site.
-	 * @param string $unsubscribe_url Existing local unsubscribe URL for preview.
-	 * @param string $manage_url      Existing local management URL for preview.
-	 * @param string $manual_excerpt  Saved manual excerpt.
-	 * @param string $content_mode    Selection mode.
-	 * @param bool   $more_enabled    Whether to honor the More marker.
-	 * @param int    $excerpt_words   Generated excerpt word count.
+	 * @param string     $post_content      Saved post content.
+	 * @param string     $post_title        Title as plain text.
+	 * @param string     $post_url          Local post URL.
+	 * @param string     $unsubscribe_url   Existing local unsubscribe URL.
+	 * @param string     $manage_url        Existing local management URL.
+	 * @param string     $manual_excerpt    Saved manual excerpt.
+	 * @param string     $content_mode      Selection mode.
+	 * @param bool       $more_enabled      Whether to honor the More marker.
+	 * @param int        $excerpt_words     Excerpt word count.
+	 * @param array|null $template_override Unsaved fields or null for saved settings.
 	 * @return array{source:string,subject:string,html:string,text:string}
 	 */
 	public function compose(
@@ -72,7 +73,8 @@ final class EmailTemplateComposer {
 		string $manual_excerpt = '',
 		string $content_mode = 'site_default',
 		bool $more_enabled = true,
-		int $excerpt_words = EmailContentSelector::DEFAULT_EXCERPT_WORDS
+		int $excerpt_words = EmailContentSelector::DEFAULT_EXCERPT_WORDS,
+		?array $template_override = null
 	): array {
 		// Reject malformed or off-site URLs before evaluating any post content.
 		$post_url        = $this->require_site_url( $post_url );
@@ -88,16 +90,21 @@ final class EmailTemplateComposer {
 		);
 		$title     = sanitize_text_field( wp_strip_all_tags( $post_title ) );
 		$site_name = sanitize_text_field( get_bloginfo( 'name' ) );
-		$settings  = ( $this->settings ?? new EmailTemplateSettings() )->get();
-		$tokens    = array(
+
+		$template_settings = $this->settings ?? new EmailTemplateSettings();
+		$settings          = null === $template_override
+			? $template_settings->get()
+			: $template_settings->validate( $template_override );
+
+		$tokens  = array(
 			'{{site_name}}'  => $site_name,
 			'{{post_title}}' => $title,
 		);
-		$heading   = strtr( $settings['heading'], $tokens );
-		$before    = strtr( $settings['before'], $tokens );
-		$after     = strtr( $settings['after'], $tokens );
-		$cta       = strtr( $settings['cta'], $tokens );
-		$note      = strtr( $settings['footer_note'], $tokens );
+		$heading = strtr( $settings['heading'], $tokens );
+		$before  = strtr( $settings['before'], $tokens );
+		$after   = strtr( $settings['after'], $tokens );
+		$cta     = strtr( $settings['cta'], $tokens );
+		$note    = strtr( $settings['footer_note'], $tokens );
 
 		$html_values = array(
 			'site_name'  => esc_html( $site_name ),

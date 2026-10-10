@@ -30,11 +30,12 @@ final class EmailTemplatePreview {
 	/**
 	 * Render a published post for a user allowed to administer templates.
 	 *
-	 * @param int $post_id Selected WordPress post identifier.
+	 * @param int        $post_id           Published post ID.
+	 * @param array|null $template_override Unsaved fields or null for stored settings.
 	 * @return array{source:string,subject:string,html:string,text:string}
 	 * @throws InvalidArgumentException If the post or access is invalid.
 	 */
-	public function preview( int $post_id ): array {
+	public function preview( int $post_id, ?array $template_override = null ): array {
 		if (
 			! current_user_can( 'manage_options' ) ||
 			! current_user_can( 'edit_post', $post_id )
@@ -67,7 +68,10 @@ final class EmailTemplatePreview {
 			home_url( '/?awpn_preview_only=unsubscribe' ),
 			home_url( '/?awpn_preview_only=manage' ),
 			$post->post_excerpt,
-			$mode
+			$mode,
+			true,
+			EmailContentSelector::DEFAULT_EXCERPT_WORDS,
+			$template_override
 		);
 	}
 }

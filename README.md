@@ -89,8 +89,12 @@ screen, using saved settings and a published post. It displays a sandboxed,
 noninteractive HTML pane and a plain-text pane. Subscriber links in previews
 are clearly labeled synthetic local examples, not usable unsubscribe links;
 no subscriber tokens are created. Preview does not create campaigns, recipients,
-or send mail. Live unsaved editing previews, test sends, campaign snapshots,
-subscriber-token generation, and delivery remain deferred. Classic `<!--more-->` support
+or send mail. Tranche 7 adds an on-demand **Preview unsaved edits** action:
+the current form text and selected published post are validated and composed
+in memory via a nonce-protected administrator-only AJAX request. No setting is
+saved, and the same synthetic footer and sandbox restrictions apply. Test
+sends, campaign snapshots, subscriber-token generation, and delivery remain
+deferred. Classic `<!--more-->` support
 and persistent content settings are still pending.
 
 ## Planned features

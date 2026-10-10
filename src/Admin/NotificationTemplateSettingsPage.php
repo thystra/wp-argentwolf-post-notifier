@@ -25,6 +25,12 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	/** Read-only administrator preview action. */
 	public const PREVIEW_ACTION = 'argentwolf_post_notifier_preview_template';
 
+	/** Read-only AJAX action for unsaved settings. */
+	public const LIVE_PREVIEW_ACTION = 'argentwolf_post_notifier_live_template_preview';
+
+	/** Browser script handle. */
+	public const LIVE_PREVIEW_SCRIPT = 'argentwolf-post-notifier-live-template-preview';
+
 	/** Required WordPress permission. */
 	public const CAPABILITY = 'manage_options';
 
@@ -48,6 +54,59 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
+		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
+	}
+
+	/**
+	 * Load the interactive preview only on this settings page.
+	 *
+	 * @param string $hook WordPress administration page hook.
+	 * @return void
+	 */
+	public function enqueue_preview_assets( string $hook ): void {
+		if ( 'settings_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
+		}
+		wp_enqueue_script(
+			self::LIVE_PREVIEW_SCRIPT,
+			ARGENTWOLF_POST_NOTIFIER_URL . 'assets/runtime/template-live-preview.js',
+			array(),
+			ARGENTWOLF_POST_NOTIFIER_VERSION,
+			true
+		);
+		wp_localize_script(
+			self::LIVE_PREVIEW_SCRIPT,
+			'awpnTemplatePreview',
+			array(
+				'url'     => admin_url( 'admin-ajax.php' ),
+				'action'  => self::LIVE_PREVIEW_ACTION,
+				'nonce'   => wp_create_nonce( self::LIVE_PREVIEW_ACTION ),
+				'strings' => array(
+					'select'   => __(
+						'Select a published post first.',
+						'argentwolf-post-notifier'
+					),
+					'loading'  => __( 'Rendering unsaved preview…', 'argentwolf-post-notifier' ),
+					'failed'   => __(
+						'Preview could not be rendered.',
+						'argentwolf-post-notifier'
+					),
+					'subject'  => __( 'Subject:', 'argentwolf-post-notifier' ),
+					'source'   => __( 'Content source:', 'argentwolf-post-notifier' ),
+					'html'     => __( 'HTML preview (unsaved)', 'argentwolf-post-notifier' ),
+					'frame'    => __(
+						'Unsaved notification HTML preview',
+						'argentwolf-post-notifier'
+					),
+					'text'     => __( 'Plain-text preview (unsaved)', 'argentwolf-post-notifier' ),
+					'complete' => __(
+						'Unsaved preview only. Nothing saved or sent.',
+						'argentwolf-post-notifier'
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -112,7 +171,8 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			'The article body and required subscriber links cannot be removed.',
 			'argentwolf-post-notifier'
 		);
-		echo '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '</p><form id="awpn_template_settings_form" method="post" action="';
+		echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::SAVE_ACTION ) . '">';
 		wp_nonce_field( self::SAVE_ACTION );
 		echo '<table class="form-table" role="presentation"><tbody>';
@@ -205,6 +265,11 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			'submit',
 			false
 		);
+		echo '<button type="button" class="button button-secondary" id="awpn_preview_unsaved">';
+		echo esc_html__( 'Preview unsaved edits', 'argentwolf-post-notifier' );
+		echo '</button>';
+		echo '<p id="awpn_preview_feedback" role="status" aria-live="polite"></p>';
+		echo '<div id="awpn_live_preview" hidden></div>';
 		echo '</form>';
 
 		if ( 0 === $post_id ) {
@@ -242,6 +307,58 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '<h3>' . esc_html__( 'Plain-text preview', 'argentwolf-post-notifier' ) . '</h3>';
 		echo '<textarea class="large-text code" rows="14" readonly>';
 		echo esc_textarea( $message['text'] ) . '</textarea>';
+	}
+
+	/**
+	 * Return a preview of unsaved text without persisting or sending anything.
+	 *
+	 * @return void
+	 */
+	public function handle_live_preview(): void {
+		check_ajax_referer( self::LIVE_PREVIEW_ACTION, 'nonce' );
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Preview is not permitted.', 'argentwolf-post-notifier' ) ),
+				403
+			);
+			return;
+		}
+
+		$post_id = isset( $_POST['post_id'] ) && is_string( $_POST['post_id'] )
+			? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+
+		// Preserve raw text so validation rejects unsafe headers and placeholders.
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$fields = isset( $_POST['awpn_template'] ) && is_array( $_POST['awpn_template'] )
+			? wp_unslash( $_POST['awpn_template'] ) : null;
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( 0 === $post_id || ! is_array( $fields ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __(
+						'Select a post and complete all fields.',
+						'argentwolf-post-notifier'
+					),
+				),
+				400
+			);
+			return;
+		}
+		try {
+			$message = $this->preview->preview( $post_id, $fields );
+		} catch ( InvalidArgumentException ) {
+			wp_send_json_error(
+				array(
+					'message' => __(
+						'Invalid preview settings or post.',
+						'argentwolf-post-notifier'
+					),
+				),
+				400
+			);
+			return;
+		}
+		wp_send_json_success( $message );
 	}
 
 	/**
