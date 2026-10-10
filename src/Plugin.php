@@ -27,6 +27,7 @@ use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
+use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
@@ -149,13 +150,27 @@ final class Plugin {
 				}
 			);
 			$container->set(
+				EmailTemplatePreview::class,
+				static function ( Container $services ): EmailTemplatePreview {
+					$composer = $services->get( EmailTemplateComposer::class );
+					if ( ! $composer instanceof EmailTemplateComposer ) {
+						throw new LogicException( 'The email template composer is invalid.' );
+					}
+					return new EmailTemplatePreview( $composer );
+				}
+			);
+			$container->set(
 				NotificationTemplateSettingsPage::class,
 				static function ( Container $services ): NotificationTemplateSettingsPage {
 					$settings = $services->get( EmailTemplateSettings::class );
 					if ( ! $settings instanceof EmailTemplateSettings ) {
 						throw new LogicException( 'The email template settings are invalid.' );
 					}
-					return new NotificationTemplateSettingsPage( $settings );
+					$preview = $services->get( EmailTemplatePreview::class );
+					if ( ! $preview instanceof EmailTemplatePreview ) {
+						throw new LogicException( 'The template preview service is invalid.' );
+					}
+					return new NotificationTemplateSettingsPage( $settings, $preview );
 				}
 			);
 			$container->set(

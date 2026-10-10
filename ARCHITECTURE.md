@@ -57,6 +57,15 @@ HTML/plain-text message composer with mandatory subscriber footer links. Tranche
 recipient-specific links, snapshots, and post-notification delivery remain
 unimplemented.
 
+Tranche 6 adds a read-only administrator preview that composes a **published**
+post through the existing canonical composer with saved settings. It requires
+`manage_options`, `edit_post` permission and a verified preview nonce. A
+sandboxed, noninteractive HTML pane and a read-only text pane display the result.
+The footer uses synthetic local preview-only destinations, never recipient
+identity or unsubscribe tokens. Preview performs no campaign or recipient writes,
+queue work, or mail transmission. Unsaved live preview and test-send remain
+future tranches.
+
 ## 2.1 Canonical naming
 
 The public product and vendor name is **ArgentWolf Post Notifier**. The project
