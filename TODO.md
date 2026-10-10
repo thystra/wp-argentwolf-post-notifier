@@ -475,15 +475,16 @@ No Forgejo/GitHub Release object or WordPress.org release is authorized here.
 
 Target: `0.1.0-beta.3`
 
-Tranche 1 registers the editor-visible Email Cutoff marker (PR #42, CI 106,
-merged). Tranche 2 implements deterministic source selection; tranche 3
-provides safe static-fragment rendering; and tranche 4 adds fixed default
-HTML/plain-text composition with mandatory links. All four are merged.
-Tranche 5 adds restricted site-default text customization and restore-defaults,
-pending its own Forgejo qualification. Named template selection, preview,
-recipient-specific token generation, snapshots and sending remain later work.
-A persistent site-default More preference and excerpt length remain future
-settings work.
+Tranche 1 registers the Email Cutoff marker (PR #42, CI 106); tranche 2
+implements deterministic selection (PR #43); tranche 3 provides inert fragment
+rendering (PR #44); and tranche 4 adds mandatory-footer HTML/plain-text
+composition (PR #45). Tranche 5 adds safe administrator text settings (PR #46)
+and tranche 6 a saved-settings preview of published posts (PR #47). These are
+merged and CI-qualified. Tranche 7 adds nonce-protected **unsaved** text preview
+using the same composer; it remains pending Forgejo qualification. Named
+template selection, recipient-specific token generation, campaign snapshots,
+test sends, and delivery remain later work. Persistent More/excerpt-length
+settings are still future work.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
@@ -501,12 +502,12 @@ settings work.
 - [x] Qualify mandatory footer with both already-created same-site subscriber
       control URLs; link generation remains outside this service.
 - [ ] Add live/unsaved preview with a selected post.
-- [ ] Qualify read-only administrator preview of saved templates and a published post in Forgejo CI.
+- [x] Qualify read-only administrator preview of saved templates and a published post in Forgejo CI.
 - [ ] Add preview-email action backed by the canonical rendered message.
 - [ ] Add send-test-email action backed by the canonical renderer and mail transport.
-- [ ] Qualify administrator restore-defaults action in Forgejo CI.
-- [ ] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
-- [ ] Qualify site-default template setting sanitation, token rejection and access control.
+- [x] Qualify administrator restore-defaults action in Forgejo CI.
+- [x] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
+- [x] Qualify site-default template setting sanitation, token rejection and access control.
 - [ ] Add named reusable template configuration and safe customization beyond text-only fields.
 - [ ] Snapshot rendered campaign content.
 

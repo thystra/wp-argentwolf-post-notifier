@@ -3,6 +3,13 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add administrator preview of unsaved template text through a nonce- and
+  capability-guarded AJAX endpoint. Validate each proposed field in memory,
+  render the selected published post with the canonical composer, and return
+  sandboxed HTML/plain text without saving settings, creating recipients or
+  campaigns, generating subscriber tokens, or sending mail. Existing saved
+  previews remain available; the live preview gate is pending CI.
+
 - Add read-only administrator preview of published posts to template settings.
   Compose HTML and text through the canonical message composer and persisted
   settings; require administrator access and nonce on preview requests. Keep

@@ -63,8 +63,15 @@ post through the existing canonical composer with saved settings. It requires
 sandboxed, noninteractive HTML pane and a read-only text pane display the result.
 The footer uses synthetic local preview-only destinations, never recipient
 identity or unsubscribe tokens. Preview performs no campaign or recipient writes,
-queue work, or mail transmission. Unsaved live preview and test-send remain
-future tranches.
+queue work, or mail transmission.
+
+Tranche 7 adds an on-demand preview of **unsaved** text fields. A page-scoped
+browser script sends the form and selected published post to an authenticated,
+nonce-protected AJAX route. The service validates the provided fields in memory
+and passes them to the same composer without updating the stored option. Both
+formats use the same synthetic local footer destinations and sandboxed preview
+presentation. Unauthorized posts or malformed settings are rejected. Test-send,
+recipient-specific URLs, snapshots, and delivery remain future work.
 
 ## 2.1 Canonical naming
 
