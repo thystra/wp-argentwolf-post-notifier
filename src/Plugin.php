@@ -24,6 +24,7 @@ use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
+use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
@@ -137,6 +138,10 @@ final class Plugin {
 				static fn (): EmailTemplateSettings => new EmailTemplateSettings()
 			);
 			$container->set(
+				EmailExcerptSettings::class,
+				static fn (): EmailExcerptSettings => new EmailExcerptSettings()
+			);
+			$container->set(
 				EmailTemplateComposer::class,
 				static function ( Container $services ): EmailTemplateComposer {
 					$renderer = $services->get( EmailContentRenderer::class );
@@ -157,7 +162,11 @@ final class Plugin {
 					if ( ! $composer instanceof EmailTemplateComposer ) {
 						throw new LogicException( 'The email template composer is invalid.' );
 					}
-					return new EmailTemplatePreview( $composer );
+					$excerpt_settings = $services->get( EmailExcerptSettings::class );
+					if ( ! $excerpt_settings instanceof EmailExcerptSettings ) {
+						throw new LogicException( 'The excerpt settings are invalid.' );
+					}
+					return new EmailTemplatePreview( $composer, $excerpt_settings );
 				}
 			);
 			$container->set(
@@ -189,7 +198,16 @@ final class Plugin {
 					if ( ! $mailer instanceof EmailTemplateTestMailer ) {
 						throw new LogicException( 'The test-mail service is invalid.' );
 					}
-					return new NotificationTemplateSettingsPage( $settings, $preview, $mailer );
+					$excerpt_settings = $services->get( EmailExcerptSettings::class );
+					if ( ! $excerpt_settings instanceof EmailExcerptSettings ) {
+						throw new LogicException( 'The excerpt settings are invalid.' );
+					}
+					return new NotificationTemplateSettingsPage(
+						$settings,
+						$preview,
+						$mailer,
+						$excerpt_settings
+					);
 				}
 			);
 			$container->set(

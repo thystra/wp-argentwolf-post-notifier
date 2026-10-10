@@ -485,15 +485,18 @@ using the same composer (PR #48, CI-qualified). Tranche 8 adds a constrained
 administrator-only test-email submission to the current account address,
 using the same composer and existing mail transport. Named
 template selection, recipient-specific token generation, campaign snapshots,
-test sends, and delivery remain later work. Persistent More/excerpt-length
-settings are still future work.
+delivery remain later work. The administrator test-email submission in PR #49
+is merged and CI-qualified. A separately validated, site-wide generated-excerpt
+word count is implemented in tranche 9; it remains pending Forgejo qualification.
+Persistent More-marker preferences remain future work.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
 - [x] Render the cutoff block as no public output.
 - [x] Implement cutoff precedence:
       full, Email Cutoff, More block, manual excerpt, generated excerpt.
-- [ ] Add configurable generated-excerpt length.
+- [ ] Qualify configurable generated-excerpt word count (1–500), including
+      persistence, reset, and canonical preview/test-mail use in Forgejo CI.
 - [x] Qualify canonical safe HTML/plain-text fragment rendering in Forgejo CI.
 - [x] Qualify inert behavior for dynamic blocks, embeds, shortcodes, images,
       and unsupported blocks in Forgejo CI.
@@ -505,8 +508,8 @@ settings are still future work.
       control URLs; link generation remains outside this service.
 - [x] Add live/unsaved preview with a selected post (PR #48).
 - [x] Qualify read-only administrator preview of saved templates and a published post in Forgejo CI.
-- [ ] Add preview-email action backed by the canonical rendered message.
-- [ ] Qualify administrator-only send-test-email in CI using the canonical
+- [x] Add administrator preview-email actions backed by the canonical rendered message.
+- [x] Qualify administrator-only send-test-email in PR #49 using the canonical
       composer and existing mail transport; never enumerate recipients.
 - [x] Qualify administrator restore-defaults action in Forgejo CI.
 - [x] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.

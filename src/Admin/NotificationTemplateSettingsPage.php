@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
+use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
 use ArgentWolf\PostNotifier\Content\EmailTemplateTestMailer;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
@@ -22,6 +23,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 
 	/** POST action for save and restore-defaults. */
 	public const SAVE_ACTION = 'argentwolf_post_notifier_save_template_text';
+
+	/** Independent POST action for generated excerpt length. */
+	public const EXCERPT_ACTION = 'argentwolf_post_notifier_save_excerpt_words';
 
 	/** Read-only administrator preview action. */
 	public const PREVIEW_ACTION = 'argentwolf_post_notifier_preview_template';
@@ -43,12 +47,14 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	 *
 	 * @param EmailTemplateSettings   $settings Validated option store.
 	 * @param EmailTemplatePreview    $preview  Read-only message composer.
-	 * @param EmailTemplateTestMailer $mailer  Restricted test-email sender.
+	 * @param EmailTemplateTestMailer $mailer   Restricted test-email sender.
+	 * @param EmailExcerptSettings    $excerpts Generated excerpt word count.
 	 */
 	public function __construct(
 		private EmailTemplateSettings $settings,
 		private EmailTemplatePreview $preview,
-		private EmailTemplateTestMailer $mailer
+		private EmailTemplateTestMailer $mailer,
+		private EmailExcerptSettings $excerpts
 	) {
 	}
 
@@ -60,6 +66,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
+		add_action( 'admin_post_' . self::EXCERPT_ACTION, array( $this, 'handle_excerpt_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
 		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
 		add_action( 'wp_ajax_' . self::TEST_SEND_ACTION, array( $this, 'handle_test_send' ) );
@@ -157,7 +164,18 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		$status = isset( $_GET['awpn_status'] ) && is_string( $_GET['awpn_status'] )
 			? sanitize_key( wp_unslash( $_GET['awpn_status'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
-		if ( in_array( $status, array( 'saved', 'restored', 'invalid' ), true ) ) {
+		if ( in_array(
+			$status,
+			array(
+				'saved',
+				'restored',
+				'invalid',
+				'excerpt_saved',
+				'excerpt_restored',
+				'excerpt_invalid',
+			),
+			true
+		) ) {
 			$message = __( 'Template settings updated.', 'argentwolf-post-notifier' );
 			if ( 'invalid' === $status ) {
 				$message = __(
@@ -165,7 +183,16 @@ final class NotificationTemplateSettingsPage implements Registerable {
 					'argentwolf-post-notifier'
 				);
 			}
-			$notice_class = 'invalid' === $status ? 'error' : 'success';
+			if ( 'excerpt_saved' === $status || 'excerpt_restored' === $status ) {
+				$message = __( 'Generated excerpt length updated.', 'argentwolf-post-notifier' );
+			} elseif ( 'excerpt_invalid' === $status ) {
+				$message = __(
+					'Invalid excerpt length; no changes saved.',
+					'argentwolf-post-notifier'
+				);
+			}
+			$notice_class = in_array( $status, array( 'invalid', 'excerpt_invalid' ), true )
+				? 'error' : 'success';
 			echo '<div class="notice notice-' . esc_attr( $notice_class ) . '"><p>';
 			echo esc_html( $message );
 			echo '</p></div>';
@@ -211,8 +238,38 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '<input type="hidden" name="awpn_restore" value="1">';
 		submit_button( __( 'Restore defaults', 'argentwolf-post-notifier' ), 'secondary' );
 		echo '</form>';
+		$this->render_excerpt_settings();
 		$this->render_preview();
 		echo '</div>';
+	}
+
+	/**
+	 * Render a separate form for the generated-excerpt length.
+	 *
+	 * @return void
+	 */
+	private function render_excerpt_settings(): void {
+		echo '<hr><h2>';
+		echo esc_html__( 'Generated excerpt length', 'argentwolf-post-notifier' );
+		echo '</h2><p>';
+		echo esc_html__(
+			'Applies only when neither a cutoff, More marker, nor manual excerpt is used.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p><form method="post" action="';
+		echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::EXCERPT_ACTION ) . '">';
+		wp_nonce_field( self::EXCERPT_ACTION );
+		echo '<label for="awpn_excerpt_words">';
+		echo esc_html__( 'Maximum words', 'argentwolf-post-notifier' );
+		echo '</label> <input type="number" id="awpn_excerpt_words" name="awpn_excerpt_words"';
+		echo ' min="1" max="500" step="1" required value="';
+		echo esc_attr( (string) $this->excerpts->get() ) . '">';
+		submit_button( __( 'Save excerpt length', 'argentwolf-post-notifier' ) );
+		echo '<button class="button" type="submit" name="awpn_excerpt_reset"';
+		echo ' value="1" formnovalidate>';
+		echo esc_html__( 'Restore 55-word default', 'argentwolf-post-notifier' );
+		echo '</button></form>';
 	}
 
 	/**
@@ -436,6 +493,45 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			return;
 		}
 		wp_send_json_success( array( 'submitted' => true ) );
+	}
+
+	/**
+	 * Save/reset only the separately validated generated-excerpt length.
+	 *
+	 * @return void
+	 */
+	public function handle_excerpt_save(): void {
+		$this->require_capability();
+		check_admin_referer( self::EXCERPT_ACTION );
+		$status = 'excerpt_saved';
+		if ( isset( $_POST['awpn_excerpt_reset'] ) ) {
+			$this->excerpts->restore_defaults();
+			$status = 'excerpt_restored';
+		} else {
+			// Raw value is strictly validated before conversion to an integer.
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$value = null;
+			if (
+				isset( $_POST['awpn_excerpt_words'] )
+				&& is_string( $_POST['awpn_excerpt_words'] )
+			) {
+				$value = wp_unslash( $_POST['awpn_excerpt_words'] );
+			}
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			try {
+				$this->excerpts->save( $value );
+			} catch ( InvalidArgumentException ) {
+				$status = 'excerpt_invalid';
+			}
+		}
+		wp_safe_redirect(
+			add_query_arg(
+				'awpn_status',
+				$status,
+				admin_url( 'options-general.php?page=' . self::PAGE_SLUG )
+			)
+		);
+		exit;
 	}
 
 	/**
