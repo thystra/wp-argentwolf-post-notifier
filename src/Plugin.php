@@ -25,6 +25,7 @@ use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
 use ArgentWolf\PostNotifier\Content\EmailCutoffBlock;
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
+use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
@@ -142,6 +143,10 @@ final class Plugin {
 				static fn (): EmailExcerptSettings => new EmailExcerptSettings()
 			);
 			$container->set(
+				EmailMoreSettings::class,
+				static fn (): EmailMoreSettings => new EmailMoreSettings()
+			);
+			$container->set(
 				EmailTemplateComposer::class,
 				static function ( Container $services ): EmailTemplateComposer {
 					$renderer = $services->get( EmailContentRenderer::class );
@@ -166,7 +171,11 @@ final class Plugin {
 					if ( ! $excerpt_settings instanceof EmailExcerptSettings ) {
 						throw new LogicException( 'The excerpt settings are invalid.' );
 					}
-					return new EmailTemplatePreview( $composer, $excerpt_settings );
+					$more_settings = $services->get( EmailMoreSettings::class );
+					if ( ! $more_settings instanceof EmailMoreSettings ) {
+						throw new LogicException( 'The More-block settings are invalid.' );
+					}
+					return new EmailTemplatePreview( $composer, $excerpt_settings, $more_settings );
 				}
 			);
 			$container->set(
@@ -202,11 +211,16 @@ final class Plugin {
 					if ( ! $excerpt_settings instanceof EmailExcerptSettings ) {
 						throw new LogicException( 'The excerpt settings are invalid.' );
 					}
+					$more_settings = $services->get( EmailMoreSettings::class );
+					if ( ! $more_settings instanceof EmailMoreSettings ) {
+						throw new LogicException( 'The More-block settings are invalid.' );
+					}
 					return new NotificationTemplateSettingsPage(
 						$settings,
 						$preview,
 						$mailer,
-						$excerpt_settings
+						$excerpt_settings,
+						$more_settings
 					);
 				}
 			);
