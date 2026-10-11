@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Resolve a post's selected named template into canonical administrator preview
+  and restricted test-mail composition. Validate selected metadata and fail closed
+  for deleted, malformed, or externally filtered IDs; ID zero continues to use
+  site-default settings and unsaved text overrides. Campaign rendering and
+  immutable snapshots remain separate work.
+
 - Add a bounded, administrator-managed named-template library with stable,
   non-reused IDs in a reserved namespace. Reuse the canonical six-field text
   validator, expose safe labels through the existing editor template selector,

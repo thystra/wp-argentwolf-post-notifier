@@ -20,17 +20,27 @@ use WP_Post;
  */
 final class EmailTemplatePreview {
 	/**
+	 * Persisted named variants for a selected editor template ID.
+	 *
+	 * @var EmailNamedTemplateLibrary
+	 */
+	private EmailNamedTemplateLibrary $named;
+
+	/**
 	 * Use the same composer as all future notification messages.
 	 *
-	 * @param EmailTemplateComposer $composer Canonical message composer.
-	 * @param EmailExcerptSettings  $excerpts Validated generated excerpt length.
-	 * @param EmailMoreSettings     $more     Site-wide core More-block preference.
+	 * @param EmailTemplateComposer          $composer Canonical message composer.
+	 * @param EmailExcerptSettings           $excerpts Validated generated excerpt length.
+	 * @param EmailMoreSettings              $more     Site-wide core More-block preference.
+	 * @param EmailNamedTemplateLibrary|null $named    Optional named-template resolver.
 	 */
 	public function __construct(
 		private EmailTemplateComposer $composer,
 		private EmailExcerptSettings $excerpts,
-		private EmailMoreSettings $more
+		private EmailMoreSettings $more,
+		?EmailNamedTemplateLibrary $named = null
 	) {
+		$this->named = $named ?? new EmailNamedTemplateLibrary( new EmailTemplateSettings() );
 	}
 
 	/**
@@ -67,6 +77,21 @@ final class EmailTemplatePreview {
 			get_post_meta( $post_id, PostNotificationMeta::CONTENT_MODE_KEY, true )
 		);
 
+		$template_id = $this->selected_template_id(
+			get_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, true )
+		);
+		if ( 0 !== $template_id ) {
+			// Even unused site-default drafts must not evade live-preview validation.
+			if ( null !== $template_override ) {
+				( new EmailTemplateSettings() )->validate( $template_override );
+			}
+			$selected = $this->named->find( $template_id );
+			if ( null === $selected ) {
+				throw new InvalidArgumentException( 'The selected named template is unavailable.' );
+			}
+			$template_override = $selected['settings'];
+		}
+
 		return $this->composer->compose(
 			$post->post_content,
 			$post->post_title,
@@ -79,6 +104,42 @@ final class EmailTemplatePreview {
 			$this->excerpts->get(),
 			$template_override
 		);
+	}
+
+	/**
+	 * Accept only the site-default ID or an ID in the owned named namespace.
+	 *
+	 * Externally filtered editor choices have no rendering contract yet.
+	 * Malformed and missing selections never become a site-default email.
+	 *
+	 * @param mixed $raw Persisted post metadata value.
+	 * @return int Validated template ID.
+	 * @throws InvalidArgumentException On malformed or unsupported selections.
+	 */
+	private function selected_template_id( mixed $raw ): int {
+		if ( '' === $raw || '0' === $raw || 0 === $raw ) {
+			return 0;
+		}
+		if ( is_int( $raw ) ) {
+			$id = $raw;
+		} elseif (
+			is_string( $raw )
+			&& 1 === preg_match( '/^[1-9][0-9]*$/D', $raw )
+		) {
+			$id = (int) $raw;
+			if ( (string) $id !== $raw ) {
+				throw new InvalidArgumentException( 'Invalid selected template ID.' );
+			}
+		} else {
+			throw new InvalidArgumentException( 'Invalid selected template ID.' );
+		}
+		if (
+			$id < EmailNamedTemplateLibrary::FIRST_ID
+			|| $id > EmailNamedTemplateLibrary::LAST_ID
+		) {
+			throw new InvalidArgumentException( 'Unsupported selected template ID.' );
+		}
+		return $id;
 	}
 }
 

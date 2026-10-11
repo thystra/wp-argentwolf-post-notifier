@@ -662,10 +662,19 @@ updates preserve IDs and deletions do not rewind the high-water mark. Labels
 are bounded and text fields use the identical `EmailTemplateSettings` token
 and safety validator. Corrupted stored library values fail closed and cannot
 be overwritten through normal management actions. Only stable ID and label
-enter the editor bootstrap; no template text is disclosed there. Selection
-rendering, immutable campaign snapshots, and recipient delivery are still out
-of scope. Concurrent administrator write serialization remains to be covered
-before campaigns rely on named-template IDs as immutable dispatch inputs.
+enter the editor bootstrap; no template text is disclosed there.
+
+Tranche 12 resolves selected plugin-owned IDs in `EmailTemplatePreview`, which
+is shared by saved administrator preview, unsaved-text preview, and restricted
+test mail. ID zero retains the site-default text and optional unsaved changes.
+A selected named ID instead uses its validated persisted six-field text; any
+supplied site-default draft must still validate but cannot override the named
+variant. Missing/deleted IDs, invalid metadata, and external-only editor IDs
+fail closed before composition or mail transport. Rendering does not update
+template selection or generate a campaign; preview links remain examples.
+Immutable campaign snapshots and recipient delivery are still out of scope.
+Concurrent administrator write serialization remains to be covered before
+campaigns rely on named-template IDs as immutable dispatch inputs.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is
