@@ -39,6 +39,7 @@ main() {
 		'argentwolf-post-notifier/src/Version.php' \
 		'argentwolf-post-notifier/src/Campaign/CampaignContentSnapshotStore.php' \
 		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \
+		'argentwolf-post-notifier/src/Campaign/CampaignInputCapture.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateComposer.php' \
 		'argentwolf-post-notifier/src/Content/EmailNamedTemplateLibrary.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateSettings.php' \

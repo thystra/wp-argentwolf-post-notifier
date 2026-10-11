@@ -11,6 +11,8 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Editor\ContentMode;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Editor\SendIntent;
+use InvalidArgumentException;
+use LogicException;
 use RuntimeException;
 
 /**
@@ -152,6 +154,34 @@ final class PublicationObserver implements Registerable {
 				'argentwolf_post_notifier_campaign_creation_failed',
 				$post_id,
 				'persistence_error'
+			);
+			return;
+		}
+
+		/*
+		 * Publication has already committed. Snapshot validation or persistence
+		 * failures must not make WordPress report a failed post publication.
+		 * Leave the campaign non-deliverable and report only a fixed reason code.
+		 */
+		try {
+			$captured = ( new CampaignInputCapture() )->capture(
+				$campaign_id,
+				$post,
+				$content_mode
+			);
+		} catch ( InvalidArgumentException | LogicException | RuntimeException ) {
+			do_action(
+				'argentwolf_post_notifier_campaign_snapshot_failed',
+				$post_id,
+				'capture_error'
+			);
+			return;
+		}
+		if ( ! $captured ) {
+			do_action(
+				'argentwolf_post_notifier_campaign_snapshot_failed',
+				$post_id,
+				'write_rejected'
 			);
 			return;
 		}
