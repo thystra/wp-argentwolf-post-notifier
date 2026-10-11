@@ -686,11 +686,24 @@ The stored document includes the site/post/template identity, plain-text
 template fields, post source, permalink, site name, content mode and excerpt
 policies. It contains no subscriber identity or credentials. JSON is bounded,
 validated before storage, and rejected on invalid read rather than silently
-falling back to live site state. This tranche deliberately does not register a
-publication-time collector or populate send-ready subject/HTML/text: recipient
-management URLs require a separately designed token-substitution boundary.
-The Beta.3 snapshot acceptance gate remains open until automatic capture and
-immutable rendered-message finalization are implemented and CI-qualified.
+falling back to live site state. Tranche 14 adds `CampaignInputCapture` immediately after the existing
+completed-save publication reservation. For explicitly requested Send intent,
+it freezes post title, content, excerpt and same-origin permalink, selected
+named or site-default template text, site name, content mode and saved More/
+excerpt policies. Template metadata is parsed strictly and deleted/external
+IDs fail closed. The first valid frozen document wins across duplicate observer
+invocations. Publication is already committed, so invalid capture or storage
+failure leaves the campaign in non-deliverable `building` state and emits a
+privacy-safe `argentwolf_post_notifier_campaign_snapshot_failed` action with
+post ID and a fixed reason (`capture_error` or `write_rejected`). No sensitive
+contents or exception messages are published in that signal.
+
+This remains a recipient-neutral **input** snapshot. It does not create a
+recipient, render a subject/HTML/plain-text message, generate subscriber
+control links, or queue a campaign. Subscriber-specific management URLs require
+a later carefully defined token-substitution boundary. The Beta.3 snapshot
+acceptance gate remains open until immutable rendered-message finalization is
+implemented and CI-qualified.
 
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is

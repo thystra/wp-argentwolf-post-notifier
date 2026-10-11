@@ -94,11 +94,15 @@ campaign rendering inputs. It captures a versioned contract for the selected
 template fields, the source post title/content/excerpt/permalink, site name,
 content mode, More policy, and excerpt length. Its atomic SQL predicate permits
 only the first write against an empty `building` campaign, and refuses to
-overwrite an earlier snapshot. Nothing invokes this store at publication yet;
-the canonical rendered-message columns remain empty, and this is not a
-deliverable email. Source capture at publication, rendering with recipient
-control-link placeholders, and the immutable send-ready snapshot are separate
-qualification gates.
+overwrite an earlier snapshot. The publication observer now invokes a capture service after reserving an
+initial building campaign. It freezes completed-save post data and currently
+selected canonical template fields through the same write-once predicate.
+Deleted named templates and unsupported selections fail closed without
+interrupting WordPress publication; a fixed-code diagnostic action is emitted.
+Duplicate observations cannot replace the first valid snapshot. The rendered
+message columns remain empty, and this is not a deliverable email. Recipient-
+control-link substitution and immutable send-ready message finalization remain
+separate qualification gates.
 
 Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
 selector and returns sanitized HTML plus a corresponding plain-text fragment.

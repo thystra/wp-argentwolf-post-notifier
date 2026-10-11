@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Capture immutable recipient-neutral campaign inputs automatically after
+  successful initial publication reservation. Freeze the selected named or
+  site-default template, saved post content, and excerpt policies once, and
+  fail closed with privacy-safe diagnostics if capture is invalid. Campaigns
+  remain in building state; no email rendering or audience resolution occurs.
+
 - Add the write-once campaign input-snapshot store (contract version 1).
   It validates recipient-neutral post and template inputs, uses an atomic
   compare-and-set on a building campaign, rejects corrupted/unknown formats,
