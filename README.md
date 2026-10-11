@@ -313,4 +313,17 @@ successful transport submission. Submitting a test does not save settings,
 create campaigns or recipients, or queue notification delivery. A successful
 submission does not guarantee inbox delivery.
 
+
+
+
+### Beta.3 campaign rendered-body finalization (development)
+
+The campaign-rendering service can now atomically populate the subject and
+recipient-neutral HTML/plain-text columns from the immutable publication input
+snapshot. This is an **inert building-stage operation**, not a post notification:
+no audience, recipient links, queue transitions, or delivery are involved.
+The bodies intentionally omit unsubscribe/manage controls, which must be added
+from real per-recipient links before any message becomes sendable. There is not
+yet a public/automatic rendering trigger; this API is qualified separately.
+
 <!-- EOF: ~/src/wp-argentwolf-post-notifier/README.md -->

@@ -529,12 +529,15 @@ remain later independent work.
 - [ ] Add safe layout and theme customization beyond the text-only fields.
 - [x] Qualify the write-once, versioned campaign input-snapshot store.
       Tranche 13 merged and CI-qualified in PR #54.
-- [ ] Qualify automatic campaign input capture on first publication, including
+- [x] Qualify automatic campaign input capture on first publication, including
       scheduled/direct publication, named-template immutability, duplicate
-      observations and failure isolation in Forgejo CI (tranche 14).
-- [ ] Define recipient-link substitution and snapshot immutable rendered
-      campaign subject, HTML and plain text before any queue transition.
-- [ ] Snapshot rendered campaign content.
+      observations and failure isolation in Forgejo CI (tranche 14, PR #55).
+- [ ] Qualify the internal write-once recipient-neutral campaign subject and
+      HTML/plain-text renderer in Forgejo CI (tranche 15). No subscriber links
+      or queue transition are permitted in this stage.
+- [ ] Define and qualify the recipient-specific footer/link finalization contract
+      and eligibility gate before any campaign queue transition.
+- [ ] Snapshot fully deliverable campaign content with recipient-specific links.
 
 Acceptance criteria:
 
