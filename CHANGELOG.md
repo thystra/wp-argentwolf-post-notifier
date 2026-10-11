@@ -3,6 +3,12 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add the write-once campaign input-snapshot store (contract version 1).
+  It validates recipient-neutral post and template inputs, uses an atomic
+  compare-and-set on a building campaign, rejects corrupted/unknown formats,
+  and does not populate send-ready message fields. Automatic collection,
+  final rendering and recipient-specific links remain later tranches.
+
 - Resolve a post's selected named template into canonical administrator preview
   and restricted test-mail composition. Validate selected metadata and fail closed
   for deleted, malformed, or externally filtered IDs; ID zero continues to use
