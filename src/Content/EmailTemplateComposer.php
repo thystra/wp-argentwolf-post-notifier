@@ -76,10 +76,75 @@ final class EmailTemplateComposer {
 		int $excerpt_words = EmailContentSelector::DEFAULT_EXCERPT_WORDS,
 		?array $template_override = null
 	): array {
-		// Reject malformed or off-site URLs before evaluating any post content.
-		$post_url        = $this->require_site_url( $post_url );
-		$unsubscribe_url = $this->require_site_url( $unsubscribe_url );
-		$manage_url      = $this->require_site_url( $manage_url );
+		// Preview/test paths always require both on-site subscriber-control links.
+		$unsubscribe_url  = $this->require_site_url( $unsubscribe_url );
+		$manage_url       = $this->require_site_url( $manage_url );
+		$message          = $this->compose_body(
+			$post_content,
+			$post_title,
+			$post_url,
+			$manual_excerpt,
+			$content_mode,
+			$more_enabled,
+			$excerpt_words,
+			$template_override,
+			(string) get_bloginfo( 'name' )
+		);
+		$message['html'] .= $this->mandatory_html_footer( $unsubscribe_url, $manage_url );
+		$message['text'] .= $this->mandatory_text_footer( $unsubscribe_url, $manage_url );
+		return $message;
+	}
+
+	/**
+	 * Render immutable campaign body content without subscriber-specific links.
+	 *
+	 * The caller MUST read the validated write-once input snapshot. These fields
+	 * are NOT send-ready messages; a future per-recipient stage must append
+	 * real unsubscribe and management controls before any transmission.
+	 *
+	 * @param array<string,mixed> $input Validated frozen campaign input document.
+	 * @return array{source:string,subject:string,html:string,text:string}
+	 */
+	public function compose_campaign_body( array $input ): array {
+		return $this->compose_body(
+			$input['post_content'],
+			$input['post_title'],
+			$input['post_url'],
+			$input['post_excerpt'],
+			$input['content_mode'],
+			$input['more_enabled'],
+			$input['excerpt_words'],
+			$input['template_fields'],
+			$input['site_name']
+		);
+	}
+
+	/**
+	 * Share canonical content selection and markup for both rendering paths.
+	 *
+	 * @param string     $post_content      Frozen or currently saved content.
+	 * @param string     $post_title        Post title.
+	 * @param string     $post_url          Local post URL.
+	 * @param string     $manual_excerpt    Original manual excerpt.
+	 * @param string     $content_mode      Canonical content mode.
+	 * @param bool       $more_enabled      Honor core More markers.
+	 * @param int        $excerpt_words     Generated excerpt length.
+	 * @param array|null $template_override Canonical text fields.
+	 * @param string     $site_name         Captured or current site name.
+	 * @return array{source:string,subject:string,html:string,text:string}
+	 */
+	private function compose_body(
+		string $post_content,
+		string $post_title,
+		string $post_url,
+		string $manual_excerpt,
+		string $content_mode,
+		bool $more_enabled,
+		int $excerpt_words,
+		?array $template_override,
+		string $site_name
+	): array {
+		$post_url = $this->require_site_url( $post_url );
 
 		$fragments = $this->renderer->render(
 			$post_content,
@@ -89,7 +154,7 @@ final class EmailTemplateComposer {
 			$excerpt_words
 		);
 		$title     = sanitize_text_field( wp_strip_all_tags( $post_title ) );
-		$site_name = sanitize_text_field( get_bloginfo( 'name' ) );
+		$site_name = sanitize_text_field( $site_name );
 
 		$template_settings = $this->settings ?? new EmailTemplateSettings();
 		$settings          = null === $template_override
@@ -127,13 +192,11 @@ final class EmailTemplateComposer {
 			'cta'        => $cta,
 		);
 
-		// The footer is outside both templates and cannot be removed by them.
+		// Subscriber-control links are appended only in compose(), never here.
 		$html  = $this->replace_body_tokens( $this->html_body_template(), $html_values );
 		$html .= $this->html_paragraph( $note );
-		$html .= $this->mandatory_html_footer( $unsubscribe_url, $manage_url );
 		$text  = $this->replace_body_tokens( $this->text_body_template(), $text_values );
 		$text .= $this->text_paragraph( $note );
-		$text .= $this->mandatory_text_footer( $unsubscribe_url, $manage_url );
 
 		return array(
 			'source'  => $fragments['source'],

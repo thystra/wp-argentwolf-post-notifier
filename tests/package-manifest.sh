@@ -41,6 +41,7 @@ main() {
 		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \
 		'argentwolf-post-notifier/src/Campaign/CampaignInputCapture.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateComposer.php' \
+		'argentwolf-post-notifier/src/Campaign/CampaignRenderedBodyFinalizer.php' \
 		'argentwolf-post-notifier/src/Content/EmailNamedTemplateLibrary.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateSettings.php' \
 		'argentwolf-post-notifier/src/Content/EmailExcerptSettings.php' \

@@ -1476,4 +1476,25 @@ subscriber links are never treated as active tokenized URLs. No test-send
 operation resolves an audience, reserves a campaign, persists settings, or
 enqueues notification delivery. Success means transport acceptance only.
 
+
+
+## Beta.3 recipient-neutral rendered-body contract (development)
+
+`CampaignRenderedBodyFinalizer` reads only a validated, write-once version-1
+`template_snapshot_json` and calls `EmailTemplateComposer::compose_campaign_body`.
+The latter shares canonical content selection, HTML sanitization, and fixed
+formatting with administrator previews but uses the frozen `site_name` and
+frozen six-field template settings; it intentionally omits subscriber-control
+footers. The finalizer uses one conditional SQL update to populate **all three**
+`subject`, `html_body`, and `text_body` columns only if they are empty, the
+campaign is still `building`, and the immutable source snapshot is present.
+Replay cannot replace frozen output. Corrupted/absent inputs fail closed.
+
+Populated building-stage HTML/plain-text bodies are **not deliverable email**.
+A later audience/delivery milestone must append verified recipient-specific
+unsubscribe and management URLs before transport, without mutating the frozen
+campaign content. No status transition, recipients, queue entries, or sends
+occur in this tranche. It introduces no automatic invocation and no schema
+change; the finalizer is explicitly qualified as an internal service.
+
 <!-- EOF: ~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->

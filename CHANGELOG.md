@@ -3,6 +3,13 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add an atomic, write-once campaign rendered-body finalizer. It uses only
+  frozen campaign inputs and the canonical content renderer to populate the
+  campaign subject and recipient-neutral HTML/plain-text fields. The rendered
+  fields have no unsubscribe/manage links, so the campaign remains `building`
+  and cannot be queued or delivered until per-recipient footer finalization.
+  Preview and administrator test mail retain their mandatory footer controls.
+
 - Capture immutable recipient-neutral campaign inputs automatically after
   successful initial publication reservation. Freeze the selected named or
   site-default template, saved post content, and excerpt policies once, and
