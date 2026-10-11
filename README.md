@@ -79,10 +79,16 @@ Tranche 11 adds a small administrator-managed named-template library (up to 20
 active entries). Administrators can create, edit, and delete named variants
 using the same six validated text fields as the site default; each template
 receives a stable reserved ID exposed to the existing post-editor selector.
-Deleting a template does not reuse its ID. The library does **not yet change**
-email rendering based on a post's selected template ID: that binding, as well
-as campaign-content snapshots, remains a later tranche. Unsupported templates
-must not silently fall back during campaign creation.
+Deleting a template does not reuse its ID.
+
+Tranche 12 connects a post's named template ID to the canonical saved/unsaved
+administrator previews and restricted test emails. A selected named variant
+supplies all six stored text fields; unsaved site-default text edits do not
+overwrite a selected named variant. Malformed, deleted, or externally filtered
+non-default template IDs fail closed in these paths. Site-default (ID zero)
+previews retain unsaved text support. Campaign-content snapshots and campaign
+delivery remain future work.
+
 Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
 selector and returns sanitized HTML plus a corresponding plain-text fragment.
 It supports static core text blocks, headings, lists and quotations while

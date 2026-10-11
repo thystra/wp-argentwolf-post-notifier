@@ -521,10 +521,11 @@ remain later independent work.
 - [x] Qualify administrator restore-defaults action in Forgejo CI.
 - [x] Qualify text-only subject, heading, body intro/outro, footer note and CTA settings in CI.
 - [x] Qualify site-default template setting sanitation, token rejection and access control.
-- [ ] Qualify bounded named reusable template storage, stable IDs, authorized
-      CRUD and editor choices through Forgejo CI (tranche 11).
+- [x] Qualify bounded named reusable template storage, stable IDs, authorized
+      CRUD and editor choices through Forgejo CI (tranche 11, PR #52).
 - [ ] Resolve a selected named template into canonical previews and test email,
       failing closed for deleted IDs and external-only selections.
+      Tranche 12 implemented; pending full Forgejo CI qualification.
 - [ ] Add safe layout and theme customization beyond the text-only fields.
 - [ ] Snapshot rendered campaign content.
 
