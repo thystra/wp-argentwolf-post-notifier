@@ -676,6 +676,22 @@ Immutable campaign snapshots and recipient delivery are still out of scope.
 Concurrent administrator write serialization remains to be covered before
 campaigns rely on named-template IDs as immutable dispatch inputs.
 
+Tranche 13 adds `CampaignContentSnapshotStore` as a versioned, strict input-
+snapshot persistence primitive. A single `UPDATE ... WHERE` operation may fill
+`template_snapshot_json` only in a `building` campaign whose rendered subject,
+HTML and text are all still empty, whose post and content mode match, and whose
+snapshot is currently NULL. A second writer cannot replace the committed
+source, even after editors change posts, template options or named variants.
+The stored document includes the site/post/template identity, plain-text
+template fields, post source, permalink, site name, content mode and excerpt
+policies. It contains no subscriber identity or credentials. JSON is bounded,
+validated before storage, and rejected on invalid read rather than silently
+falling back to live site state. This tranche deliberately does not register a
+publication-time collector or populate send-ready subject/HTML/text: recipient
+management URLs require a separately designed token-substitution boundary.
+The Beta.3 snapshot acceptance gate remains open until automatic capture and
+immutable rendered-message finalization are implemented and CI-qualified.
+
 The rendered email appends a configurable call to action that points to a local
 tracking redirect or directly to the canonical post URL when tracking is
 disabled.

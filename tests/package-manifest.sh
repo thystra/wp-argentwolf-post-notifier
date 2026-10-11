@@ -37,6 +37,7 @@ main() {
 		'argentwolf-post-notifier/uninstall.php' \
 		'argentwolf-post-notifier/src/Plugin.php' \
 		'argentwolf-post-notifier/src/Version.php' \
+		'argentwolf-post-notifier/src/Campaign/CampaignContentSnapshotStore.php' \
 		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateComposer.php' \
 		'argentwolf-post-notifier/src/Content/EmailNamedTemplateLibrary.php' \

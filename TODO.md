@@ -525,8 +525,15 @@ remain later independent work.
       CRUD and editor choices through Forgejo CI (tranche 11, PR #52).
 - [ ] Resolve a selected named template into canonical previews and test email,
       failing closed for deleted IDs and external-only selections.
-      Tranche 12 implemented; pending full Forgejo CI qualification.
+      Tranche 12 merged and CI-qualified in PR #53.
 - [ ] Add safe layout and theme customization beyond the text-only fields.
+- [ ] Qualify the write-once, versioned campaign input-snapshot store.
+      Tranche 13 implements atomic first-write persistence, strict input/JSON
+      validation and integration tests; pending Forgejo CI qualification.
+- [ ] Automatically collect a campaign input snapshot at first publication
+      without blocking WordPress publication on notification errors.
+- [ ] Define recipient-link substitution and snapshot immutable rendered
+      campaign subject, HTML and plain text before any queue transition.
 - [ ] Snapshot rendered campaign content.
 
 Acceptance criteria:

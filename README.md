@@ -89,6 +89,17 @@ non-default template IDs fail closed in these paths. Site-default (ID zero)
 previews retain unsaved text support. Campaign-content snapshots and campaign
 delivery remain future work.
 
+Tranche 13 introduces a write-once database store for **recipient-neutral**
+campaign rendering inputs. It captures a versioned contract for the selected
+template fields, the source post title/content/excerpt/permalink, site name,
+content mode, More policy, and excerpt length. Its atomic SQL predicate permits
+only the first write against an empty `building` campaign, and refuses to
+overwrite an earlier snapshot. Nothing invokes this store at publication yet;
+the canonical rendered-message columns remain empty, and this is not a
+deliverable email. Source capture at publication, rendering with recipient
+control-link placeholders, and the immutable send-ready snapshot are separate
+qualification gates.
+
 Beta.3 tranche 3 adds `EmailContentRenderer`, which calls the canonical
 selector and returns sanitized HTML plus a corresponding plain-text fragment.
 It supports static core text blocks, headings, lists and quotations while
