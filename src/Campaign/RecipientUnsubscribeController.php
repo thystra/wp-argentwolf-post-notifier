@@ -20,6 +20,13 @@ use InvalidArgumentException;
  * - POST of the RFC 8058 one-click endpoint with the exact body
  *   `List-Unsubscribe=One-Click` applies global suppression without a nonce.
  *
+ * - When the address is suppressed by a campaign link (and only then), the
+ *   same page offers a nonce-protected POST to resume notifications. Holding
+ *   the token proves receipt at that address; an operator or other-source
+ *   suppression can never be lifted this way.
+ * - Tokens expire: unsubscribe after TOKEN_TTL_SECONDS and resubscribe after
+ *   the shorter RESUBSCRIBE_TTL_SECONDS, both from submission time.
+ *
  * Responses are generic and never reveal the address, recipient type, or
  * whether a token was valid beyond success/failure. No redirect target is
  * accepted.
@@ -30,6 +37,20 @@ final class RecipientUnsubscribeController implements Registerable {
 	private const TOKEN_FIELD  = 'argentwolf_post_notifier_recipient_token';
 	private const NONCE_FIELD  = 'argentwolf_post_notifier_recipient_nonce';
 	private const NONCE_ACTION = 'argentwolf_post_notifier_recipient_unsubscribe';
+	private const INTENT_FIELD = 'argentwolf_post_notifier_recipient_intent';
+
+	public const INTENT_UNSUBSCRIBE = 'unsubscribe';
+	public const INTENT_RESUBSCRIBE = 'resubscribe';
+
+	/**
+	 * Default unsubscribe-link lifetime after submission (seconds, one year).
+	 */
+	public const TOKEN_TTL_SECONDS = 31536000;
+
+	/**
+	 * Default resubscribe lifetime after submission (seconds, 30 days).
+	 */
+	public const RESUBSCRIBE_TTL_SECONDS = 2592000;
 
 	/**
 	 * Construct the controller.
@@ -80,21 +101,38 @@ final class RecipientUnsubscribeController implements Registerable {
 			return;
 		}
 
-		$html  = '<h1>';
-		$html .= esc_html__( 'Manage post notifications', 'argentwolf-post-notifier' );
-		$html .= '</h1>';
-		$html .= '<p>' . esc_html__(
-			'You can stop all post notification email sent to this address by this site.',
-			'argentwolf-post-notifier'
-		) . '</p>';
-		$html .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		$html .= $this->hidden_input( 'action', self::CONFIRM_ACTION );
-		$html .= $this->hidden_input( self::TOKEN_FIELD, $token );
-		$html .= $this->hidden_input( self::NONCE_FIELD, wp_create_nonce( self::NONCE_ACTION ) );
-		$html .= '<p><button type="submit">'
-			. esc_html__( 'Stop post notifications', 'argentwolf-post-notifier' )
+		$resubscribe = $this->may_resubscribe( $row );
+		$html        = '<h1>';
+		$html       .= esc_html__( 'Manage post notifications', 'argentwolf-post-notifier' );
+		$html       .= '</h1><p>';
+		$html       .= $resubscribe
+			? esc_html__(
+				'Post notifications to this address are currently stopped.',
+				'argentwolf-post-notifier'
+			)
+			: esc_html__(
+				'You can stop all post notification email sent to this address by this site.',
+				'argentwolf-post-notifier'
+			);
+		$html       .= '</p>';
+		$html       .= '<form method="post" action="';
+		$html       .= esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		$html       .= $this->hidden_input( 'action', self::CONFIRM_ACTION );
+		$html       .= $this->hidden_input( self::TOKEN_FIELD, $token );
+		$html       .= $this->hidden_input(
+			self::NONCE_FIELD,
+			wp_create_nonce( self::NONCE_ACTION )
+		);
+		$html       .= $this->hidden_input(
+			self::INTENT_FIELD,
+			$resubscribe ? self::INTENT_RESUBSCRIBE : self::INTENT_UNSUBSCRIBE
+		);
+		$html       .= '<p><button type="submit">'
+			. ( $resubscribe
+				? esc_html__( 'Resume post notifications', 'argentwolf-post-notifier' )
+				: esc_html__( 'Stop post notifications', 'argentwolf-post-notifier' ) )
 			. '</button></p></form>';
-		$html .= '<p>' . esc_html__(
+		$html       .= '<p>' . esc_html__(
 			'Nothing changes until you choose the button above.',
 			'argentwolf-post-notifier'
 		) . '</p>';
@@ -115,6 +153,10 @@ final class RecipientUnsubscribeController implements Registerable {
 		check_admin_referer( self::NONCE_ACTION, self::NONCE_FIELD );
 
 		$token = $this->request_value( $_POST, self::TOKEN_FIELD );
+		if ( self::INTENT_RESUBSCRIBE === $this->request_value( $_POST, self::INTENT_FIELD ) ) {
+			$this->render_resubscribe_result( $this->resubscribe( $token ) );
+			return;
+		}
 		$this->render_result( $this->unsubscribe( $token ), 200 );
 	}
 
@@ -166,6 +208,93 @@ final class RecipientUnsubscribeController implements Registerable {
 	}
 
 	/**
+	 * Lift only a campaign-link suppression for one valid, recent token.
+	 *
+	 * @param string $token Plaintext token.
+	 * @return bool True when the suppression was removed.
+	 */
+	public function resubscribe( string $token ): bool {
+		$row = $this->lookup( $token );
+		if ( null === $row || ! $this->may_resubscribe( $row ) ) {
+			return false;
+		}
+		try {
+			return $this->suppression->resubscribe(
+				(string) $row['email_snapshot'],
+				SuppressionService::SOURCE_CAMPAIGN_LINK
+			);
+		} catch ( InvalidArgumentException ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Whether this token may lift the current suppression.
+	 *
+	 * @param array<string,mixed> $row Recipient row.
+	 * @return bool
+	 */
+	private function may_resubscribe( array $row ): bool {
+		/**
+		 * Filter how long after submission a campaign link may resume notifications.
+		 *
+		 * @param int $seconds Default 30 days.
+		 */
+		$ttl = (int) apply_filters(
+			'argentwolf_post_notifier_recipient_resubscribe_ttl_seconds',
+			self::RESUBSCRIBE_TTL_SECONDS
+		);
+		if ( ! $this->within( $row, $ttl ) ) {
+			return false;
+		}
+		try {
+			return $this->suppression->can_resubscribe(
+				(string) $row['email_snapshot'],
+				SuppressionService::SOURCE_CAMPAIGN_LINK
+			);
+		} catch ( InvalidArgumentException ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Whether the row was submitted no longer than $ttl seconds ago.
+	 *
+	 * @param array<string,mixed> $row Recipient row.
+	 * @param int                 $ttl Lifetime in seconds.
+	 * @return bool
+	 */
+	private function within( array $row, int $ttl ): bool {
+		$submitted = (string) ( $row['submitted_at_gmt'] ?? '' );
+		if ( '' === $submitted ) {
+			return false;
+		}
+		$time = strtotime( $submitted . ' UTC' );
+
+		return false !== $time && $ttl > 0 && time() - $time <= $ttl;
+	}
+
+	/**
+	 * Render the generic resubscribe result.
+	 *
+	 * @param bool $changed Whether notifications resumed.
+	 * @return void
+	 */
+	private function render_resubscribe_result( bool $changed ): void {
+		if ( ! $changed ) {
+			$this->render_result( false, 200 );
+			return;
+		}
+		$html  = '<h1>';
+		$html .= esc_html__( 'Subscription updated', 'argentwolf-post-notifier' ) . '</h1>';
+		$html .= '<p>' . esc_html__(
+			'Post notifications to this address will resume.',
+			'argentwolf-post-notifier'
+		) . '</p>';
+		$this->render_page( $html, 200 );
+	}
+
+	/**
 	 * Resolve a token to a recipient row.
 	 *
 	 * @param string $token Plaintext token.
@@ -180,8 +309,17 @@ final class RecipientUnsubscribeController implements Registerable {
 		if ( null === $row || '' === (string) ( $row['email_snapshot'] ?? '' ) ) {
 			return null;
 		}
+		/**
+		 * Filter how long after submission a campaign unsubscribe link works.
+		 *
+		 * @param int $seconds Default one year.
+		 */
+		$ttl = (int) apply_filters(
+			'argentwolf_post_notifier_recipient_token_ttl_seconds',
+			self::TOKEN_TTL_SECONDS
+		);
 
-		return $row;
+		return $this->within( $row, $ttl ) ? $row : null;
 	}
 
 	/**

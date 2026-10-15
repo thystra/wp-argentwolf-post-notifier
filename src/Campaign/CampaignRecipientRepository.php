@@ -163,7 +163,7 @@ final class CampaignRecipientRepository {
 		}
 		$query = $this->database->prepare(
 			'SELECT r.id, r.campaign_id, r.recipient_type, r.user_id, r.subscriber_id,
-				r.email_snapshot, r.email_hash, r.status
+				r.email_snapshot, r.email_hash, r.status, r.submitted_at_gmt
 			FROM %i r INNER JOIN %i c ON c.id = r.campaign_id
 			WHERE r.unsubscribe_token_hash = %s
 			AND r.personal_data_erased_at_gmt IS NULL

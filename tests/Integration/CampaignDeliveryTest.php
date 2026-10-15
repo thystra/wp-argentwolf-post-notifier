@@ -501,6 +501,81 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertNull( RecipientToken::hash_plaintext( 'ABC' ) );
 	}
 
+	public function test_campaign_link_resubscribe_expiry_and_replay(): void {
+		$subscriber = $this->subscriber( 'returner@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->worker()->run( 1 );
+		preg_match( '/token=([a-f0-9]{64})/', $this->transport->messages[0]->body(), $match );
+		$token      = $match[1];
+		$controller = new RecipientUnsubscribeController( new CampaignRecipientRepository(), $this->suppression() );
+
+		// Not suppressed: resubscribe is a no-op and the page offers only "stop".
+		self::assertFalse( $controller->resubscribe( $token ) );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		// GET (scanner) shows the resume form but changes nothing.
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET                      = array( 'token' => $token );
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_get' ) );
+		self::assertStringContainsString( 'Resume post notifications', $html );
+		self::assertStringContainsString( RecipientUnsubscribeController::INTENT_RESUBSCRIBE, $html );
+		self::assertStringNotContainsString( 'returner@example.com', $html );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		// The confirmation POST requires the nonce.
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = array(
+			'argentwolf_post_notifier_recipient_token'  => $token,
+			'argentwolf_post_notifier_recipient_intent' => RecipientUnsubscribeController::INTENT_RESUBSCRIBE,
+		);
+		$this->capture_wp_die( array( $controller, 'handle_confirm' ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		$_POST['argentwolf_post_notifier_recipient_nonce'] = wp_create_nonce(
+			'argentwolf_post_notifier_recipient_unsubscribe'
+		);
+		$_REQUEST = $_POST;
+		$html     = $this->capture_wp_die( array( $controller, 'handle_confirm' ) );
+		self::assertStringContainsString( 'will resume', $html );
+		self::assertFalse( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+		$_REQUEST = array();
+
+		// Replay after resuming is a generic failure and changes nothing.
+		self::assertFalse( $controller->resubscribe( $token ) );
+
+		// An operator suppression can never be lifted from a campaign link.
+		$this->suppression()->suppress(
+			'returner@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		self::assertFalse( $controller->resubscribe( $token ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+		$this->suppression()->resubscribe( 'returner@example.com', SuppressionService::SOURCE_SUBSCRIBER_ADMIN );
+
+		// Resubscribe expires before unsubscribe does.
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		$short = static fn (): int => -1;
+		add_filter( 'argentwolf_post_notifier_recipient_resubscribe_ttl_seconds', $short );
+		self::assertFalse( $controller->resubscribe( $token ) );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		remove_filter( 'argentwolf_post_notifier_recipient_resubscribe_ttl_seconds', $short );
+
+		// Fully expired tokens are rejected for every intent.
+		add_filter( 'argentwolf_post_notifier_recipient_token_ttl_seconds', $short );
+		self::assertFalse( $controller->unsubscribe( $token ) );
+		self::assertFalse( $controller->resubscribe( $token ) );
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		self::assertStringContainsString(
+			'invalid',
+			$this->capture_wp_die( array( $controller, 'handle_get' ) )
+		);
+		remove_filter( 'argentwolf_post_notifier_recipient_token_ttl_seconds', $short );
+	}
+
 	public function test_message_builder_rejects_unfrozen_content(): void {
 		$builder = new RecipientMessageBuilder( $this->composer() );
 		$this->expectException( \InvalidArgumentException::class );
