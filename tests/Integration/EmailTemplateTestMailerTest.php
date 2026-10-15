@@ -47,8 +47,8 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_submission_is_labeled_and_isolated(): void {
-		$user_id = $this->administrator();
-		$post_id = self::factory()->post->create(
+		$user_id             = $this->administrator();
+		$post_id             = self::factory()->post->create(
 			array(
 				'post_status'  => 'publish',
 				'post_title'   => 'Sample Post',
@@ -57,13 +57,13 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 					. '<!-- wp:paragraph --><p>DO NOT INCLUDE</p><!-- /wp:paragraph -->',
 			)
 		);
-		$settings = new EmailTemplateSettings();
-		$before   = $settings->get();
-		$override = $before;
+		$settings            = new EmailTemplateSettings();
+		$before              = $settings->get();
+		$override            = $before;
 		$override['subject'] = 'Unsaved {{post_title}}';
-		$transport = $this->transport( true );
-		$reserved = 0;
-		$reservation = static function () use ( &$reserved ): void {
+		$transport           = $this->transport( true );
+		$reserved            = 0;
+		$reservation         = static function () use ( &$reserved ): void {
 			++$reserved;
 		};
 		add_action( 'argentwolf_post_notifier_campaign_reservation_resolved', $reservation );
@@ -90,6 +90,8 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 
 		$unrelated = (object) array( 'AltBody' => 'unrelated' );
 		do_action( 'phpmailer_init', $unrelated );
+		// PHPMailer's public property name is fixed upstream.
+		// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 		self::assertSame( 'unrelated', $unrelated->AltBody );
 	}
 
@@ -101,8 +103,8 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 	public function test_cooldown_and_failure(): void {
 		$user_id = $this->administrator();
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$failed = $this->transport( false );
-		$sent = $this->transport( true );
+		$failed  = $this->transport( false );
+		$sent    = $this->transport( true );
 		try {
 			self::assertFalse( $this->sender( $failed )->send( $post_id )->is_submitted() );
 			self::assertTrue( $this->sender( $sent )->send( $post_id )->is_submitted() );
@@ -124,13 +126,13 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 	 */
 	public function test_permissions_and_invalid_inputs_reject_without_send(): void {
 		$this->administrator();
-		$transport = $this->transport( true );
-		$sender = $this->sender( $transport );
-		$draft = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$published = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$bad_settings = ( new EmailTemplateSettings() )->defaults();
+		$transport               = $this->transport( true );
+		$sender                  = $this->sender( $transport );
+		$draft                   = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$published               = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$bad_settings            = ( new EmailTemplateSettings() )->defaults();
 		$bad_settings['subject'] = "Bad\r\nBcc: sample@example.com";
-		$invalid = 0;
+		$invalid                 = 0;
 		foreach ( array( array( $draft, null ), array( $published, $bad_settings ) ) as $fixture ) {
 			try {
 				$sender->send( $fixture[0], $fixture[1] );
@@ -181,15 +183,26 @@ final class EmailTemplateTestMailerTest extends WP_UnitTestCase {
 			/** @var string Last captured plain-text alternative. */
 			public string $alternate = '';
 
-			/** Set up a captured transport. */
+			/**
+			 * Set up a captured transport.
+			 *
+			 * @param bool $submitted Whether sends succeed.
+			 */
 			public function __construct( private bool $submitted ) {
 			}
 
-			/** Submit and capture a message. */
+			/**
+			 * Submit and capture a message.
+			 *
+			 * @param MailMessage $message Message.
+			 * @return DeliveryResult
+			 */
 			public function send( MailMessage $message ): DeliveryResult {
 				$this->messages[] = $message;
-				$mailer = (object) array( 'AltBody' => '' );
+				$mailer           = (object) array( 'AltBody' => '' );
 				do_action( 'phpmailer_init', $mailer );
+				// PHPMailer's public property name is fixed upstream.
+				// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				$this->alternate = $mailer->AltBody;
 				return $this->submitted ? DeliveryResult::submitted() : DeliveryResult::failed();
 			}

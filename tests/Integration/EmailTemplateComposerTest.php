@@ -108,8 +108,12 @@ final class EmailTemplateComposerTest extends WP_UnitTestCase {
 	 */
 	public function test_required_urls_are_fail_closed(): void {
 		$links = $this->links();
-		foreach ( array( '', 'https://outside.invalid/unsubscribe', 'javascript:alert(1)',
-			'http://user:secret@example.org/path', '//outside.invalid/path',
+		foreach ( array(
+			'',
+			'https://outside.invalid/unsubscribe',
+			'javascript:alert(1)',
+			'http://user:secret@example.org/path',
+			'//outside.invalid/path',
 		) as $invalid ) {
 			try {
 				$this->composer()->compose(

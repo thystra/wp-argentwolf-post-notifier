@@ -37,4 +37,4 @@ final class ContainerTest extends TestCase {
 	}
 }
 
-// EOF: tests/Unit/ContainerTest.php
+// EOF: tests/Unit/ContainerTest.php.

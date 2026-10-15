@@ -40,6 +40,8 @@ final class DataCleanupTest extends WP_UnitTestCase {
 		$remaining = array_map(
 			'intval',
 			$wpdb->get_col(
+				// Five IDs fill the five %d placeholders through the spread below.
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 				$wpdb->prepare(
 					'SELECT id FROM %i WHERE id IN ( %d, %d, %d, %d, %d ) ORDER BY id ASC',
 					$table,
@@ -54,7 +56,7 @@ final class DataCleanupTest extends WP_UnitTestCase {
 	public function test_click_cleanup_is_bounded_by_cutoff(): void {
 		global $wpdb;
 
-		$tables      = TableNames::from_database( $wpdb );
+		$tables       = TableNames::from_database( $wpdb );
 		$recipient_id = $this->insert_campaign_recipient( '2026-01-01 00:00:00' );
 		$clicks       = $tables->clicks();
 		$old_ids      = array(
@@ -202,16 +204,16 @@ final class DataCleanupTest extends WP_UnitTestCase {
 		$wpdb->insert(
 			$table,
 			array(
-				'campaign_id'          => $campaign_id,
-				'recipient_uuid'       => $uuid,
-				'recipient_type'       => 'user',
-				'user_id'              => 123,
-				'email_snapshot'        => $email,
+				'campaign_id'            => $campaign_id,
+				'recipient_uuid'         => $uuid,
+				'recipient_type'         => 'user',
+				'user_id'                => 123,
+				'email_snapshot'         => $email,
 				'email_hash'             => hash( 'sha256', $email ),
 				'unsubscribe_token_hash' => hash( 'sha256', 'unsubscribe:' . $uuid ),
 				'click_token_hash'       => hash( 'sha256', 'click:' . $uuid ),
-				'display_name_snapshot' => 'Example Person',
-				'status'                => 'submitted',
+				'display_name_snapshot'  => 'Example Person',
+				'status'                 => 'submitted',
 			)
 		);
 
@@ -230,8 +232,8 @@ final class DataCleanupTest extends WP_UnitTestCase {
 			$table,
 			array(
 				'campaign_recipient_id' => $recipient_id,
-				'clicked_at_gmt'         => $clicked_at,
-				'destination_kind'       => 'post',
+				'clicked_at_gmt'        => $clicked_at,
+				'destination_kind'      => 'post',
 			)
 		);
 

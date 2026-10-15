@@ -48,8 +48,8 @@ final class CampaignInputCaptureTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_publication_captures_site_defaults_and_leaves_building_shell(): void {
-		$settings = new EmailTemplateSettings();
-		$fields   = $settings->defaults();
+		$settings          = new EmailTemplateSettings();
+		$fields            = $settings->defaults();
 		$fields['subject'] = 'Site: {{post_title}}';
 		$settings->save( $fields );
 		( new EmailExcerptSettings() )->save( 72 );
@@ -82,11 +82,11 @@ final class CampaignInputCaptureTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_named_template_is_frozen_when_published(): void {
-		$templates = new EmailTemplateSettings();
-		$fields    = $templates->defaults();
+		$templates         = new EmailTemplateSettings();
+		$fields            = $templates->defaults();
 		$fields['subject'] = 'Named: {{post_title}}';
-		$named = new EmailNamedTemplateLibrary( $templates );
-		$id    = $named->create( 'Newsletter variant', $fields );
+		$named             = new EmailNamedTemplateLibrary( $templates );
+		$id                = $named->create( 'Newsletter variant', $fields );
 
 		$post_id = $this->draft();
 		update_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, $id );
@@ -113,9 +113,9 @@ final class CampaignInputCaptureTest extends WP_UnitTestCase {
 		// Re-entry after named-template deletion must honor the frozen document.
 		$post = get_post( $post_id );
 		self::assertInstanceOf( WP_Post::class, $post );
-		$before = clone $post;
+		$before              = clone $post;
 		$before->post_status = 'draft';
-		$observer = Plugin::instance()->container()->get( PublicationObserver::class );
+		$observer            = Plugin::instance()->container()->get( PublicationObserver::class );
 		self::assertInstanceOf( PublicationObserver::class, $observer );
 		$observer->observe_publication( $post_id, $post, true, $before );
 		self::assertSame( $frozen, $store->read( (int) $row['id'] ) );
@@ -137,10 +137,10 @@ final class CampaignInputCaptureTest extends WP_UnitTestCase {
 		self::assertNotNull( $frozen );
 		$post = get_post( $post_id );
 		self::assertInstanceOf( WP_Post::class, $post );
-		$post->post_content = 'Uncommitted changed body';
-		$before = clone $post;
+		$post->post_content  = 'Uncommitted changed body';
+		$before              = clone $post;
 		$before->post_status = 'draft';
-		$observer = Plugin::instance()->container()->get( PublicationObserver::class );
+		$observer            = Plugin::instance()->container()->get( PublicationObserver::class );
 		self::assertInstanceOf( PublicationObserver::class, $observer );
 		$observer->observe_publication( $post_id, $post, true, $before );
 		self::assertSame( $frozen, $store->read( (int) $row['id'] ) );

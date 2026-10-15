@@ -16,7 +16,13 @@ use RuntimeException;
 
 final class RegisteredUserEligibilityTest extends TestCase {
 	/**
+	 * Each verification status maps to eligibility and a skip reason.
+	 *
 	 * @dataProvider provide_statuses
+	 *
+	 * @param VerificationStatus $status      Provider status.
+	 * @param bool               $eligible    Expected eligibility.
+	 * @param string|null        $skip_reason Expected skip reason.
 	 */
 	public function test_eligibility_and_skip_reasons(
 		VerificationStatus $status,

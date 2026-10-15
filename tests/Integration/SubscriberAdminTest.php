@@ -144,11 +144,11 @@ final class SubscriberAdminTest extends WP_UnitTestCase {
 	}
 
 	public function test_csv_export_obeys_filters_and_neutralizes_formula_cells(): void {
-		$service  = $this->subscriber_service();
-		$admin    = $this->admin_repository();
-		$exporter = new SubscriberCsvExporter( $admin );
-		$start    = $this->utc( '2026-09-26 10:00:00' );
-		$signup   = $service->request_confirmation(
+		$service    = $this->subscriber_service();
+		$admin      = $this->admin_repository();
+		$exporter   = new SubscriberCsvExporter( $admin );
+		$start      = $this->utc( '2026-09-26 10:00:00' );
+		$signup     = $service->request_confirmation(
 			'formula@example.com',
 			'=SUM(1,1)',
 			'Consent snapshot',
@@ -158,7 +158,7 @@ final class SubscriberAdminTest extends WP_UnitTestCase {
 		);
 		$token_hash = hash( 'sha256', (string) $signup->confirmation_token() );
 
-		$csv = implode(
+		$csv   = implode(
 			'',
 			iterator_to_array(
 				$exporter->lines( SubscriberStatus::Pending, 'formula@example.com' )

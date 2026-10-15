@@ -119,42 +119,42 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 		}
 	}
 
-      public function test_schema_one_upgrades_to_schema_two(): void {
-              global $wpdb;
+	public function test_schema_one_upgrades_to_schema_two(): void {
+			global $wpdb;
 
-              $table     = TableNames::from_database( $wpdb )->audit_events();
-              $inspector = new SchemaInspector( $wpdb );
+			$table     = TableNames::from_database( $wpdb )->audit_events();
+			$inspector = new SchemaInspector( $wpdb );
 
-	/*
-	 * WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
-	 * TEMPORARY equivalents inside each test transaction. Schema-upgrade
-	 * qualification must exercise the production DDL against permanent tables.
-	 */
-              self::commit_transaction();
-              remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
-              remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
-
-              try {
-                  $wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
-		  self::assertFalse( $inspector->table_exists( $table ) );
-		  update_option( SchemaMigrator::SCHEMA_OPTION, '1', false );
-
-		  ( new SchemaMigrator( $wpdb ) )->migrate();
-
-		  self::assertSame(
-		      Version::SCHEMA,
-		      get_option( SchemaMigrator::SCHEMA_OPTION )
-		);
-		self::assertTrue( $inspector->table_exists( $table ) );
-              } finally {
-		  try {
-			( new SchemaMigrator( $wpdb ) )->migrate();
+		/*
+		* WP_UnitTestCase rewrites CREATE TABLE and DROP TABLE queries to their
+		* TEMPORARY equivalents inside each test transaction. Schema-upgrade
+		* qualification must exercise the production DDL against permanent tables.
+		*/
 			self::commit_transaction();
-		  } finally {
-			$this->start_transaction();
-		            }
-	          }
-              }
+			remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+			remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+
+		try {
+			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
+			self::assertFalse( $inspector->table_exists( $table ) );
+			update_option( SchemaMigrator::SCHEMA_OPTION, '1', false );
+
+			( new SchemaMigrator( $wpdb ) )->migrate();
+
+			self::assertSame(
+				Version::SCHEMA,
+				get_option( SchemaMigrator::SCHEMA_OPTION )
+			);
+			self::assertTrue( $inspector->table_exists( $table ) );
+		} finally {
+			try {
+				( new SchemaMigrator( $wpdb ) )->migrate();
+				self::commit_transaction();
+			} finally {
+				$this->start_transaction();
+			}
+		}
+	}
 
 	/**
 	 * Schema three adds the recipient lease-token column to an existing schema-two table.
@@ -221,7 +221,7 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 		$tables = TableNames::from_database( $wpdb );
 		$table  = $tables->campaigns();
 
-		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `completed_at_gmt`" );
+		$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i DROP INDEX `completed_at_gmt`', $table ) );
 		self::assertNotContains(
 			'completed_at_gmt',
 			( new SchemaInspector( $wpdb ) )->indexes( $table )
@@ -313,7 +313,9 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 
 		$tables = TableNames::from_database( $wpdb );
 		$table  = $tables->campaign_recipients();
-		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `personal_data_erased_at_gmt`" );
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i DROP INDEX `personal_data_erased_at_gmt`', $table )
+		);
 		update_option( SchemaMigrator::SCHEMA_OPTION, Version::SCHEMA, false );
 		update_option( 'argentwolf_post_notifier_version', '0.1.0-alpha.2', false );
 

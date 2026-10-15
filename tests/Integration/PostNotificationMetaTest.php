@@ -264,7 +264,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_editor_configuration_survives_save_and_reload(): void {
-		$post_id = self::factory()->post->create(
+		$post_id       = self::factory()->post->create(
 			array( 'post_status' => 'draft' )
 		);
 		$configuration = $this->notification_configuration();
@@ -285,7 +285,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_scheduled_post_edits_preserve_configuration_without_campaign_state(): void {
-		$post_id = self::factory()->post->create(
+		$post_id       = self::factory()->post->create(
 			array( 'post_status' => 'draft' )
 		);
 		$configuration = $this->notification_configuration();
@@ -310,10 +310,10 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 		$this->assert_configuration_reloaded( $post_id, $configuration );
 		$this->assert_no_campaign_state();
 
-		$configuration[ PostNotificationMeta::SEND_INTENT_KEY ] = SendIntent::DoNotSend->value;
-		$configuration[ PostNotificationMeta::CONTENT_MODE_KEY ] = ContentMode::Excerpt->value;
-		$configuration[ PostNotificationMeta::TEMPLATE_ID_KEY ] = 0;
-		$configuration[ PostNotificationMeta::CTA_TEXT_KEY ] = 'Updated scheduled CTA';
+		$configuration[ PostNotificationMeta::SEND_INTENT_KEY ]                          = SendIntent::DoNotSend->value;
+		$configuration[ PostNotificationMeta::CONTENT_MODE_KEY ]                         = ContentMode::Excerpt->value;
+		$configuration[ PostNotificationMeta::TEMPLATE_ID_KEY ]                          = 0;
+		$configuration[ PostNotificationMeta::CTA_TEXT_KEY ]                             = 'Updated scheduled CTA';
 		$configuration[ PostNotificationMeta::AUDIENCE_CONFIG_KEY ]['excluded_user_ids'] = array(
 			6,
 			11,
@@ -339,7 +339,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_revision_preserves_notification_metadata_without_campaign_state(): void {
-		$post_id = self::factory()->post->create(
+		$post_id       = self::factory()->post->create(
 			array( 'post_status' => 'draft' )
 		);
 		$configuration = $this->notification_configuration();
@@ -519,7 +519,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 
 		$tables = TableNames::from_database( $wpdb );
 
-		$campaign_count = (int) $wpdb->get_var(
+		$campaign_count  = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				'SELECT COUNT(*) FROM %i',
 				$tables->campaigns()

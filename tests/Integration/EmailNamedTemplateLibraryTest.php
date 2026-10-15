@@ -60,7 +60,10 @@ final class EmailNamedTemplateLibraryTest extends WP_UnitTestCase {
 		$choices = $catalog->choices();
 		self::assertSame( 0, $choices[0]['value'] );
 		self::assertContains(
-			array( 'value' => $first, 'label' => 'Afternoon digest' ),
+			array(
+				'value' => $first,
+				'label' => 'Afternoon digest',
+			),
 			$choices
 		);
 
@@ -69,7 +72,10 @@ final class EmailNamedTemplateLibraryTest extends WP_UnitTestCase {
 		$second = $library->create( 'Second template', $this->fields() );
 		self::assertSame( $first + 1, $second );
 		self::assertNotContains(
-			array( 'value' => $first, 'label' => 'Afternoon digest' ),
+			array(
+				'value' => $first,
+				'label' => 'Afternoon digest',
+			),
 			$catalog->choices()
 		);
 	}
@@ -80,17 +86,29 @@ final class EmailNamedTemplateLibraryTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_invalid_inputs_fail_without_mutation(): void {
-		$library = $this->library();
-		$id      = $library->create( 'Original', $this->fields() );
-		$before  = get_option( EmailNamedTemplateLibrary::OPTION );
-		$cases   = array(
-			array( 'name' => '', 'fields' => $this->fields() ),
-			array( 'name' => 'Bad {{token}}', 'fields' => $this->fields() ),
-			array( 'name' => str_repeat( 'n', 81 ), 'fields' => $this->fields() ),
+		$library                  = $this->library();
+		$id                       = $library->create( 'Original', $this->fields() );
+		$before                   = get_option( EmailNamedTemplateLibrary::OPTION );
+		$cases                    = array(
+			array(
+				'name'   => '',
+				'fields' => $this->fields(),
+			),
+			array(
+				'name'   => 'Bad {{token}}',
+				'fields' => $this->fields(),
+			),
+			array(
+				'name'   => str_repeat( 'n', 81 ),
+				'fields' => $this->fields(),
+			),
 		);
 		$unknown_token            = $this->fields();
 		$unknown_token['subject'] = '{{wp_eval}}';
-		$cases[]                  = array( 'name' => 'Unsafe token', 'fields' => $unknown_token );
+		$cases[]                  = array(
+			'name'   => 'Unsafe token',
+			'fields' => $unknown_token,
+		);
 		foreach ( $cases as $case ) {
 			try {
 				$library->update( $id, $case['name'], $case['fields'] );
@@ -134,8 +152,14 @@ final class EmailNamedTemplateLibraryTest extends WP_UnitTestCase {
 		$library = $this->library();
 		$id      = $library->create( 'Trusted name', $this->fields() );
 		$filter  = static function ( array $candidates ) use ( $id ): array {
-			$candidates[] = array( 'id' => $id, 'label' => 'Impersonated' );
-			$candidates[] = array( 'id' => 17, 'label' => 'External choice' );
+			$candidates[] = array(
+				'id'    => $id,
+				'label' => 'Impersonated',
+			);
+			$candidates[] = array(
+				'id'    => 17,
+				'label' => 'External choice',
+			);
 			return $candidates;
 		};
 		add_filter( EditorTemplateCatalog::FILTER, $filter );
@@ -144,9 +168,27 @@ final class EmailNamedTemplateLibraryTest extends WP_UnitTestCase {
 		} finally {
 			remove_filter( EditorTemplateCatalog::FILTER, $filter );
 		}
-		self::assertContains( array( 'value' => $id, 'label' => 'Trusted name' ), $choices );
-		self::assertContains( array( 'value' => 17, 'label' => 'External choice' ), $choices );
-		self::assertNotContains( array( 'value' => $id, 'label' => 'Impersonated' ), $choices );
+		self::assertContains(
+			array(
+				'value' => $id,
+				'label' => 'Trusted name',
+			),
+			$choices
+		);
+		self::assertContains(
+			array(
+				'value' => 17,
+				'label' => 'External choice',
+			),
+			$choices
+		);
+		self::assertNotContains(
+			array(
+				'value' => $id,
+				'label' => 'Impersonated',
+			),
+			$choices
+		);
 	}
 
 	/**

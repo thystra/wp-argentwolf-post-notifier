@@ -30,7 +30,8 @@ final class CampaignDiagnosticsTest extends TestCase {
 
 	public function test_success_log_is_an_id_only_reservation_resolution(): void {
 		self::assertSame(
-			'[ArgentWolf Post Notifier] event=campaign_reservation_resolved site_id=2 post_id=51 campaign_id=11 status=building',
+			'[ArgentWolf Post Notifier] event=campaign_reservation_resolved site_id=2 post_id=51'
+				. ' campaign_id=11 status=building',
 			CampaignDiagnostics::resolved_line( 2, 51, 11 )
 		);
 	}

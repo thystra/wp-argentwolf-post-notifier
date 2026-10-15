@@ -68,7 +68,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_get_is_display_only_for_subscribed_address(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$_GET['token']             = $manage_token;
@@ -83,14 +83,14 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_valid_post_unsubscribes_globally(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$_GET['token']             = $manage_token;
 		$get_html                  = $this->capture_wp_die(
 			static fn () => $controller->handle_get()
 		);
-		$nonce = $this->hidden_value( $get_html, 'argentwolf_post_notifier_manage_nonce' );
+		$nonce                     = $this->hidden_value( $get_html, 'argentwolf_post_notifier_manage_nonce' );
 
 		$_GET                      = array();
 		$_SERVER['REQUEST_METHOD'] = 'POST';
@@ -115,7 +115,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_verified_post_can_remove_same_source_suppression(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 		self::assertTrue( $service->unsubscribe_managed( $manage_token ) );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
@@ -145,7 +145,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_invalid_nonce_does_not_unsubscribe(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST                     = array(
@@ -165,7 +165,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_administrator_suppression_is_not_offered_for_resubscribe(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 		$suppression->suppress(
 			'person@example.com',
 			SuppressionService::REASON_MANUAL,
@@ -214,7 +214,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 			'I agree to receive post notifications.',
 			'block'
 		);
-		$token = $service->confirm_with_management(
+		$token  = $service->confirm_with_management(
 			(string) $signup->confirmation_token()
 		);
 		self::assertNotNull( $token );

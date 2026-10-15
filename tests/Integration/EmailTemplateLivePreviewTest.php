@@ -36,18 +36,18 @@ final class EmailTemplateLivePreviewTest extends WP_UnitTestCase {
 	 */
 	public function test_preview_unsaved_fields_without_side_effects(): void {
 		$this->administrator();
-		$settings = new EmailTemplateSettings();
-		$saved = $settings->defaults();
+		$settings         = new EmailTemplateSettings();
+		$saved            = $settings->defaults();
 		$saved['subject'] = 'Stored subject';
 		$settings->save( $saved );
-		$unsaved = $saved;
+		$unsaved            = $saved;
 		$unsaved['subject'] = 'Unsaved {{post_title}}';
 		$unsaved['heading'] = 'Edited {{post_title}}';
-		$unsaved['before'] = 'Fresh editor copy';
-		$post_id = self::factory()->post->create(
+		$unsaved['before']  = 'Fresh editor copy';
+		$post_id            = self::factory()->post->create(
 			array(
-				'post_status' => 'publish',
-				'post_title' => 'Example',
+				'post_status'  => 'publish',
+				'post_title'   => 'Example',
 				'post_content' => '<!-- wp:paragraph --><p>Visible</p><!-- /wp:paragraph -->'
 					. '<!-- wp:argentwolf-post-notifier/email-cutoff /-->'
 					. '<!-- wp:paragraph --><p>Hidden</p><!-- /wp:paragraph -->',
@@ -55,9 +55,9 @@ final class EmailTemplateLivePreviewTest extends WP_UnitTestCase {
 		);
 		update_post_meta( $post_id, PostNotificationMeta::CONTENT_MODE_KEY, 'site_default' );
 
-		$sent = 0;
-		$reserved = 0;
-		$mail_filter = static function ( $result ) use ( &$sent ) {
+		$sent            = 0;
+		$reserved        = 0;
+		$mail_filter     = static function ( $result ) use ( &$sent ) {
 			++$sent;
 			return $result;
 		};
@@ -68,7 +68,7 @@ final class EmailTemplateLivePreviewTest extends WP_UnitTestCase {
 		add_action( 'argentwolf_post_notifier_campaign_reservation_resolved', $campaign_action );
 		try {
 			$preview = $this->service()->preview( $post_id, $unsaved );
-			$normal = $this->service()->preview( $post_id );
+			$normal  = $this->service()->preview( $post_id );
 		} finally {
 			remove_filter( 'pre_wp_mail', $mail_filter );
 			remove_action( 'argentwolf_post_notifier_campaign_reservation_resolved', $campaign_action );
@@ -94,7 +94,7 @@ final class EmailTemplateLivePreviewTest extends WP_UnitTestCase {
 	public function test_invalid_unsaved_fields_are_rejected(): void {
 		$this->administrator();
 		$settings = new EmailTemplateSettings();
-		$saved = $settings->defaults();
+		$saved    = $settings->defaults();
 		$settings->save( $saved );
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$invalid = array(
@@ -124,8 +124,9 @@ final class EmailTemplateLivePreviewTest extends WP_UnitTestCase {
 		try {
 			$this->service()->preview( $post_id, ( new EmailTemplateSettings() )->defaults() );
 			self::fail( 'Draft post was previewed.' );
-		} catch ( InvalidArgumentException ) {
-				// Expected: drafts are ineligible regardless of supplied template fields.
+		} catch ( InvalidArgumentException $exception ) {
+			// Expected: drafts are ineligible regardless of supplied template fields.
+			self::assertNotSame( '', $exception->getMessage() );
 		}
 		$published = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );

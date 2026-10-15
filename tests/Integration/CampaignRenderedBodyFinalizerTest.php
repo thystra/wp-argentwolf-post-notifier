@@ -45,17 +45,17 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_first_write_uses_frozen_source_and_never_adds_preview_links(): void {
-		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$id      = $this->reserve( $post_id );
-		$input   = $this->input( $post_id );
-		$input['site_name'] = 'Old site name';
-		$input['post_content'] = '<!-- wp:paragraph --><p>Frozen article.</p><!-- /wp:paragraph -->';
+		$post_id                             = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$id                                  = $this->reserve( $post_id );
+		$input                               = $this->input( $post_id );
+		$input['site_name']                  = 'Old site name';
+		$input['post_content']               = '<!-- wp:paragraph --><p>Frozen article.</p><!-- /wp:paragraph -->';
 		$input['template_fields']['subject'] = 'Frozen: {{site_name}} / {{post_title}}';
 		$input['template_fields']['before']  = 'Original introduction';
-		$store   = new CampaignContentSnapshotStore();
+		$store                               = new CampaignContentSnapshotStore();
 		self::assertTrue( $store->freeze( $id, $input ) );
 
-		$composer = new EmailTemplateComposer(
+		$composer  = new EmailTemplateComposer(
 			new EmailContentRenderer( new EmailContentSelector() )
 		);
 		$expected  = $composer->compose_campaign_body( $input );
@@ -76,11 +76,16 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 
 		// Modifying everything live cannot rewrite either frozen message body.
 		update_option( 'blogname', 'New site name' );
-		$settings = new EmailTemplateSettings();
-		$changed = $settings->defaults();
+		$settings           = new EmailTemplateSettings();
+		$changed            = $settings->defaults();
 		$changed['subject'] = 'Changed subject';
 		$settings->save( $changed );
-		wp_update_post( array( 'ID' => $post_id, 'post_title' => 'Edited title' ) );
+		wp_update_post(
+			array(
+				'ID'         => $post_id,
+				'post_title' => 'Edited title',
+			)
+		);
 		self::assertFalse( $finalizer->finalize( $id ) );
 		self::assertSame( $row['subject'], $this->campaign( $post_id )['subject'] );
 		self::assertSame( $row['html_body'], $this->campaign( $post_id )['html_body'] );
@@ -97,9 +102,9 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 		$composer = new EmailTemplateComposer(
 			new EmailContentRenderer( new EmailContentSelector() )
 		);
-		$post = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$input = $this->input( $post );
-		$preview = $composer->compose(
+		$post     = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$input    = $this->input( $post );
+		$preview  = $composer->compose(
 			$input['post_content'],
 			$input['post_title'],
 			$input['post_url'],
@@ -111,7 +116,7 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 			$input['excerpt_words'],
 			$input['template_fields']
 		);
-		$body = $composer->compose_campaign_body( $input );
+		$body     = $composer->compose_campaign_body( $input );
 		self::assertStringContainsString( 'test_unsubscribe=1', $preview['html'] );
 		self::assertStringContainsString( 'test_manage=1', $preview['text'] );
 		self::assertStringNotContainsString( 'test_unsubscribe=1', $body['html'] );
@@ -126,8 +131,8 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 	 */
 	public function test_missing_input_returns_false_and_corruption_fails_closed(): void {
 		global $wpdb;
-		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$id = $this->reserve( $post_id );
+		$post_id   = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$id        = $this->reserve( $post_id );
 		$finalizer = new CampaignRenderedBodyFinalizer();
 		self::assertFalse( $finalizer->finalize( $id ) );
 		$tables = TableNames::from_database( $wpdb );
@@ -151,7 +156,7 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 	public function test_nonbuilding_and_existing_bodies_are_not_overwritten(): void {
 		global $wpdb;
 		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$id = $this->reserve( $post_id );
+		$id      = $this->reserve( $post_id );
 		self::assertTrue(
 			( new CampaignContentSnapshotStore() )->freeze( $id, $this->input( $post_id ) )
 		);
@@ -166,7 +171,10 @@ final class CampaignRenderedBodyFinalizerTest extends WP_UnitTestCase {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
 			$tables->campaigns(),
-			array( 'status' => 'building', 'subject' => 'Existing subject' ),
+			array(
+				'status'  => 'building',
+				'subject' => 'Existing subject',
+			),
 			array( 'id' => $id )
 		);
 		// phpcs:enable

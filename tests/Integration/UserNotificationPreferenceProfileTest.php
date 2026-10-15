@@ -69,7 +69,7 @@ final class UserNotificationPreferenceProfileTest extends WP_UnitTestCase {
 			$_POST[ UserNotificationPreferenceProfile::NONCE_FIELD ] = wp_create_nonce(
 				UserNotificationPreferenceProfile::NONCE_ACTION . ':' . $user_id
 			);
-			$_POST[ UserNotificationPreferenceProfile::FIELD_NAME ] = $preference->value;
+			$_POST[ UserNotificationPreferenceProfile::FIELD_NAME ]  = $preference->value;
 			$profile->save( $user_id );
 
 			self::assertSame( $preference, $preferences->get( $user_id ) );

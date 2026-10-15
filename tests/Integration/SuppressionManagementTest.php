@@ -100,9 +100,9 @@ final class SuppressionManagementTest extends WP_UnitTestCase {
 	public function test_confirmed_subscriber_receives_management_token(): void {
 		global $wpdb;
 
-		$service = $this->service();
-		$now     = $this->utc( '2026-09-26 14:00:00' );
-		$signup  = $service->request_confirmation(
+		$service      = $this->service();
+		$now          = $this->utc( '2026-09-26 14:00:00' );
+		$signup       = $service->request_confirmation(
 			'person@example.com',
 			null,
 			'Consent',
@@ -140,9 +140,9 @@ final class SuppressionManagementTest extends WP_UnitTestCase {
 	public function test_management_unsubscribe_and_verified_resubscribe(): void {
 		global $wpdb;
 
-		$service = $this->service();
-		$now     = $this->utc( '2026-09-26 14:00:00' );
-		$signup  = $service->request_confirmation(
+		$service      = $this->service();
+		$now          = $this->utc( '2026-09-26 14:00:00' );
+		$signup       = $service->request_confirmation(
 			'person@example.com',
 			null,
 			'Consent',
@@ -204,9 +204,9 @@ final class SuppressionManagementTest extends WP_UnitTestCase {
 	}
 
 	public function test_administrator_suppression_cannot_be_removed_by_old_manage_link(): void {
-		$service = $this->service();
-		$now     = $this->utc( '2026-09-26 14:00:00' );
-		$signup  = $service->request_confirmation(
+		$service      = $this->service();
+		$now          = $this->utc( '2026-09-26 14:00:00' );
+		$signup       = $service->request_confirmation(
 			'person@example.com',
 			null,
 			'Consent',

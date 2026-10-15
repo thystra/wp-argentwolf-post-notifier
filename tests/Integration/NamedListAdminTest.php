@@ -164,20 +164,20 @@ final class NamedListAdminTest extends WP_UnitTestCase {
 	public function test_list_membership_does_not_resubscribe_or_unsuppress(): void {
 		global $wpdb;
 
-		$repository = $this->repository();
-		$identity   = new EmailIdentity();
+		$repository  = $this->repository();
+		$identity    = new EmailIdentity();
 		$suppression = new SuppressionService(
 			new SuppressionRepository( $wpdb ),
 			$identity
 		);
-		$service = new SubscriberService(
+		$service     = new SubscriberService(
 			new SubscriberRepository( $wpdb ),
 			$identity,
 			$suppression
 		);
-		$admin = new SubscriberAdminRepository( $wpdb );
-		$now   = $this->utc( '2026-09-26 16:00:00' );
-		$signup = $service->request_confirmation(
+		$admin       = new SubscriberAdminRepository( $wpdb );
+		$now         = $this->utc( '2026-09-26 16:00:00' );
+		$signup      = $service->request_confirmation(
 			'suppressed@example.com',
 			null,
 			'Consent',
@@ -212,7 +212,7 @@ final class NamedListAdminTest extends WP_UnitTestCase {
 		);
 		self::assertTrue( $suppression->is_suppressed( 'suppressed@example.com' ) );
 
-		$table = TableNames::from_database( $wpdb )->subscribers();
+		$table  = TableNames::from_database( $wpdb )->subscribers();
 		$status = $wpdb->get_var(
 			$wpdb->prepare(
 				'SELECT status FROM %i WHERE id = %d',

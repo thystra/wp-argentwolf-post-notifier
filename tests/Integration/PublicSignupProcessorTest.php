@@ -95,7 +95,7 @@ final class PublicSignupProcessorTest extends WP_UnitTestCase {
 		$allowed   = $this->processor( $transport, true );
 		$denied    = $this->processor( $transport, false );
 
-		$honeypot = $allowed->process(
+		$honeypot     = $allowed->process(
 			new PublicSignupRequest(
 				'bot@example.com',
 				null,

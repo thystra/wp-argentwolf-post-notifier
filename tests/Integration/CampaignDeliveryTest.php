@@ -279,7 +279,9 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		$second  = $this->subscriber( 'two@example.com' );
 		$post_id = $this->publish(
 			array( 'included_subscriber_ids' => array( $first, $second ) ),
-			'<!-- wp:paragraph --><p>Lead.</p><!-- /wp:paragraph --><!-- wp:argentwolf-post-notifier/email-cutoff /--><!-- wp:paragraph --><p>Hidden tail.</p><!-- /wp:paragraph -->'
+			'<!-- wp:paragraph --><p>Lead.</p><!-- /wp:paragraph -->'
+				. '<!-- wp:argentwolf-post-notifier/email-cutoff /-->'
+				. '<!-- wp:paragraph --><p>Hidden tail.</p><!-- /wp:paragraph -->'
 		);
 		$id      = (int) $this->campaign_for( $post_id )['id'];
 		$this->preparation()->prepare( $id );
@@ -527,7 +529,8 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 
 		// The confirmation POST requires the nonce.
 		$_SERVER['REQUEST_METHOD'] = 'POST';
-		preg_match( '/name="' . RecipientUnsubscribeController::BINDING_FIELD . '" value="([a-f0-9]{64})"/', $html, $bound );
+		$field                     = RecipientUnsubscribeController::BINDING_FIELD;
+		preg_match( '/name="' . $field . '" value="([a-f0-9]{64})"/', $html, $bound );
 		self::assertSame( $controller->current_binding( $token ), $bound[1] );
 		$_POST = array(
 			'argentwolf_post_notifier_recipient_token'    => $token,

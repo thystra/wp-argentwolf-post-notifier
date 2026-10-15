@@ -26,7 +26,13 @@ final class PublicationSiteHealthTest extends WP_UnitTestCase {
 		$health = Plugin::instance()->container()->get( PublicationSiteHealth::class );
 		self::assertInstanceOf( PublicationSiteHealth::class, $health );
 
-		$tests = apply_filters( 'site_status_tests', array( 'direct' => array(), 'async' => array() ) );
+		$tests = apply_filters(
+			'site_status_tests',
+			array(
+				'direct' => array(),
+				'async'  => array(),
+			)
+		);
 		self::assertArrayHasKey( 'argentwolf_post_notifier_overdue_scheduled_posts', $tests['direct'] );
 		self::assertArrayHasKey( 'argentwolf_post_notifier_queue_wakeups', $tests['direct'] );
 		self::assertSame(
@@ -94,7 +100,7 @@ final class PublicationSiteHealthTest extends WP_UnitTestCase {
 	private function create_scheduled_post( string $intent, int $offset ): int {
 		global $wpdb;
 
-		$future = gmdate( 'Y-m-d H:i:s', time() + 3600 );
+		$future  = gmdate( 'Y-m-d H:i:s', time() + 3600 );
 		$post_id = self::factory()->post->create(
 			array(
 				'post_status'   => 'future',

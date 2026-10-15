@@ -70,10 +70,10 @@ final class CapabilityTest extends WP_UnitTestCase {
 			'arpn_list_manager',
 			'ARPN List Manager',
 			array(
-				'read'                            => true,
-				Capabilities::MANAGE_LISTS          => true,
-				Capabilities::MANAGE_SUBSCRIBERS    => true,
-				Capabilities::SEND_NOTIFICATIONS    => true,
+				'read'                           => true,
+				Capabilities::MANAGE_LISTS       => true,
+				Capabilities::MANAGE_SUBSCRIBERS => true,
+				Capabilities::SEND_NOTIFICATIONS => true,
 			)
 		);
 		self::assertInstanceOf( \WP_Role::class, $role );
@@ -93,10 +93,10 @@ final class CapabilityTest extends WP_UnitTestCase {
 			'arpn_list_manager',
 			'ARPN List Manager',
 			array(
-				'read'                            => true,
-				Capabilities::MANAGE_LISTS          => true,
-				Capabilities::MANAGE_SUBSCRIBERS    => true,
-				Capabilities::SEND_NOTIFICATIONS    => true,
+				'read'                           => true,
+				Capabilities::MANAGE_LISTS       => true,
+				Capabilities::MANAGE_SUBSCRIBERS => true,
+				Capabilities::SEND_NOTIFICATIONS => true,
 			)
 		);
 		self::assertInstanceOf( \WP_Role::class, $role );
@@ -142,7 +142,7 @@ final class CapabilityTest extends WP_UnitTestCase {
 			'arpn_list_manager',
 			'ARPN List Manager',
 			array(
-				'read'                    => true,
+				'read'                     => true,
 				Capabilities::MANAGE_LISTS => true,
 			)
 		);

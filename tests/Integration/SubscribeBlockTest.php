@@ -128,7 +128,7 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		self::assertStringContainsString( '>Notify me</button>', $html );
 
 		$_GET[ PublicSignupController::RESULT_QUERY ] = PublicSignupController::RESULT_RECEIVED;
-		$status_html = $block->render( array() );
+		$status_html                                  = $block->render( array() );
 
 		self::assertStringContainsString( 'role="status"', $status_html );
 		self::assertStringContainsString( 'aria-live="polite"', $status_html );
@@ -136,7 +136,7 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		self::assertStringContainsString( 'check your email for a confirmation message', $status_html );
 
 		$_GET[ PublicSignupController::RESULT_QUERY ] = PublicSignupController::RESULT_ERROR;
-		$error_html = $block->render( array() );
+		$error_html                                   = $block->render( array() );
 
 		self::assertStringContainsString( 'role="status"', $error_html );
 		self::assertStringContainsString( 'Reload the page and try again', $error_html );
@@ -149,11 +149,11 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$flow       = $this->flow( $transport );
 		$block      = $flow['block'];
 		$controller = $flow['controller'];
-		$post_id   = self::factory()->post->create();
-		$user_id   = self::factory()->user->create(
+		$post_id    = self::factory()->post->create();
+		$user_id    = self::factory()->user->create(
 			array( 'user_email' => 'person@example.com' )
 		);
-		$post      = get_post( $post_id );
+		$post       = get_post( $post_id );
 		setup_postdata( $post );
 
 		$html = $block->render(
@@ -163,12 +163,12 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_SERVER['REMOTE_ADDR']    = '192.0.2.77';
 		$_POST                     = array(
-			'action' => PublicSignupController::POST_ACTION,
-			'argentwolf_post_notifier_subscribe_nonce' => $this->hidden_value(
+			'action'                                     => PublicSignupController::POST_ACTION,
+			'argentwolf_post_notifier_subscribe_nonce'   => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_subscribe_nonce'
 			),
-			'argentwolf_post_notifier_context' => $this->hidden_value(
+			'argentwolf_post_notifier_context'           => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_context'
 			),
@@ -176,17 +176,19 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 				$html,
 				'argentwolf_post_notifier_context_signature'
 			),
-			'argentwolf_post_notifier_return' => 'https://outside.invalid/redirect',
-			'argentwolf_post_notifier_email' => ' Person@Example.COM ',
-			'argentwolf_post_notifier_name' => 'Example Person',
-			'argentwolf_post_notifier_consent' => '1',
-			'argentwolf_post_notifier_website' => '',
+			'argentwolf_post_notifier_return'            => 'https://outside.invalid/redirect',
+			'argentwolf_post_notifier_email'             => ' Person@Example.COM ',
+			'argentwolf_post_notifier_name'              => 'Example Person',
+			'argentwolf_post_notifier_consent'           => '1',
+			'argentwolf_post_notifier_website'           => '',
 		);
-		$_REQUEST = $_POST;
+		$_REQUEST                  = $_POST;
 
-		$redirect = $this->capture_redirect( static function () use ( $controller ): void {
-			$controller->handle_submission();
-		} );
+		$redirect = $this->capture_redirect(
+			static function () use ( $controller ): void {
+				$controller->handle_submission();
+			}
+		);
 
 		self::assertSame(
 			parse_url( home_url( '/' ), PHP_URL_HOST ),
@@ -226,30 +228,32 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$flow       = $this->flow( $transport );
 		$block      = $flow['block'];
 		$controller = $flow['controller'];
-		$html      = $block->render( array() );
-		$context   = $this->hidden_value( $html, 'argentwolf_post_notifier_context' );
-		$context   = substr( $context, 0, -1 ) . ( str_ends_with( $context, 'A' ) ? 'B' : 'A' );
+		$html       = $block->render( array() );
+		$context    = $this->hidden_value( $html, 'argentwolf_post_notifier_context' );
+		$context    = substr( $context, 0, -1 ) . ( str_ends_with( $context, 'A' ) ? 'B' : 'A' );
 
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST                     = array(
-			'argentwolf_post_notifier_subscribe_nonce' => $this->hidden_value(
+			'argentwolf_post_notifier_subscribe_nonce'   => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_subscribe_nonce'
 			),
-			'argentwolf_post_notifier_context' => $context,
+			'argentwolf_post_notifier_context'           => $context,
 			'argentwolf_post_notifier_context_signature' => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_context_signature'
 			),
-			'argentwolf_post_notifier_return' => home_url( '/' ),
-			'argentwolf_post_notifier_email' => 'tampered@example.com',
-			'argentwolf_post_notifier_consent' => '1',
+			'argentwolf_post_notifier_return'            => home_url( '/' ),
+			'argentwolf_post_notifier_email'             => 'tampered@example.com',
+			'argentwolf_post_notifier_consent'           => '1',
 		);
-		$_REQUEST = $_POST;
+		$_REQUEST                  = $_POST;
 
-		$redirect = $this->capture_redirect( static function () use ( $controller ): void {
-			$controller->handle_submission();
-		} );
+		$redirect = $this->capture_redirect(
+			static function () use ( $controller ): void {
+				$controller->handle_submission();
+			}
+		);
 
 		self::assertStringContainsString(
 			PublicSignupController::RESULT_QUERY . '=' . PublicSignupController::RESULT_ERROR,
@@ -264,15 +268,15 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 		$flow       = $this->flow( $transport );
 		$block      = $flow['block'];
 		$controller = $flow['controller'];
-		$html      = $block->render( array() );
+		$html       = $block->render( array() );
 
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST                     = array(
-			'argentwolf_post_notifier_subscribe_nonce' => $this->hidden_value(
+			'argentwolf_post_notifier_subscribe_nonce'   => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_subscribe_nonce'
 			),
-			'argentwolf_post_notifier_context' => $this->hidden_value(
+			'argentwolf_post_notifier_context'           => $this->hidden_value(
 				$html,
 				'argentwolf_post_notifier_context'
 			),
@@ -280,14 +284,16 @@ final class SubscribeBlockTest extends WP_UnitTestCase {
 				$html,
 				'argentwolf_post_notifier_context_signature'
 			),
-			'argentwolf_post_notifier_return' => home_url( '/' ),
-			'argentwolf_post_notifier_email' => 'no-consent@example.com',
+			'argentwolf_post_notifier_return'            => home_url( '/' ),
+			'argentwolf_post_notifier_email'             => 'no-consent@example.com',
 		);
-		$_REQUEST = $_POST;
+		$_REQUEST                  = $_POST;
 
-		$redirect = $this->capture_redirect( static function () use ( $controller ): void {
-			$controller->handle_submission();
-		} );
+		$redirect = $this->capture_redirect(
+			static function () use ( $controller ): void {
+				$controller->handle_submission();
+			}
+		);
 
 		self::assertStringContainsString(
 			PublicSignupController::RESULT_QUERY . '=' . PublicSignupController::RESULT_ERROR,
