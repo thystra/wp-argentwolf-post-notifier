@@ -1196,6 +1196,17 @@ Suggested default batch size is conservative and filterable.
 Production installations may call a WP-CLI worker from system cron. No queue
 feature may depend solely on site traffic.
 
+Concurrent workers (WP-Cron plus system cron, or several cron runners) are
+expected. A claim's ordered range `UPDATE … LIMIT` can deadlock with another
+worker's row update. Every queue write is a single autocommit compare-and-set
+statement, so `QueueRepository` re-runs a statement that InnoDB rolled back
+for "Deadlock found" or "Lock wait timeout exceeded", up to five attempts with
+jittered backoff. Without this, a worker could crash after the transport
+accepted a message but before recording it, and the row would be re-sent after
+its lease expired. `tests/concurrent-queue.sh` qualifies this in CI with
+independent processes: exactly-once submission, no lost leases, takeover of a
+dead worker's expired leases, and refusal of every stale-lease write.
+
 Retryable preparation conditions (unhealthy verification provider, audience
 persistence error) defer preparation every 15 minutes, but only for a bounded
 window measured from campaign creation (default one day,

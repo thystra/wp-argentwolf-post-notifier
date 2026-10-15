@@ -36,6 +36,11 @@ final class QueueRepository {
 	private wpdb $database;
 
 	/**
+	 * Attempts for one write that hits a deadlock or lock-wait timeout.
+	 */
+	private const LOCK_RETRY_ATTEMPTS = 5;
+
+	/**
 	 * Recipient table.
 	 *
 	 * @var string
@@ -493,24 +498,47 @@ final class QueueRepository {
 	}
 
 	/**
-	 * Execute one prepared write.
+	 * Execute one prepared write, retrying transient InnoDB lock conflicts.
+	 *
+	 * Every queue write is a single autocommit statement. Concurrent workers
+	 * can deadlock between a claim's range update and another worker's
+	 * row update. InnoDB then rolls back the victim statement completely, so
+	 * re-running the same compare-and-set statement is safe. Without the retry,
+	 * a worker that already handed a message to the transport would crash
+	 * before recording it, and the row would be re-sent after lease expiry.
 	 *
 	 * @param string $query Prepared SQL.
 	 * @return int Affected rows.
 	 * @throws RuntimeException When the write fails.
 	 */
 	private function write( string $query ): int {
-		// Plugin-owned queue persistence intentionally uses direct SQL.
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
-		$result = $this->database->query( $query );
-		// phpcs:enable
-		if ( false === $result ) {
-			throw new RuntimeException( 'Queue persistence failed.' );
+		for ( $attempt = 1; ; ++$attempt ) {
+			// Plugin-owned queue persistence intentionally uses direct SQL.
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+			$result = $this->database->query( $query );
+			// phpcs:enable
+			if ( false !== $result ) {
+				return (int) $result;
+			}
+			if ( $attempt >= self::LOCK_RETRY_ATTEMPTS || ! $this->is_lock_conflict() ) {
+				throw new RuntimeException( 'Queue persistence failed.' );
+			}
+			usleep( wp_rand( 2000, 20000 ) * $attempt );
 		}
+	}
 
-		return (int) $result;
+	/**
+	 * Whether the last statement failed with a retryable lock conflict.
+	 *
+	 * @return bool
+	 */
+	private function is_lock_conflict(): bool {
+		$error = (string) $this->database->last_error;
+
+		return str_contains( $error, 'Deadlock found' )
+			|| str_contains( $error, 'Lock wait timeout exceeded' );
 	}
 
 	/**

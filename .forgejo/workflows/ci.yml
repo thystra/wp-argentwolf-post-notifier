@@ -192,6 +192,7 @@ jobs:
           scripts/run-plugin-check.sh
           tests/package-manifest.sh
           tests/concurrent-campaigns.sh
+          tests/concurrent-queue.sh
           tests/wpcli-publication.sh
 
       - name: Install pinned WP-CLI
@@ -289,6 +290,10 @@ jobs:
       - name: Qualify cross-process initial-campaign reservation
         run: |
           bash tests/concurrent-campaigns.sh "$RUNNER_TEMP/wordpress"
+
+      - name: Qualify cross-process delivery-queue leases
+        run: |
+          bash tests/concurrent-queue.sh "$RUNNER_TEMP/wordpress" 200 6
 
       - name: Qualify installed-package WP-CLI publication lifecycle
         run: |
