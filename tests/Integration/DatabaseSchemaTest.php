@@ -156,6 +156,43 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 	          }
               }
 
+	/**
+	 * Schema three adds the recipient lease-token column to an existing schema-two table.
+	 *
+	 * @return void
+	 */
+	public function test_schema_two_upgrade_adds_recipient_lease_token(): void {
+		global $wpdb;
+
+		$table     = TableNames::from_database( $wpdb )->campaign_recipients();
+		$inspector = new SchemaInspector( $wpdb );
+
+		self::commit_transaction();
+		try {
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery
+			// phpcs:disable WordPress.DB.PreparedSQL
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX lease_token" );
+			$wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN lease_token" );
+			// phpcs:enable
+			self::assertArrayNotHasKey( 'lease_token', $inspector->columns( $table ) );
+			update_option( SchemaMigrator::SCHEMA_OPTION, '2', false );
+
+			( new SchemaMigrator( $wpdb ) )->migrate();
+
+			self::assertSame( '3', get_option( SchemaMigrator::SCHEMA_OPTION ) );
+			self::assertArrayHasKey( 'lease_token', $inspector->columns( $table ) );
+			self::assertContains( 'lease_token', $inspector->indexes( $table ) );
+
+			// Re-running the current migration is a harmless repair.
+			( new SchemaMigrator( $wpdb ) )->migrate();
+			self::assertSame( '3', get_option( SchemaMigrator::SCHEMA_OPTION ) );
+		} finally {
+			( new SchemaMigrator( $wpdb ) )->migrate();
+			self::commit_transaction();
+			$this->start_transaction();
+		}
+	}
+
 	public function test_failed_migration_does_not_advance_and_can_retry_after_repair(): void {
 		global $wpdb;
 
@@ -295,7 +332,7 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 	public function test_newer_database_schema_is_refused(): void {
 		global $wpdb;
 
-		update_option( SchemaMigrator::SCHEMA_OPTION, '3', false );
+		update_option( SchemaMigrator::SCHEMA_OPTION, '4', false );
 
 		try {
 			$this->expectException( \RuntimeException::class );

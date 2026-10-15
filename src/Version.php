@@ -20,9 +20,10 @@ final class Version {
 	 * Database schema version.
 	 *
 	 * Schema two adds the privacy-conscious administrative audit-event ledger
-	 * while preserving frozen schema one as immutable upgrade history.
+	 * while preserving frozen schema one as immutable upgrade history. Schema
+	 * three adds campaign-recipient queue lease ownership.
 	 */
-	public const SCHEMA = '2';
+	public const SCHEMA = '3';
 
 	/**
 	 * Prevent construction.

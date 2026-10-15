@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Campaign;
 
+use ArgentWolf\PostNotifier\Delivery\DeliveryScheduler;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Editor\ContentMode;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
@@ -185,6 +186,33 @@ final class PublicationObserver implements Registerable {
 			);
 			return;
 		}
+
+		/*
+		 * Freeze the audience configuration at the same completed save so later
+		 * metadata edits cannot change who an already-published campaign targets.
+		 */
+		try {
+			$audience_frozen = ( new CampaignAudienceSnapshot() )->freeze_config(
+				$campaign_id,
+				$post_id
+			);
+		} catch ( LogicException | RuntimeException ) {
+			$audience_frozen = false;
+		}
+		if ( ! $audience_frozen ) {
+			do_action(
+				'argentwolf_post_notifier_campaign_snapshot_failed',
+				$post_id,
+				'audience_capture_error'
+			);
+			return;
+		}
+
+		/*
+		 * Rendering, gating, audience resolution and delivery all run
+		 * asynchronously; the publish request never sends email.
+		 */
+		DeliveryScheduler::schedule_prepare( $campaign_id );
 
 		// A duplicate observer may resolve an existing row; do not call it a new campaign.
 		do_action(

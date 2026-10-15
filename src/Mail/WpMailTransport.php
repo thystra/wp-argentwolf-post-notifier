@@ -21,12 +21,31 @@ final class WpMailTransport implements MailTransport {
 	 * @return DeliveryResult
 	 */
 	public function send( MailMessage $message ): DeliveryResult {
-		$submitted = wp_mail(
-			$message->recipient(),
-			$message->subject(),
-			$message->body(),
-			$message->headers()
-		);
+		$alternative = $message->alt_body();
+		$attach      = null;
+		if ( null !== $alternative ) {
+			$attach = static function ( $mailer ) use ( $alternative ): void {
+				if ( is_object( $mailer ) ) {
+					// PHPMailer uses the public camel-cased AltBody property for text alternatives.
+					// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+					$mailer->AltBody = $alternative;
+				}
+			};
+			add_action( 'phpmailer_init', $attach );
+		}
+
+		try {
+			$submitted = wp_mail(
+				$message->recipient(),
+				$message->subject(),
+				$message->body(),
+				$message->headers()
+			);
+		} finally {
+			if ( null !== $attach ) {
+				remove_action( 'phpmailer_init', $attach );
+			}
+		}
 
 		return $submitted
 			? DeliveryResult::submitted()

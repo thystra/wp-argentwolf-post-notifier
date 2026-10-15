@@ -1497,4 +1497,90 @@ campaign content. No status transition, recipients, queue entries, or sends
 occur in this tranche. It introduces no automatic invocation and no schema
 change; the finalizer is explicitly qualified as an internal service.
 
+## Beta.3 recipient finalization, audience snapshot, and delivery queue (development)
+
+Status: implemented on a feature branch and covered by local unit and
+WordPress integration tests; not yet qualified in Forgejo CI.
+
+**Publication.** `PublicationObserver` still only reserves the campaign and
+captures inputs in the publish request. It now also freezes the sanitized
+audience configuration write-once into `audience_snapshot_json`
+(`CampaignAudienceSnapshot`, document version 1) and schedules the
+`argentwolf_post_notifier_prepare_campaign` single cron event. No rendering,
+resolution, or mail occurs in the publish request.
+
+**Preparation** (`CampaignPreparation`, serialized per campaign by a
+non-blocking MySQL advisory lock):
+
+1. `CampaignRenderedBodyFinalizer` freezes the recipient-neutral bodies.
+2. `CampaignQueueGate` requires: status `building`; input snapshot present;
+   non-empty subject/HTML/text; no unresolved `{{token}}`; no residual block,
+   Email Cutoff or More markers; the post still `publish`; a frozen audience;
+   that the canonical footer accepts same-origin admin-post/profile URLs; and,
+   when the audience can contain registered users, a healthy verification
+   provider. Provider ill-health is retryable (campaign stays `building` with
+   `last_error_code`, re-scheduled and picked up by the watchdog); every other
+   failure moves the campaign to `failed` with a fixed code.
+3. The frozen configuration is resolved by the Alpha.5 `AudienceResolver`
+   (site-default users remain not subscribed until a site policy exists). Each
+   eligible recipient is inserted `queued` with `INSERT IGNORE … SELECT` guarded
+   by the campaign still being `building` and `UNIQUE(campaign_id,email_hash)`.
+4. One compare-and-set moves `building` → `queued` (or `completed` for an
+   empty audience) and stores `recipient_count = COUNT(rows)`, `skipped_count`
+   and per-reason `skip_counts` in the audience document.
+
+**Per-recipient content.** The frozen campaign columns are never rewritten.
+At send time `RecipientMessageBuilder` appends
+`EmailTemplateComposer::recipient_footer()` — the same mandatory footer used by
+previews — with recipient-specific links from `RecipientLinkFactory`:
+unsubscribe and (for standalone subscribers) manage pages at
+`admin-post.php?action=argentwolf_post_notifier_recipient_{unsubscribe,manage}`,
+the WordPress profile for registered users, and an RFC 8058 one-click endpoint
+in `List-Unsubscribe` plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
+Messages carry `X-ArgentWolf-PN-Campaign`/`-Recipient` UUIDs, never database IDs.
+A fresh 256-bit `RecipientToken` is generated for each attempt and only its
+SHA-256 is stored in `unsubscribe_token_hash` (while the lease is held).
+Consequence: if an attempt was actually delivered but recorded as failed, that
+copy's links stop working after a retry rotates the token; this is accepted.
+
+**Unsubscribe endpoints** (`RecipientUnsubscribeController`): GETs are
+display-only and render a nonce-protected confirmation form; the POST and the
+one-click POST (exact body `List-Unsubscribe=One-Click`, no nonce) apply global
+suppression with source `campaign_link`. Responses are generic, never include
+the address, and no redirect target is accepted. Full Milestone 11 work
+(resubscribe from these links, token expiry, scanner/replay hardening) remains.
+
+**Queue** (`QueueRepository`, schema 3 `lease_token`): a claim is one
+`UPDATE … ORDER BY id LIMIT n` that stamps a fresh lease UUID, lease expiry and
+`attempt_count + 1` on rows that are `queued` and due, or `claimed` with an
+expired lease, belonging to `queued`/`sending` campaigns. Every later write is
+conditional on `id` *and* `lease_token`, so a worker whose lease was recovered
+cannot overwrite the new owner. Expired leases that already used every attempt
+fail terminally (`lease_expired_max_attempts`). Delivery is therefore
+at-least-once across crashes. No transaction is held while sending.
+
+**Worker** (`QueueWorker`): for each claimed row, `RecipientEligibilityRecheck`
+skips on invalid/changed email, suppression, deleted user/subscriber,
+verification not `verified`, explicit `unsubscribed` preference, subscriber
+status not `subscribed`, or a false `argentwolf_post_notifier_recipient_eligible`
+filter (veto-only; context has no email). Otherwise one message is submitted;
+success is `submitted`. Rejections or transport exceptions retry after
+`60·2^(attempt-1)` seconds (capped at 6 h) until the maximum attempts (default
+5), then `failed`. Counters are recomputed from rows; a campaign with no
+`queued`/`claimed` rows becomes `completed` or `completed_with_errors`.
+Filters: `argentwolf_post_notifier_queue_batch_size` (25, 1–200),
+`…_queue_max_attempts` (5, 1–10), `…_queue_lease_seconds` (300, 30–3600).
+Action `argentwolf_post_notifier_delivery_result( campaign_id, recipient_uuid,
+outcome, reason )` carries no address, token, or content.
+
+**Scheduling** (`DeliveryScheduler`): `argentwolf_post_notifier_process_queue`
+single events run four batches and re-arm themselves while work or future
+retries remain; an hourly `argentwolf_post_notifier_delivery_watchdog` resumes
+building campaigns older than ten minutes and wakes the queue. Deactivation
+clears all three hooks. `wp argentwolf-post-notifier queue run [--batches=n]`,
+`queue status` (aggregate only) and `queue prepare <id>` support system cron.
+
+**Audit.** `campaign_queued`, `campaign_failed`, `campaign_completed` and
+`campaign_recipient_failed` events store IDs and stable codes only.
+
 <!-- EOF: ~/src/wp-argentwolf-post-notifier/ARCHITECTURE.md -->

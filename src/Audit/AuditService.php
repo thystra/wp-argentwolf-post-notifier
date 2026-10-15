@@ -18,6 +18,7 @@ use InvalidArgumentException;
 final class AuditService {
 	private const SUBJECT_LIST        = 'list';
 	private const SUBJECT_SUPPRESSION = 'suppression';
+	private const SUBJECT_CAMPAIGN    = 'campaign';
 
 	/**
 	 * Construct the audit service.
@@ -110,6 +111,49 @@ final class AuditService {
 			$email_hash,
 			$reason,
 			$source,
+			$this->normalize_now( $now )
+		);
+	}
+
+	/**
+	 * Record one campaign lifecycle or delivery audit event.
+	 *
+	 * Only IDs and stable codes are stored; never an email address, token, or
+	 * message content.
+	 *
+	 * @param AuditEventType         $event_type   Stable campaign event type.
+	 * @param int                    $campaign_id  Campaign row ID.
+	 * @param string|null            $reason       Stable reason or status code.
+	 * @param int|null               $recipient_id Optional campaign-recipient row ID.
+	 * @param DateTimeInterface|null $now          Optional testable current time.
+	 * @return void
+	 * @throws InvalidArgumentException When event or entity data is invalid.
+	 */
+	public function record_campaign_event(
+		AuditEventType $event_type,
+		int $campaign_id,
+		?string $reason = null,
+		?int $recipient_id = null,
+		?DateTimeInterface $now = null
+	): void {
+		if ( ! str_starts_with( $event_type->value, 'campaign_' ) ) {
+			throw new InvalidArgumentException( 'Audit event is not a campaign event.' );
+		}
+		if ( $campaign_id < 1 || ( null !== $recipient_id && $recipient_id < 1 ) ) {
+			throw new InvalidArgumentException( 'Campaign audit IDs must be positive.' );
+		}
+		$reason = null === $reason ? null : $this->validated_code( $reason, 64 );
+
+		$this->repository->record(
+			$event_type,
+			$this->actor_user_id(),
+			self::SUBJECT_CAMPAIGN,
+			$campaign_id,
+			null === $recipient_id ? null : 'campaign_recipient',
+			$recipient_id,
+			null,
+			$reason,
+			null,
 			$this->normalize_now( $now )
 		);
 	}

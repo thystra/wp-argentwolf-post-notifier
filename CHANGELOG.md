@@ -3,6 +3,35 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add the campaign send queue and worker (schema 3 adds a recipient
+  `lease_token`). Workers atomically claim bounded, filterable batches with
+  expiring leases, recheck hard eligibility (suppression, verification,
+  deletion, changed email, subscriber state, preference, veto-only filter)
+  immediately before each send, submit exactly one message per recipient,
+  retry transport rejections with bounded exponential backoff, fail
+  terminally after the maximum attempt count, recover expired leases, and
+  complete campaigns as `completed` or `completed_with_errors`. WP-Cron only
+  wakes work; `wp argentwolf-post-notifier queue run|status|prepare` supports
+  system cron. Successful `wp_mail()` calls are recorded as `submitted`.
+  Campaign queue/completion/failure and terminal recipient failures are
+  audit-logged with IDs and codes only.
+
+- Freeze the campaign audience configuration at first publication and resolve
+  it asynchronously into immutable recipient rows, then atomically queue the
+  campaign with recipient and aggregate skip counts that match the stored
+  rows. Empty audiences complete with diagnostic counts.
+
+- Add the recipient-specific footer finalization contract and a pre-queue
+  eligibility gate. Each message is the frozen recipient-neutral body plus the
+  canonical mandatory footer with a fresh per-attempt opaque token (only its
+  hash is stored), a visible unsubscribe link, a manage link (WordPress
+  profile for registered users), and RFC 8058 `List-Unsubscribe` /
+  `List-Unsubscribe-Post` headers. Visible-link GETs are display-only; the
+  nonce-protected confirmation POST and the one-click POST apply global
+  suppression with generic responses. `MailMessage` now carries an optional
+  plain-text alternative and rejects multi-recipient addresses, To/CC/BCC
+  headers, and header injection.
+
 - Add an atomic, write-once campaign rendered-body finalizer. It uses only
   frozen campaign inputs and the canonical content renderer to populate the
   campaign subject and recipient-neutral HTML/plain-text fields. The rendered

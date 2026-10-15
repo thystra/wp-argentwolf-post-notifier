@@ -33,6 +33,31 @@ final class CampaignRepository {
 	public const STATUS_BUILDING = 'building';
 
 	/**
+	 * Audience frozen; recipient rows await worker claims.
+	 */
+	public const STATUS_QUEUED = 'queued';
+
+	/**
+	 * At least one worker has claimed a recipient row.
+	 */
+	public const STATUS_SENDING = 'sending';
+
+	/**
+	 * No actionable rows remain and no row terminally failed.
+	 */
+	public const STATUS_COMPLETED = 'completed';
+
+	/**
+	 * No actionable rows remain and at least one row terminally failed.
+	 */
+	public const STATUS_COMPLETED_WITH_ERRORS = 'completed_with_errors';
+
+	/**
+	 * Campaign preparation failed closed before any recipient was queued.
+	 */
+	public const STATUS_FAILED = 'failed';
+
+	/**
 	 * Database connection.
 	 *
 	 * @var wpdb
@@ -152,6 +177,158 @@ final class CampaignRepository {
 		}
 
 		return (int) $row['id'];
+	}
+
+	/**
+	 * Find one campaign row by ID, including frozen content and snapshots.
+	 *
+	 * @param int $campaign_id Campaign row ID.
+	 * @return array<string,mixed>|null
+	 */
+	public function find( int $campaign_id ): ?array {
+		if ( $campaign_id < 1 ) {
+			return null;
+		}
+		$query = $this->database->prepare(
+			'SELECT id, uuid, campaign_key, campaign_kind, post_id, status, subject,
+				html_body, text_body, template_snapshot_json, audience_snapshot_json,
+				content_mode, created_at_gmt, queued_at_gmt, started_at_gmt,
+				completed_at_gmt, recipient_count, submitted_count, failed_count,
+				skipped_count, last_error_code
+			FROM %i WHERE id = %d LIMIT 1',
+			$this->table,
+			$campaign_id
+		);
+
+		// Direct access is required for plugin-owned persistence primitives.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$row = $this->database->get_row( $query, ARRAY_A );
+		// phpcs:enable
+
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
+	 * Return a bounded list of building campaign IDs created before a cutoff.
+	 *
+	 * Used by the watchdog to recover preparation that a lost cron event or
+	 * crashed request never completed.
+	 *
+	 * @param DateTimeInterface $before Creation cutoff.
+	 * @param int               $limit  Maximum rows (1-50).
+	 * @return array<int,int>
+	 */
+	public function stale_building_ids( DateTimeInterface $before, int $limit = 10 ): array {
+		$limit = max( 1, min( 50, $limit ) );
+		$query = $this->database->prepare(
+			'SELECT id FROM %i
+			WHERE status = %s AND template_snapshot_json IS NOT NULL
+			AND audience_snapshot_json IS NOT NULL AND created_at_gmt <= %s
+			ORDER BY id ASC LIMIT %d',
+			$this->table,
+			self::STATUS_BUILDING,
+			UtcDateTime::format( $before ),
+			$limit
+		);
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$ids = $this->database->get_col( $query );
+		// phpcs:enable
+
+		return array_map( 'intval', (array) $ids );
+	}
+
+	/**
+	 * Record a fixed diagnostic code on a campaign still in building state.
+	 *
+	 * @param int    $campaign_id Campaign ID.
+	 * @param string $code        Stable diagnostic code.
+	 * @return void
+	 */
+	public function note_building_error( int $campaign_id, string $code ): void {
+		$query = $this->database->prepare(
+			'UPDATE %i SET last_error_code = %s WHERE id = %d AND status = %s',
+			$this->table,
+			$code,
+			$campaign_id,
+			self::STATUS_BUILDING
+		);
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$this->database->query( $query );
+		// phpcs:enable
+	}
+
+	/**
+	 * Compare-and-set one status transition, optionally setting a timestamp column.
+	 *
+	 * @param int                    $campaign_id Campaign ID.
+	 * @param array<int,string>      $from        Allowed current statuses.
+	 * @param string                 $to          New status.
+	 * @param string|null            $time_column One of queued/started/completed_at_gmt.
+	 * @param string|null            $error_code  Optional fixed diagnostic code.
+	 * @param DateTimeInterface|null $now     Optional operation time.
+	 * @return bool True when this call performed the transition.
+	 * @throws InvalidArgumentException On an unsupported time column.
+	 * @throws RuntimeException When the database write fails.
+	 */
+	public function transition(
+		int $campaign_id,
+		array $from,
+		string $to,
+		?string $time_column = null,
+		?string $error_code = null,
+		?DateTimeInterface $now = null
+	): bool {
+		$columns = array( 'queued_at_gmt', 'started_at_gmt', 'completed_at_gmt' );
+		if ( null !== $time_column && ! in_array( $time_column, $columns, true ) ) {
+			throw new InvalidArgumentException( 'Unsupported campaign time column.' );
+		}
+		if ( array() === $from ) {
+			return false;
+		}
+		$current = UtcDateTime::format(
+			$now ?? new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) )
+		);
+
+		$set  = 'status = %s';
+		$args = array( $this->table, $to );
+		if ( null !== $time_column ) {
+			$set   .= ', ' . $time_column . ' = %s';
+			$args[] = $current;
+		}
+		if ( null !== $error_code ) {
+			$set   .= ', last_error_code = %s';
+			$args[] = $error_code;
+		}
+		$placeholders = implode( ', ', array_fill( 0, count( $from ), '%s' ) );
+		$args[]       = $campaign_id;
+		array_push( $args, ...array_values( $from ) );
+
+		// $set and $placeholders contain only fixed fragments and placeholders.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$query = $this->database->prepare(
+			"UPDATE %i SET {$set} WHERE id = %d AND status IN ({$placeholders})",
+			...$args
+		);
+		// phpcs:enable
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->database->query( $query );
+		// phpcs:enable
+		if ( false === $result ) {
+			throw new RuntimeException( 'Campaign status transition failed.' );
+		}
+
+		return 1 === $result;
 	}
 
 	/**

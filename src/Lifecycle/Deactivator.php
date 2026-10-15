@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
+use ArgentWolf\PostNotifier\Delivery\DeliveryScheduler;
 use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
 use ArgentWolf\PostNotifier\Version;
 
@@ -23,6 +24,7 @@ final class Deactivator {
 	 */
 	public static function deactivate(): void {
 		PendingSubscriberCleanup::unschedule();
+		DeliveryScheduler::unschedule_all();
 
 		/**
 		 * Fires after the plugin deactivates.

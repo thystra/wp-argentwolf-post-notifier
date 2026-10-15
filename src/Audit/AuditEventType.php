@@ -8,7 +8,7 @@
 namespace ArgentWolf\PostNotifier\Audit;
 
 /**
- * Stable audit-event identifiers for administrative list and suppression changes.
+ * Stable audit-event identifiers for list, suppression, and campaign delivery events.
  */
 enum AuditEventType: string {
 	case ListCreated        = 'list_created';
@@ -18,6 +18,10 @@ enum AuditEventType: string {
 	case ListMemberRemoved  = 'list_member_removed';
 	case SuppressionSet     = 'suppression_set';
 	case SuppressionRemoved = 'suppression_removed';
+	case CampaignQueued     = 'campaign_queued';
+	case CampaignFailed     = 'campaign_failed';
+	case CampaignCompleted  = 'campaign_completed';
+	case RecipientFailed    = 'campaign_recipient_failed';
 }
 
 // EOF: src/Audit/AuditEventType.php.
