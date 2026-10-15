@@ -493,7 +493,11 @@ save/reset form, and canonical preview/test-mail integration; merged and CI
 qualified in PR #51. Tranche 11 adds the bounded administrator-managed named
 library and existing editor catalog mapping. Rendering selected templates,
 write serialization, safe layout customization and immutable campaign content
-remain later independent work.
+remain later independent work. Tranche 15 (PR #56) freezes the write-once
+recipient-neutral subject and HTML/plain-text bodies. Tranche 16 (local, not yet
+CI-qualified) adds the recipient-specific footer/link finalization contract,
+per-recipient opaque tokens, scanner-safe unsubscribe/manage endpoints, RFC 8058
+one-click headers, and the pre-queue eligibility gate.
 
 - [x] Register Email Cutoff block:
       `argentwolf-post-notifier/email-cutoff`.
@@ -532,80 +536,105 @@ remain later independent work.
 - [x] Qualify automatic campaign input capture on first publication, including
       scheduled/direct publication, named-template immutability, duplicate
       observations and failure isolation in Forgejo CI (tranche 14, PR #55).
-- [ ] Qualify the internal write-once recipient-neutral campaign subject and
-      HTML/plain-text renderer in Forgejo CI (tranche 15). No subscriber links
-      or queue transition are permitted in this stage.
-- [ ] Define and qualify the recipient-specific footer/link finalization contract
-      and eligibility gate before any campaign queue transition.
-- [ ] Snapshot fully deliverable campaign content with recipient-specific links.
+- [x] Qualify the internal write-once recipient-neutral campaign subject and
+      HTML/plain-text renderer in Forgejo CI (tranche 15, PR #56). No subscriber
+      links or queue transition are permitted in this stage.
+- [x] Define the recipient-specific footer/link finalization contract
+      (`EmailTemplateComposer::recipient_footer`, `RecipientMessageBuilder`) and
+      the pre-queue eligibility gate (`CampaignQueueGate`) before any campaign
+      queue transition (local PHPUnit/integration suites pass; Forgejo CI qualification pending).
+- [x] Produce fully deliverable per-recipient content at send time: the frozen
+      recipient-neutral body plus the canonical mandatory footer with
+      recipient-specific local links; frozen campaign columns are never rewritten
+      (local PHPUnit/integration suites pass; Forgejo CI qualification pending).
 
 Acceptance criteria:
 
-- [ ] Every content mode has deterministic unit tests.
-- [ ] Email output does not include editor-only cutoff markers.
-- [ ] HTML and plain-text messages contain working local URLs.
-- [ ] Templates cannot execute arbitrary PHP.
-- [ ] Preview and test-send actions never create campaigns or campaign recipients.
+- [x] Every content mode has deterministic tests (EmailContentSelectorTest,
+      EmailContentRendererTest, CampaignRenderedBodyFinalizerTest).
+- [x] Email output does not include editor-only cutoff markers (gate rejects any
+      residual block/More marker; CampaignDeliveryTest) (local PHPUnit/integration suites pass; Forgejo CI qualification pending).
+- [x] HTML and plain-text messages contain working local URLs (post, unsubscribe,
+      manage, one-click; all same-origin) (local PHPUnit/integration suites pass; Forgejo CI qualification pending).
+- [x] Templates cannot execute arbitrary PHP (fixed templates, text-only fields,
+      token allowlist; the gate rejects unresolved tokens).
+- [x] Preview and test-send actions never create campaigns or campaign recipients.
 
 ## Milestone 9 — Campaign audience resolver
 
 Target: `0.1.0-beta.4`
 
-- [ ] Expand selected roles.
-- [ ] Expand named lists.
-- [ ] Add explicit contacts.
-- [ ] Apply exclusions.
-- [ ] Normalize and deduplicate email.
-- [ ] Check registered-user verification.
-- [ ] Check standalone subscriber confirmation state.
-- [ ] Apply user preference.
-- [ ] Apply global suppression.
-- [ ] Freeze recipient snapshots.
-- [ ] Record aggregate skip reasons.
-- [ ] Recheck hard eligibility immediately before send.
-- [ ] Add filterable recipient eligibility extension point.
+Implemented locally on top of the Alpha.5 resolver (local PHPUnit/integration suites pass; Forgejo CI qualification pending). The audience
+configuration is frozen write-once into `audience_snapshot_json` at first
+publication; `CampaignPreparation` (WP-Cron/WP-CLI, never the publish request)
+renders, gates, resolves and inserts immutable recipient rows, then moves the
+campaign `building` → `queued` (or `completed` when empty) in one compare-and-set.
+
+- [x] Expand selected roles.
+- [x] Expand named lists.
+- [x] Add explicit contacts.
+- [x] Apply exclusions.
+- [x] Normalize and deduplicate email.
+- [x] Check registered-user verification.
+- [x] Check standalone subscriber confirmation state.
+- [x] Apply user preference.
+- [x] Apply global suppression.
+- [x] Freeze recipient snapshots.
+- [x] Record aggregate skip reasons (audience snapshot + `skipped_count`).
+- [x] Recheck hard eligibility immediately before send.
+- [x] Add filterable recipient eligibility extension point
+      (`argentwolf_post_notifier_recipient_eligible`, veto-only).
 - [ ] Prevent any recipient enumeration through editor endpoints beyond the
-      requesting user's capabilities.
+      requesting user's capabilities (existing endpoints are aggregate-only;
+      needs a dedicated review/test pass).
 
 Acceptance criteria:
 
-- [ ] Audience counts and recipient rows agree.
-- [ ] Every registered recipient is checked during audience resolution.
-- [ ] Pending and unknown registered users are skipped with distinct reasons.
-- [ ] All skip reasons are testable and visible in aggregate statistics.
-- [ ] No unverified or pending recipient enters the active send queue.
-- [ ] No shared To/CC/BCC delivery path exists.
+- [x] Audience counts and recipient rows agree.
+- [x] Every registered recipient is checked during audience resolution.
+- [x] Pending and unknown registered users are skipped with distinct reasons.
+- [ ] All skip reasons are testable and visible in aggregate statistics
+      (stored and tested; no administrator statistics screen yet).
+- [x] No unverified or pending recipient enters the active send queue.
+- [x] No shared To/CC/BCC delivery path exists (`MailMessage` rejects lists and
+      To/CC/BCC headers).
 
 ## Milestone 10 — Queue, worker, and mail transport
 
 Target: `0.1.0-rc.1`
 
-- [ ] Implement `MailTransport`.
-- [ ] Implement `WpMailTransport`.
-- [ ] Create bounded queue worker.
-- [ ] Implement atomic claims and expiring leases.
-- [ ] Implement bounded retries and exponential backoff.
-- [ ] Implement crash recovery.
-- [ ] Implement terminal failure state.
-- [ ] Add WP-Cron wake-up.
-- [ ] Add WP-CLI worker command for system cron.
-- [ ] Add queue status and manual-run administration.
-- [ ] Add test transport.
-- [ ] Send one message per recipient.
-- [ ] Add HTML and plain-text content types safely.
-- [ ] Add visible unsubscribe and manage links.
-- [ ] Add one-click unsubscribe headers.
-- [ ] Label successful `wp_mail()` calls as `submitted`.
-- [ ] Add hooks for transport results without exposing sensitive content.
+Implemented locally (local PHPUnit/integration suites pass; Forgejo CI qualification pending). Schema 3 adds `lease_token` to campaign recipients.
+
+- [x] Implement `MailTransport`.
+- [x] Implement `WpMailTransport` (now with plain-text alternative).
+- [x] Create bounded queue worker.
+- [x] Implement atomic claims and expiring leases.
+- [x] Implement bounded retries and exponential backoff.
+- [x] Implement crash recovery (expired leases; hourly watchdog resumes stale
+      building campaigns).
+- [x] Implement terminal failure state.
+- [x] Add WP-Cron wake-up.
+- [x] Add WP-CLI worker command for system cron
+      (`wp argentwolf-post-notifier queue run|status|prepare`).
+- [ ] Add queue status and manual-run administration (WP-CLI only; no admin screen yet).
+- [x] Add test transport (recording transport in the integration suite).
+- [x] Send one message per recipient.
+- [x] Add HTML and plain-text content types safely.
+- [x] Add visible unsubscribe and manage links.
+- [x] Add one-click unsubscribe headers.
+- [x] Label successful `wp_mail()` calls as `submitted`.
+- [x] Add hooks for transport results without exposing sensitive content
+      (`argentwolf_post_notifier_delivery_result`).
 
 Acceptance criteria:
 
-- [ ] Publishing request does not synchronously send the campaign.
-- [ ] Two workers cannot own the same unexpired recipient lease.
-- [ ] Expired leases recover.
-- [ ] Retry limits are enforced.
-- [ ] Every registered recipient is rechecked immediately before send.
-- [ ] Pending or unknown registered-user suppression cannot be counted as
+- [x] Publishing request does not synchronously send the campaign.
+- [x] Two workers cannot own the same unexpired recipient lease (single-process
+      test; multi-process MySQL contention CI lane still to add).
+- [x] Expired leases recover.
+- [x] Retry limits are enforced.
+- [x] Every registered recipient is rechecked immediately before send.
+- [x] Pending or unknown registered-user suppression cannot be counted as
       submitted.
 
 ## Milestone 11 — Unsubscribe and resubscribe
@@ -826,7 +855,6 @@ These are not part of the first stable release unless reprioritized.
 - [ ] Daily or weekly digest campaigns.
 - [ ] Explicit post-update campaigns.
 - [ ] Custom post-type support.
-- [ ] Subscriber CSV double-opt-in import.
 - [ ] Bounce and complaint processing.
 - [ ] Provider-specific mail transports.
 - [ ] Mail-server delivery-status integration.

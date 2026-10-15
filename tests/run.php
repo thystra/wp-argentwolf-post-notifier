@@ -282,7 +282,7 @@ foreach ( $subscriber_files as $subscriber_file ) {
 	);
 }
 $table_names = new TableNames( 'wp_' );
-$assert( '2' === Version::SCHEMA, 'Alpha.5 audit persistence requires schema two.' );
+$assert( '3' === Version::SCHEMA, 'Beta.3 queue leases require schema three.' );
 $assert( 8 === count( $table_names->all() ), 'Current schema must own exactly eight tables.' );
 $assert(
 	7 === substr_count( (string) $schema_one_source, 'CREATE TABLE ' ),

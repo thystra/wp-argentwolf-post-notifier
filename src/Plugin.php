@@ -19,6 +19,14 @@ use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
+use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
+use ArgentWolf\PostNotifier\Campaign\CampaignPreparation;
+use ArgentWolf\PostNotifier\Campaign\CampaignQueueGate;
+use ArgentWolf\PostNotifier\Campaign\CampaignRecipientRepository;
+use ArgentWolf\PostNotifier\Campaign\CampaignRenderedBodyFinalizer;
+use ArgentWolf\PostNotifier\Campaign\RecipientLinkFactory;
+use ArgentWolf\PostNotifier\Campaign\RecipientMessageBuilder;
+use ArgentWolf\PostNotifier\Campaign\RecipientUnsubscribeController;
 use ArgentWolf\PostNotifier\Campaign\CampaignDiagnostics;
 use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\PublicationObserver;
@@ -36,6 +44,11 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
+use ArgentWolf\PostNotifier\Delivery\DeliveryScheduler;
+use ArgentWolf\PostNotifier\Delivery\QueueCommand;
+use ArgentWolf\PostNotifier\Delivery\QueueRepository;
+use ArgentWolf\PostNotifier\Delivery\QueueWorker;
+use ArgentWolf\PostNotifier\Delivery\RecipientEligibilityRecheck;
 use ArgentWolf\PostNotifier\Editor\EditorAssets;
 use ArgentWolf\PostNotifier\Editor\EditorAudienceEstimate;
 use ArgentWolf\PostNotifier\Editor\EditorContactLookup;
@@ -793,10 +806,127 @@ final class Plugin {
 					)
 			);
 
+			self::register_delivery_services( $container );
+
 			self::$instance = new self( $container );
 		}
 
 		return self::$instance;
+	}
+
+	/**
+	 * Register Beta.3 campaign preparation and delivery services.
+	 *
+	 * @param Container $container Service container.
+	 * @return void
+	 */
+	private static function register_delivery_services( Container $container ): void {
+		$container->set(
+			CampaignRecipientRepository::class,
+			static fn (): CampaignRecipientRepository => new CampaignRecipientRepository()
+		);
+		$container->set(
+			RecipientLinkFactory::class,
+			static fn (): RecipientLinkFactory => new RecipientLinkFactory()
+		);
+		$container->set(
+			QueueRepository::class,
+			static fn (): QueueRepository => new QueueRepository()
+		);
+		$container->set(
+			CampaignAudienceSnapshot::class,
+			static fn ( Container $services ): CampaignAudienceSnapshot =>
+				new CampaignAudienceSnapshot(
+					self::typed( $services, AudienceResolver::class ),
+					self::typed( $services, AudienceRequestBuilder::class ),
+					self::typed( $services, CampaignRecipientRepository::class )
+				)
+		);
+		$container->set(
+			CampaignQueueGate::class,
+			static fn ( Container $services ): CampaignQueueGate => new CampaignQueueGate(
+				self::typed( $services, EmailTemplateComposer::class ),
+				self::typed( $services, VerificationProvider::class )
+			)
+		);
+		$container->set(
+			CampaignPreparation::class,
+			static fn ( Container $services ): CampaignPreparation => new CampaignPreparation(
+				self::typed( $services, CampaignRepository::class ),
+				new CampaignRenderedBodyFinalizer(),
+				self::typed( $services, CampaignQueueGate::class ),
+				self::typed( $services, CampaignAudienceSnapshot::class ),
+				self::typed( $services, AuditService::class )
+			)
+		);
+		$container->set(
+			RecipientEligibilityRecheck::class,
+			static fn ( Container $services ): RecipientEligibilityRecheck =>
+				new RecipientEligibilityRecheck(
+					self::typed( $services, RegisteredUserEligibility::class ),
+					self::typed( $services, RegisteredUserPreferenceRepository::class ),
+					self::typed( $services, SubscriberRepository::class ),
+					self::typed( $services, SuppressionService::class ),
+					self::typed( $services, EmailIdentity::class )
+				)
+		);
+		$container->set(
+			QueueWorker::class,
+			static fn ( Container $services ): QueueWorker => new QueueWorker(
+				self::typed( $services, QueueRepository::class ),
+				self::typed( $services, CampaignRepository::class ),
+				self::typed( $services, CampaignAudienceSnapshot::class ),
+				self::typed( $services, RecipientEligibilityRecheck::class ),
+				new RecipientMessageBuilder(
+					self::typed( $services, EmailTemplateComposer::class )
+				),
+				self::typed( $services, RecipientLinkFactory::class ),
+				self::typed( $services, MailTransport::class ),
+				self::typed( $services, AuditService::class )
+			)
+		);
+		$container->set(
+			DeliveryScheduler::class,
+			static fn ( Container $services ): DeliveryScheduler => new DeliveryScheduler(
+				static fn (): object => $services->get( CampaignPreparation::class ),
+				static fn (): object => $services->get( QueueWorker::class ),
+				static fn (): object => $services->get( QueueRepository::class ),
+				static fn (): object => $services->get( CampaignRepository::class )
+			)
+		);
+		$container->set(
+			QueueCommand::class,
+			static fn ( Container $services ): QueueCommand => new QueueCommand(
+				static fn (): object => $services->get( QueueWorker::class ),
+				static fn (): object => $services->get( QueueRepository::class ),
+				static fn (): object => $services->get( CampaignPreparation::class )
+			)
+		);
+		$container->set(
+			RecipientUnsubscribeController::class,
+			static fn ( Container $services ): RecipientUnsubscribeController =>
+				new RecipientUnsubscribeController(
+					self::typed( $services, CampaignRecipientRepository::class ),
+					self::typed( $services, SuppressionService::class )
+				)
+		);
+	}
+
+	/**
+	 * Resolve one container service and assert its type.
+	 *
+	 * @param Container $services Container.
+	 * @param string    $id       Service class name.
+	 * @return object
+	 * @throws LogicException When the service has an unexpected type.
+	 */
+	private static function typed( Container $services, string $id ): object {
+		$service = $services->get( $id );
+		if ( ! $service instanceof $id ) {
+			throw new LogicException( 'ArgentWolf Post Notifier service has an invalid type.' );
+		}
+
+		return $service;
 	}
 
 	/**
@@ -823,6 +953,8 @@ final class Plugin {
 				EditorAssets::class,
 				ConfirmationController::class,
 				ManageSubscriptionController::class,
+				RecipientUnsubscribeController::class,
+				DeliveryScheduler::class,
 				SubscriberAdminPage::class,
 				NotificationTemplateSettingsPage::class,
 				SubscriberCsvImportPage::class,
@@ -845,6 +977,11 @@ final class Plugin {
 				);
 			}
 		);
+
+		$command = $this->container->get( QueueCommand::class );
+		if ( $command instanceof QueueCommand ) {
+			QueueCommand::register_with_cli( $command );
+		}
 
 		$this->registered = true;
 	}

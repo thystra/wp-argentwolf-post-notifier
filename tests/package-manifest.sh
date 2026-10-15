@@ -49,6 +49,11 @@ main() {
 		'argentwolf-post-notifier/src/Admin/NotificationTemplateSettingsPage.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplatePreview.php' \
 		'argentwolf-post-notifier/src/Content/EmailTemplateTestMailer.php' \
+		'argentwolf-post-notifier/src/Database/Migrations/Schema3.php' \
+		'argentwolf-post-notifier/src/Campaign/CampaignPreparation.php' \
+		'argentwolf-post-notifier/src/Campaign/RecipientUnsubscribeController.php' \
+		'argentwolf-post-notifier/src/Delivery/QueueWorker.php' \
+		'argentwolf-post-notifier/src/Delivery/DeliveryScheduler.php' \
 		'argentwolf-post-notifier/assets/runtime/subscribe-editor.js' \
 		'argentwolf-post-notifier/assets/runtime/post-editor.js' \
 		'argentwolf-post-notifier/blocks/subscribe/block.json' \

@@ -55,6 +55,27 @@ final class WpMailTransportTest extends WP_UnitTestCase {
 
 		self::assertFalse( $result->is_submitted() );
 	}
+
+	public function test_plain_text_alternative_is_attached_and_hook_removed(): void {
+		reset_phpmailer_instance();
+
+		$result = ( new WpMailTransport() )->send(
+			new MailMessage(
+				'person@example.com',
+				'Campaign',
+				'<p>HTML body</p>',
+				array( 'Content-Type: text/html; charset=UTF-8' ),
+				'Text body'
+			)
+		);
+
+		$mailer = tests_retrieve_phpmailer_instance();
+		self::assertTrue( $result->is_submitted() );
+		// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+		self::assertSame( 'Text body', $mailer->AltBody );
+		self::assertSame( 0, has_action( 'phpmailer_init' ) ? 1 : 0 );
+		reset_phpmailer_instance();
+	}
 }
 
 // EOF: tests/Integration/WpMailTransportTest.php.

@@ -1,0 +1,721 @@
+<?php
+/**
+ * File: tests/Integration/CampaignDeliveryTest.php
+ *
+ * @package ArgentWolf\PostNotifier\Tests\Integration
+ */
+
+namespace ArgentWolf\PostNotifier\Tests\Integration;
+
+use ArgentWolf\PostNotifier\Audit\AuditRepository;
+use ArgentWolf\PostNotifier\Audit\AuditService;
+use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
+use ArgentWolf\PostNotifier\Campaign\CampaignPreparation;
+use ArgentWolf\PostNotifier\Campaign\CampaignQueueGate;
+use ArgentWolf\PostNotifier\Campaign\CampaignRecipientRepository;
+use ArgentWolf\PostNotifier\Campaign\CampaignRenderedBodyFinalizer;
+use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
+use ArgentWolf\PostNotifier\Campaign\RecipientLinkFactory;
+use ArgentWolf\PostNotifier\Campaign\RecipientMessageBuilder;
+use ArgentWolf\PostNotifier\Campaign\RecipientToken;
+use ArgentWolf\PostNotifier\Campaign\RecipientUnsubscribeController;
+use ArgentWolf\PostNotifier\Content\EmailContentRenderer;
+use ArgentWolf\PostNotifier\Content\EmailContentSelector;
+use ArgentWolf\PostNotifier\Content\EmailTemplateComposer;
+use ArgentWolf\PostNotifier\Database\EmailIdentity;
+use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Delivery\DeliveryScheduler;
+use ArgentWolf\PostNotifier\Delivery\QueueRepository;
+use ArgentWolf\PostNotifier\Delivery\QueueWorker;
+use ArgentWolf\PostNotifier\Delivery\RecipientEligibilityRecheck;
+use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
+use ArgentWolf\PostNotifier\Mail\DeliveryResult;
+use ArgentWolf\PostNotifier\Mail\MailMessage;
+use ArgentWolf\PostNotifier\Mail\MailTransport;
+use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
+use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
+use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
+use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
+use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
+use ArgentWolf\PostNotifier\Verification\VerificationProvider;
+use ArgentWolf\PostNotifier\Verification\VerificationProviderHealth;
+use ArgentWolf\PostNotifier\Verification\VerificationStatus;
+use DateTimeImmutable;
+use DateTimeZone;
+use RuntimeException;
+use WP_UnitTestCase;
+
+/**
+ * Milestone 8-10: recipient finalization, audience snapshot, queue and worker.
+ */
+final class CampaignDeliveryTest extends WP_UnitTestCase {
+	/**
+	 * Verification status by user ID for the deterministic provider.
+	 *
+	 * @var array<int,VerificationStatus>
+	 */
+	private array $statuses = array();
+
+	/**
+	 * Whether the deterministic provider reports healthy.
+	 *
+	 * @var bool
+	 */
+	private bool $healthy = true;
+
+	/**
+	 * Recording transport.
+	 *
+	 * @var CampaignDeliveryRecordingTransport
+	 */
+	private CampaignDeliveryRecordingTransport $transport;
+
+	/**
+	 * Saved request method.
+	 *
+	 * @var string|null
+	 */
+	private ?string $request_method = null;
+
+	/**
+	 * Isolate plugin tables.
+	 *
+	 * @return void
+	 */
+	public function set_up(): void {
+		parent::set_up();
+		global $wpdb;
+		$tables = TableNames::from_database( $wpdb );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		foreach ( array( $tables->campaign_recipients(), $tables->campaigns(), $tables->suppressions() ) as $table ) {
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', $table ) );
+		}
+		// phpcs:enable
+		$this->transport      = new CampaignDeliveryRecordingTransport();
+		$this->request_method = $_SERVER['REQUEST_METHOD'] ?? null;
+	}
+
+	/**
+	 * Restore request globals and cron state.
+	 *
+	 * @return void
+	 */
+	public function tear_down(): void {
+		if ( null === $this->request_method ) {
+			unset( $_SERVER['REQUEST_METHOD'] );
+		} else {
+			$_SERVER['REQUEST_METHOD'] = $this->request_method;
+		}
+		$_GET  = array();
+		$_POST = array();
+		DeliveryScheduler::unschedule_all();
+		parent::tear_down();
+	}
+
+	public function test_container_registers_delivery_services(): void {
+		$container = Plugin::instance()->container();
+		foreach (
+			array(
+				CampaignPreparation::class,
+				QueueWorker::class,
+				DeliveryScheduler::class,
+				RecipientUnsubscribeController::class,
+			) as $id
+		) {
+			self::assertTrue( $container->has( $id ), $id );
+		}
+		self::assertNotFalse(
+			has_action( 'admin_post_nopriv_' . RecipientLinkFactory::ONE_CLICK_ACTION )
+		);
+	}
+
+	public function test_publication_freezes_audience_and_defers_without_sending(): void {
+		$subscriber = $this->subscriber( 'reader@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$campaign   = $this->campaign_for( $post_id );
+
+		self::assertSame( CampaignRepository::STATUS_BUILDING, $campaign['status'] );
+		self::assertNotNull( $campaign['audience_snapshot_json'] );
+		self::assertSame( '', $campaign['html_body'] );
+		self::assertNotFalse(
+			wp_next_scheduled( DeliveryScheduler::PREPARE_HOOK, array( (int) $campaign['id'] ) )
+		);
+		self::assertSame( array(), $this->transport->messages );
+		self::assertSame( 0, $this->recipient_count( (int) $campaign['id'] ) );
+
+		// Later audience edits cannot change the frozen campaign audience.
+		update_post_meta(
+			$post_id,
+			PostNotificationMeta::AUDIENCE_CONFIG_KEY,
+			array( 'included_subscriber_ids' => array( 999 ) )
+		);
+		self::assertSame(
+			array( $subscriber ),
+			( new CampaignAudienceSnapshot() )->read_config( (int) $campaign['id'] )['included_subscriber_ids']
+		);
+	}
+
+	public function test_preparation_resolves_snapshot_and_counts_agree(): void {
+		$user_id = self::factory()->user->create( array( 'user_email' => 'member@example.com' ) );
+		( new RegisteredUserPreferenceRepository() )->set( $user_id, RegisteredUserPreference::Subscribed );
+		$pending_user = self::factory()->user->create( array( 'user_email' => 'pending@example.com' ) );
+		( new RegisteredUserPreferenceRepository() )->set( $pending_user, RegisteredUserPreference::Subscribed );
+		$this->statuses = array(
+			$user_id      => VerificationStatus::Verified,
+			$pending_user => VerificationStatus::Pending,
+		);
+		$subscriber  = $this->subscriber( 'reader@example.com' );
+		$shared      = $this->subscriber( 'member@example.com' );
+		$suppressed  = $this->subscriber( 'blocked@example.com' );
+		$this->suppression()->suppress(
+			'blocked@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		$post_id = $this->publish(
+			array(
+				'included_user_ids'       => array( $user_id, $pending_user ),
+				'included_subscriber_ids' => array( $subscriber, $shared, $suppressed ),
+			)
+		);
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+
+		$outcome = $this->preparation()->prepare( $id );
+		self::assertSame( CampaignPreparation::RESULT_QUEUED, $outcome['result'] );
+
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_QUEUED, $campaign['status'] );
+		self::assertSame( 2, (int) $campaign['recipient_count'] );
+		self::assertSame( 2, $this->recipient_count( $id ) );
+		$skips = ( new CampaignAudienceSnapshot() )->skip_counts( $id );
+		self::assertSame( 1, $skips['unverified'] ?? 0 );
+		self::assertSame( 1, $skips['suppressed'] ?? 0 );
+		self::assertSame( 1, $skips['duplicate'] ?? 0 );
+		self::assertSame( array_sum( $skips ), (int) $campaign['skipped_count'] );
+		self::assertStringNotContainsString( 'Unsubscribe', $campaign['html_body'] );
+
+		// Idempotent replay.
+		self::assertSame(
+			CampaignPreparation::RESULT_SKIPPED,
+			$this->preparation()->prepare( $id )['result']
+		);
+		self::assertSame( 2, $this->recipient_count( $id ) );
+	}
+
+	public function test_gate_fails_closed_for_unpublished_post_and_defers_unhealthy_provider(): void {
+		$user_id = self::factory()->user->create();
+		$post_id = $this->publish( array( 'included_user_ids' => array( $user_id ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+
+		$this->healthy = false;
+		$outcome       = $this->preparation()->prepare( $id );
+		self::assertSame( CampaignPreparation::RESULT_DEFERRED, $outcome['result'] );
+		self::assertSame( CampaignQueueGate::VERIFICATION_UNHEALTHY, $outcome['code'] );
+		self::assertSame( CampaignRepository::STATUS_BUILDING, ( new CampaignRepository() )->find( $id )['status'] );
+
+		wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'draft',
+			)
+		);
+		$this->healthy = true;
+		$outcome       = $this->preparation()->prepare( $id );
+		self::assertSame( CampaignPreparation::RESULT_FAILED, $outcome['result'] );
+		self::assertSame( CampaignQueueGate::POST_NOT_PUBLISHED, $outcome['code'] );
+		self::assertSame( 0, $this->recipient_count( $id ) );
+	}
+
+	public function test_zero_recipient_campaign_completes_with_counts(): void {
+		$post_id = $this->publish( array() );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+
+		self::assertSame( CampaignPreparation::RESULT_COMPLETED, $this->preparation()->prepare( $id )['result'] );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_COMPLETED, $campaign['status'] );
+		self::assertSame( 0, (int) $campaign['recipient_count'] );
+	}
+
+	public function test_worker_submits_one_message_per_recipient_with_local_footer_links(): void {
+		$first   = $this->subscriber( 'one@example.com' );
+		$second  = $this->subscriber( 'two@example.com' );
+		$post_id = $this->publish(
+			array( 'included_subscriber_ids' => array( $first, $second ) ),
+			'<!-- wp:paragraph --><p>Lead.</p><!-- /wp:paragraph --><!-- wp:argentwolf-post-notifier/email-cutoff /--><!-- wp:paragraph --><p>Hidden tail.</p><!-- /wp:paragraph -->'
+		);
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$frozen = ( new CampaignRepository() )->find( $id );
+
+		$totals = $this->worker()->run( 2 );
+		self::assertSame( 2, $totals['submitted'] );
+		self::assertCount( 2, $this->transport->messages );
+
+		$recipients = array();
+		$site       = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+		foreach ( $this->transport->messages as $message ) {
+			$recipients[] = $message->recipient();
+			self::assertStringNotContainsString( ',', $message->recipient() );
+			self::assertStringContainsString( 'Lead.', $message->body() );
+			self::assertStringNotContainsString( 'Hidden tail.', $message->body() );
+			self::assertStringNotContainsString( 'email-cutoff', $message->body() );
+			self::assertStringContainsString( RecipientLinkFactory::UNSUBSCRIBE_ACTION, $message->body() );
+			self::assertStringContainsString( RecipientLinkFactory::MANAGE_ACTION, (string) $message->alt_body() );
+			self::assertContains( 'List-Unsubscribe-Post: List-Unsubscribe=One-Click', $message->headers() );
+			foreach ( $message->headers() as $header ) {
+				self::assertDoesNotMatchRegularExpression( '/^(to|cc|bcc):/i', $header );
+			}
+			preg_match_all( '/href="([^"]+)"/', $message->body(), $links );
+			foreach ( $links[1] as $link ) {
+				self::assertSame( $site, wp_parse_url( html_entity_decode( $link ), PHP_URL_HOST ) );
+			}
+		}
+		sort( $recipients );
+		self::assertSame( array( 'one@example.com', 'two@example.com' ), $recipients );
+
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_COMPLETED, $campaign['status'] );
+		self::assertSame( 2, (int) $campaign['submitted_count'] );
+		self::assertSame( $frozen['html_body'], $campaign['html_body'] );
+		self::assertSame( $frozen['text_body'], $campaign['text_body'] );
+
+		// Replay sends nothing more.
+		self::assertSame( 0, $this->worker()->run( 2 )['claimed'] );
+		self::assertCount( 2, $this->transport->messages );
+	}
+
+	public function test_transport_failures_retry_with_backoff_then_fail_terminally(): void {
+		add_filter( 'argentwolf_post_notifier_queue_max_attempts', static fn () => 2 );
+		$subscriber = $this->subscriber( 'flaky@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->transport->accept = false;
+
+		$now = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		self::assertSame( 1, $this->worker()->run( 1, $now )['retried'] );
+		// Backoff blocks an immediate re-claim.
+		self::assertSame( 0, $this->worker()->run( 1, $now )['claimed'] );
+		self::assertSame( 60, QueueWorker::backoff_seconds( 1 ) );
+		self::assertSame( 120, QueueWorker::backoff_seconds( 2 ) );
+		self::assertSame( QueueWorker::BACKOFF_MAX_SECONDS, QueueWorker::backoff_seconds( 50 ) );
+
+		self::assertSame( 1, $this->worker()->run( 1, $now->modify( '+1 hour' ) )['failed'] );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_COMPLETED_WITH_ERRORS, $campaign['status'] );
+		self::assertSame( 1, (int) $campaign['failed_count'] );
+		self::assertCount( 2, $this->transport->messages );
+		remove_all_filters( 'argentwolf_post_notifier_queue_max_attempts' );
+	}
+
+	public function test_concurrent_leases_are_exclusive_and_expired_leases_recover(): void {
+		$subscriber = $this->subscriber( 'lease@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+
+		$queue = new QueueRepository();
+		$now   = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		$first = $queue->claim( 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 10, 300, $now );
+		self::assertCount( 1, $first );
+		self::assertSame( array(), $queue->claim( 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 10, 300, $now ) );
+
+		// Crash: the first worker never finishes; its lease expires.
+		$later  = $now->modify( '+10 minutes' );
+		$second = $queue->claim( 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 10, 300, $later );
+		self::assertCount( 1, $second );
+		self::assertSame( 2, (int) $second[0]['attempt_count'] );
+
+		// The stale owner can no longer record a result.
+		self::assertFalse(
+			$queue->mark_submitted( (int) $first[0]['id'], 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', $later )
+		);
+		self::assertTrue(
+			$queue->mark_submitted( (int) $second[0]['id'], 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', $later )
+		);
+	}
+
+	public function test_presend_recheck_skips_newly_suppressed_unverified_and_filtered(): void {
+		$user_id = self::factory()->user->create( array( 'user_email' => 'member@example.com' ) );
+		( new RegisteredUserPreferenceRepository() )->set( $user_id, RegisteredUserPreference::Subscribed );
+		$this->statuses = array( $user_id => VerificationStatus::Verified );
+		$blocked        = $this->subscriber( 'later-blocked@example.com' );
+		$filtered       = $this->subscriber( 'filtered@example.com' );
+		$post_id        = $this->publish(
+			array(
+				'included_user_ids'       => array( $user_id ),
+				'included_subscriber_ids' => array( $blocked, $filtered ),
+			)
+		);
+		$id             = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		self::assertSame( 3, $this->recipient_count( $id ) );
+
+		// Eligibility changes after the audience snapshot.
+		$this->statuses[ $user_id ] = VerificationStatus::Pending;
+		$this->suppression()->suppress(
+			'later-blocked@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		$veto = static fn ( bool $ok, array $context ): bool => $ok && $context['subscriber_id'] !== $filtered;
+		add_filter( 'argentwolf_post_notifier_recipient_eligible', $veto, 10, 2 );
+
+		$totals = $this->worker()->run( 1 );
+		remove_filter( 'argentwolf_post_notifier_recipient_eligible', $veto, 10 );
+		self::assertSame( 3, $totals['skipped'] );
+		self::assertSame( array(), $this->transport->messages );
+		self::assertSame(
+			array( 'filtered', 'suppressed', 'unverified' ),
+			$this->skip_reasons( $id )
+		);
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_COMPLETED, $campaign['status'] );
+		self::assertSame( 3, (int) $campaign['skipped_count'] );
+	}
+
+	public function test_recipient_links_unsubscribe_safely(): void {
+		$subscriber = $this->subscriber( 'leaver@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->worker()->run( 1 );
+		self::assertCount( 1, $this->transport->messages );
+		preg_match( '/token=([a-f0-9]{64})/', $this->transport->messages[0]->body(), $match );
+		$token      = $match[1];
+		$controller = new RecipientUnsubscribeController( new CampaignRecipientRepository(), $this->suppression() );
+
+		// GET is display-only.
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET                      = array( 'token' => $token );
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_get' ) );
+		self::assertStringContainsString( 'Stop post notifications', $html );
+		self::assertStringNotContainsString( 'leaver@example.com', $html );
+		self::assertFalse( $this->suppression()->is_suppressed( 'leaver@example.com' ) );
+
+		// One-click requires the exact RFC 8058 POST body.
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$this->capture_wp_die( array( $controller, 'handle_one_click' ) );
+		self::assertFalse( $this->suppression()->is_suppressed( 'leaver@example.com' ) );
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = array( 'List-Unsubscribe' => 'One-Click' );
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_one_click' ) );
+		self::assertStringContainsString( 'Subscription updated', $html );
+		self::assertTrue( $this->suppression()->is_suppressed( 'leaver@example.com' ) );
+
+		// Invalid and replayed tokens give generic results.
+		self::assertFalse( $controller->unsubscribe( str_repeat( 'f', 64 ) ) );
+		self::assertFalse( $controller->unsubscribe( 'not-a-token' ) );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		self::assertNull( RecipientToken::hash_plaintext( 'ABC' ) );
+	}
+
+	public function test_message_builder_rejects_unfrozen_content(): void {
+		$builder = new RecipientMessageBuilder( $this->composer() );
+		$this->expectException( \InvalidArgumentException::class );
+		$builder->build(
+			array(
+				'uuid'      => wp_generate_uuid4(),
+				'subject'   => '',
+				'html_body' => '',
+				'text_body' => '',
+			),
+			'person@example.com',
+			wp_generate_uuid4(),
+			( new RecipientLinkFactory() )->create(
+				NamedListMemberType::Subscriber,
+				RecipientToken::generate()->plaintext()
+			)
+		);
+	}
+
+	/**
+	 * Publish a post opted into notification with an audience configuration.
+	 *
+	 * @param array<string,mixed> $audience Audience config.
+	 * @param string              $content  Post content.
+	 * @return int
+	 */
+	private function publish( array $audience, string $content = 'Body text.' ): int {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'draft',
+				'post_title'   => 'Delivery title',
+				'post_content' => $content,
+			)
+		);
+		update_post_meta( $post_id, PostNotificationMeta::SEND_INTENT_KEY, 'send' );
+		update_post_meta( $post_id, PostNotificationMeta::CONTENT_MODE_KEY, 'site_default' );
+		update_post_meta( $post_id, PostNotificationMeta::AUDIENCE_CONFIG_KEY, $audience );
+		wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			)
+		);
+
+		return $post_id;
+	}
+
+	/**
+	 * Campaign row for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<string,mixed>
+	 */
+	private function campaign_for( int $post_id ): array {
+		$row = ( new CampaignRepository() )->find_by_key(
+			CampaignRepository::initial_key( get_current_blog_id(), $post_id )
+		);
+		self::assertNotNull( $row );
+
+		return ( new CampaignRepository() )->find( (int) $row['id'] );
+	}
+
+	/**
+	 * Count recipient rows.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return int
+	 */
+	private function recipient_count( int $campaign_id ): int {
+		return array_sum( ( new CampaignRecipientRepository() )->status_counts( $campaign_id ) );
+	}
+
+	/**
+	 * Sorted skip reasons for a campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array<int,string>
+	 */
+	private function skip_reasons( int $campaign_id ): array {
+		global $wpdb;
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$values = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT skip_reason FROM %i WHERE campaign_id = %d AND status = %s ORDER BY skip_reason',
+				TableNames::from_database( $wpdb )->campaign_recipients(),
+				$campaign_id,
+				'skipped'
+			)
+		);
+		// phpcs:enable
+
+		return array_map( 'strval', $values );
+	}
+
+	/**
+	 * Create one confirmed standalone subscriber.
+	 *
+	 * @param string $email Address.
+	 * @return int
+	 */
+	private function subscriber( string $email ): int {
+		$now     = new DateTimeImmutable( '-2 hours', new DateTimeZone( 'UTC' ) );
+		$service = new SubscriberService( new SubscriberRepository(), new EmailIdentity(), $this->suppression() );
+		$signup  = $service->request_confirmation( $email, null, 'Consent', 'delivery-test', null, $now );
+		self::assertTrue( $service->confirm( (string) $signup->confirmation_token(), $now->modify( '+1 hour' ) ) );
+
+		return $signup->subscriber_id();
+	}
+
+	/**
+	 * Suppression service.
+	 *
+	 * @return SuppressionService
+	 */
+	private function suppression(): SuppressionService {
+		return new SuppressionService( new SuppressionRepository(), new EmailIdentity() );
+	}
+
+	/**
+	 * Canonical composer.
+	 *
+	 * @return EmailTemplateComposer
+	 */
+	private function composer(): EmailTemplateComposer {
+		return new EmailTemplateComposer( new EmailContentRenderer( new EmailContentSelector() ) );
+	}
+
+	/**
+	 * Deterministic provider bound to this test's state.
+	 *
+	 * @return VerificationProvider
+	 */
+	private function provider(): VerificationProvider {
+		return new CampaignDeliveryVerificationProvider(
+			fn ( int $user_id ): VerificationStatus => $this->statuses[ $user_id ] ?? VerificationStatus::Unknown,
+			fn (): bool => $this->healthy
+		);
+	}
+
+	/**
+	 * Preparation service with deterministic verification.
+	 *
+	 * @return CampaignPreparation
+	 */
+	private function preparation(): CampaignPreparation {
+		return new CampaignPreparation(
+			new CampaignRepository(),
+			new CampaignRenderedBodyFinalizer(),
+			new CampaignQueueGate( $this->composer(), $this->provider() ),
+			$this->audience(),
+			new AuditService( new AuditRepository() )
+		);
+	}
+
+	/**
+	 * Audience snapshot with deterministic verification.
+	 *
+	 * @return CampaignAudienceSnapshot
+	 */
+	private function audience(): CampaignAudienceSnapshot {
+		return new CampaignAudienceSnapshot(
+			new AudienceResolver(
+				new NamedListRepository(),
+				new RegisteredUserPreferenceRepository(),
+				new RegisteredUserEligibility( $this->provider() ),
+				new SubscriberRepository(),
+				$this->suppression(),
+				new EmailIdentity()
+			),
+			new AudienceRequestBuilder()
+		);
+	}
+
+	/**
+	 * Worker with recording transport.
+	 *
+	 * @return QueueWorker
+	 */
+	private function worker(): QueueWorker {
+		return new QueueWorker(
+			new QueueRepository(),
+			new CampaignRepository(),
+			$this->audience(),
+			new RecipientEligibilityRecheck(
+				new RegisteredUserEligibility( $this->provider() ),
+				new RegisteredUserPreferenceRepository(),
+				new SubscriberRepository(),
+				$this->suppression(),
+				new EmailIdentity()
+			),
+			new RecipientMessageBuilder( $this->composer() ),
+			new RecipientLinkFactory(),
+			$this->transport,
+			new AuditService( new AuditRepository() )
+		);
+	}
+
+	/**
+	 * Capture a wp_die() page.
+	 *
+	 * @param callable $callback Handler.
+	 * @return string
+	 * @throws RuntimeException When the handler did not terminate.
+	 */
+	private function capture_wp_die( callable $callback ): string {
+		$filter = static fn () => static function ( $message ): void {
+			throw new CampaignDeliveryWpDie( is_string( $message ) ? $message : '' );
+		};
+		add_filter( 'wp_die_handler', $filter );
+		try {
+			$callback();
+		} catch ( CampaignDeliveryWpDie $exception ) {
+			return $exception->getMessage();
+		} finally {
+			remove_filter( 'wp_die_handler', $filter );
+		}
+
+		throw new RuntimeException( 'Controller did not terminate through wp_die().' );
+	}
+}
+
+/**
+ * Captured wp_die() termination.
+ */
+final class CampaignDeliveryWpDie extends RuntimeException {
+}
+
+/**
+ * Recording transport; never sends mail.
+ */
+final class CampaignDeliveryRecordingTransport implements MailTransport {
+	/**
+	 * Submitted messages.
+	 *
+	 * @var array<int,MailMessage>
+	 */
+	public array $messages = array();
+
+	/**
+	 * Whether submissions succeed.
+	 *
+	 * @var bool
+	 */
+	public bool $accept = true;
+
+	/**
+	 * Record one message.
+	 *
+	 * @param MailMessage $message Message.
+	 * @return DeliveryResult
+	 */
+	public function send( MailMessage $message ): DeliveryResult {
+		$this->messages[] = $message;
+
+		return $this->accept ? DeliveryResult::submitted() : DeliveryResult::failed();
+	}
+}
+
+/**
+ * Closure-driven verification provider for delivery tests.
+ */
+final class CampaignDeliveryVerificationProvider implements VerificationProvider {
+	/**
+	 * Construct the provider.
+	 *
+	 * @param \Closure $status  Status callback.
+	 * @param \Closure $healthy Health callback.
+	 */
+	public function __construct( private \Closure $status, private \Closure $healthy ) {
+	}
+
+	public function is_available(): bool {
+		return true;
+	}
+
+	public function status_for_user( int $user_id ): VerificationStatus {
+		return ( $this->status )( $user_id );
+	}
+
+	public function description(): string {
+		return 'Delivery test provider';
+	}
+
+	public function health(): VerificationProviderHealth {
+		$healthy = ( $this->healthy )();
+
+		return new VerificationProviderHealth(
+			'delivery-test',
+			$this->description(),
+			$healthy,
+			$healthy,
+			'1.0.0',
+			$healthy ? 'healthy' : 'unavailable',
+			'Test provider.'
+		);
+	}
+}
+
+// EOF: tests/Integration/CampaignDeliveryTest.php.

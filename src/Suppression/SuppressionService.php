@@ -25,6 +25,7 @@ final class SuppressionService {
 
 	public const SOURCE_SUBSCRIBER_MANAGE = 'subscriber_manage';
 	public const SOURCE_SUBSCRIBER_ADMIN  = 'subscriber_admin';
+	public const SOURCE_CAMPAIGN_LINK     = 'campaign_link';
 
 	/**
 	 * Structured audit policy.

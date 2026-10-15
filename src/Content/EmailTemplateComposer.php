@@ -96,6 +96,29 @@ final class EmailTemplateComposer {
 	}
 
 	/**
+	 * Render the mandatory subscriber-control footer for one campaign recipient.
+	 *
+	 * This is the same footer that preview and test paths append, so frozen
+	 * recipient-neutral campaign bodies and administrator previews stay
+	 * byte-compatible apart from the recipient-specific URLs. Both URLs must be
+	 * absolute and on the current WordPress origin.
+	 *
+	 * @param string $unsubscribe_url Recipient-specific local unsubscribe URL.
+	 * @param string $manage_url      Recipient-specific local management URL.
+	 * @return array{html:string,text:string}
+	 * @throws InvalidArgumentException If either URL is not local.
+	 */
+	public function recipient_footer( string $unsubscribe_url, string $manage_url ): array {
+		$unsubscribe_url = $this->require_site_url( $unsubscribe_url );
+		$manage_url      = $this->require_site_url( $manage_url );
+
+		return array(
+			'html' => $this->mandatory_html_footer( $unsubscribe_url, $manage_url ),
+			'text' => $this->mandatory_text_footer( $unsubscribe_url, $manage_url ),
+		);
+	}
+
+	/**
 	 * Render immutable campaign body content without subscriber-specific links.
 	 *
 	 * The caller MUST read the validated write-once input snapshot. These fields
