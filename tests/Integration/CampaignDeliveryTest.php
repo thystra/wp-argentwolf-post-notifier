@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
@@ -380,6 +381,58 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		$campaign = ( new CampaignRepository() )->find( $id );
 		self::assertSame( CampaignRepository::STATUS_COMPLETED, $campaign['status'] );
 		self::assertSame( 3, (int) $campaign['skipped_count'] );
+	}
+
+	public function test_delivery_status_page_is_admin_only_aggregate_and_runs_manually(): void {
+		$blocked = $this->subscriber( 'skip-me@example.com' );
+		$sent    = $this->subscriber( 'send-me@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $blocked, $sent ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->suppression()->suppress(
+			'skip-me@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		$worker = $this->worker();
+		$page   = new DeliveryStatusPage(
+			static fn (): object => new QueueRepository(),
+			static fn (): object => $worker
+		);
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		self::assertStringContainsString(
+			'permission',
+			$this->capture_wp_die( static fn () => $page->render() )
+		);
+		self::assertStringContainsString(
+			'permission',
+			$this->capture_wp_die( static fn () => $page->handle_run() )
+		);
+		self::assertSame( array(), $this->transport->messages );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$this->capture_wp_die( static fn () => $page->handle_run() );
+		self::assertSame( array(), $this->transport->messages, 'Missing nonce must not run the queue.' );
+
+		$totals = $page->run_manual();
+		self::assertSame( 1, $totals['submitted'] );
+		self::assertSame( 1, $totals['skipped'] );
+
+		$_GET = array(
+			'awpn_ran'       => '1',
+			'awpn_submitted' => '1<script>',
+		);
+		ob_start();
+		$page->render();
+		$html = (string) ob_get_clean();
+		self::assertStringContainsString( 'suppressed', $html );
+		self::assertStringContainsString( 'completed', $html );
+		self::assertStringContainsString( 'name="_wpnonce"', $html );
+		self::assertStringContainsString( DeliveryStatusPage::RUN_ACTION, $html );
+		self::assertStringNotContainsString( '<script>', $html );
+		self::assertStringNotContainsString( 'example.com', $html );
 	}
 
 	public function test_recipient_links_unsubscribe_safely(): void {
