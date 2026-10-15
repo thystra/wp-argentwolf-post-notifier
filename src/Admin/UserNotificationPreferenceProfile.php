@@ -22,6 +22,11 @@ final class UserNotificationPreferenceProfile implements Registerable {
 	public const FIELD_NAME = 'argentwolf_post_notifier_subscription_preference';
 
 	/**
+	 * Fragment ID of the profile section, used by campaign manage links.
+	 */
+	public const SECTION_ID = 'argentwolf-post-notifier';
+
+	/**
 	 * Profile-form nonce field.
 	 */
 	public const NONCE_FIELD = 'argentwolf_post_notifier_preference_nonce';
@@ -74,7 +79,9 @@ final class UserNotificationPreferenceProfile implements Registerable {
 
 		wp_nonce_field( $this->nonce_action( $user_id ), self::NONCE_FIELD );
 		?>
-		<h2><?php esc_html_e( 'Post notifications', 'argentwolf-post-notifier' ); ?></h2>
+		<h2 id="<?php echo esc_attr( self::SECTION_ID ); ?>">
+			<?php esc_html_e( 'Post notifications', 'argentwolf-post-notifier' ); ?>
+		</h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th scope="row">

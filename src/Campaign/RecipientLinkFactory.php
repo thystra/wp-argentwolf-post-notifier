@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Campaign;
 
+use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
 use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
 use InvalidArgumentException;
 
@@ -36,7 +37,7 @@ final class RecipientLinkFactory {
 		}
 
 		$manage = NamedListMemberType::User === $type
-			? admin_url( 'profile.php' )
+			? admin_url( 'profile.php' ) . '#' . UserNotificationPreferenceProfile::SECTION_ID
 			: $this->endpoint( self::MANAGE_ACTION, $plaintext );
 
 		return array(
