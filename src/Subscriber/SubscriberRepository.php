@@ -308,10 +308,88 @@ final class SubscriberRepository {
 	}
 
 	/**
+	 * Compare-and-set replace one management-token hash.
+	 *
+	 * @param string            $old_hash Current management-token hash.
+	 * @param string            $new_hash Replacement management-token hash.
+	 * @param DateTimeInterface $now      Current operation time.
+	 * @return bool True when this call performed the rotation.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function rotate_manage_token(
+		string $old_hash,
+		string $new_hash,
+		DateTimeInterface $now
+	): bool {
+		return $this->write_manage_token(
+			$this->database->prepare(
+				'UPDATE %i SET manage_token_hash = %s, updated_at_gmt = %s
+				WHERE manage_token_hash = %s',
+				$this->table,
+				$new_hash,
+				UtcDateTime::format( $now ),
+				$old_hash
+			)
+		);
+	}
+
+	/**
+	 * Issue a new management-token hash for one confirmed subscriber row.
+	 *
+	 * Only rows that completed double opt-in (subscribed or self-unsubscribed)
+	 * can receive a management bearer. Any previous bearer stops working.
+	 *
+	 * @param int               $subscriber_id Subscriber ID.
+	 * @param string            $new_hash      New management-token hash.
+	 * @param DateTimeInterface $now           Current operation time.
+	 * @return bool True when one row received the new bearer.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function issue_manage_token(
+		int $subscriber_id,
+		string $new_hash,
+		DateTimeInterface $now
+	): bool {
+		return $this->write_manage_token(
+			$this->database->prepare(
+				'UPDATE %i SET manage_token_hash = %s, updated_at_gmt = %s
+				WHERE id = %d AND status IN (%s, %s) AND confirmed_at_gmt IS NOT NULL',
+				$this->table,
+				$new_hash,
+				UtcDateTime::format( $now ),
+				$subscriber_id,
+				SubscriberStatus::Subscribed->value,
+				SubscriberStatus::Unsubscribed->value
+			)
+		);
+	}
+
+	/**
+	 * Execute one prepared single-row management-token write.
+	 *
+	 * @param string $query Prepared query.
+	 * @return bool True when exactly one row changed.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	private function write_manage_token( string $query ): bool {
+		// Plugin-owned subscriber writes intentionally update the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->database->query( $query );
+		// phpcs:enable
+		if ( false === $result ) {
+			throw new RuntimeException( 'Subscriber management token could not be saved.' );
+		}
+
+		return 1 === $result;
+	}
+
+	/**
 	 * Mark one management-authorized subscriber unsubscribed.
 	 *
-	 * The management bearer remains valid so the same verified holder can use
-	 * the explicit resubscribe workflow later.
+	 * Callers that act on a public request rotate the bearer afterwards
+	 * (`SubscriberService::apply_managed()`).
 	 *
 	 * @param string            $manage_token_hash Management-token hash.
 	 * @param DateTimeInterface $now               Current operation time.

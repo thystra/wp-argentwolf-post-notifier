@@ -51,8 +51,8 @@ final class EmailTemplateSettingsTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_custom_text_renders_in_both_formats_with_immutable_links(): void {
-		$settings = new EmailTemplateSettings();
-		$fields   = $settings->defaults();
+		$settings              = new EmailTemplateSettings();
+		$fields                = $settings->defaults();
 		$fields['subject']     = '{{site_name}}: {{post_title}}';
 		$fields['heading']     = 'Update: {{post_title}}';
 		$fields['before']      = 'From {{site_name}}: <b>hello</b> & welcome';
@@ -61,7 +61,7 @@ final class EmailTemplateSettingsTest extends WP_UnitTestCase {
 		$fields['footer_note'] = 'Questions? Contact the editor.';
 		$settings->save( $fields );
 
-		$composer = new EmailTemplateComposer(
+		$composer    = new EmailTemplateComposer(
 			new EmailContentRenderer( new EmailContentSelector() ),
 			$settings
 		);
@@ -123,7 +123,7 @@ final class EmailTemplateSettingsTest extends WP_UnitTestCase {
 		$settings = new EmailTemplateSettings();
 		update_option( EmailTemplateSettings::OPTION, array( 'subject' => '{{unknown}}' ) );
 		self::assertSame( $settings->defaults(), $settings->get() );
-		$changed = $settings->defaults();
+		$changed        = $settings->defaults();
 		$changed['cta'] = 'Visit site';
 		$settings->save( $changed );
 		self::assertSame( 'Visit site', $settings->get()['cta'] );

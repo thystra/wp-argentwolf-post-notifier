@@ -279,7 +279,9 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		$second  = $this->subscriber( 'two@example.com' );
 		$post_id = $this->publish(
 			array( 'included_subscriber_ids' => array( $first, $second ) ),
-			'<!-- wp:paragraph --><p>Lead.</p><!-- /wp:paragraph --><!-- wp:argentwolf-post-notifier/email-cutoff /--><!-- wp:paragraph --><p>Hidden tail.</p><!-- /wp:paragraph -->'
+			'<!-- wp:paragraph --><p>Lead.</p><!-- /wp:paragraph -->'
+				. '<!-- wp:argentwolf-post-notifier/email-cutoff /-->'
+				. '<!-- wp:paragraph --><p>Hidden tail.</p><!-- /wp:paragraph -->'
 		);
 		$id      = (int) $this->campaign_for( $post_id )['id'];
 		$this->preparation()->prepare( $id );
@@ -527,7 +529,8 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 
 		// The confirmation POST requires the nonce.
 		$_SERVER['REQUEST_METHOD'] = 'POST';
-		preg_match( '/name="' . RecipientUnsubscribeController::BINDING_FIELD . '" value="([a-f0-9]{64})"/', $html, $bound );
+		$field                     = RecipientUnsubscribeController::BINDING_FIELD;
+		preg_match( '/name="' . $field . '" value="([a-f0-9]{64})"/', $html, $bound );
 		self::assertSame( $controller->current_binding( $token ), $bound[1] );
 		$_POST = array(
 			'argentwolf_post_notifier_recipient_token'    => $token,
@@ -625,6 +628,90 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		// The current page binding still allows the legitimate resubscribe.
 		self::assertTrue( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
 		self::assertFalse( $this->suppression()->is_suppressed( 'replay@example.com' ) );
+	}
+
+	public function test_campaign_manage_links_reach_profile_and_standalone_settings(): void {
+		$user_id = self::factory()->user->create( array( 'user_email' => 'member-links@example.com' ) );
+		( new RegisteredUserPreferenceRepository() )->set( $user_id, RegisteredUserPreference::Subscribed );
+		$this->statuses = array( $user_id => VerificationStatus::Verified );
+		$subscriber     = $this->subscriber( 'standalone-links@example.com' );
+		$post_id        = $this->publish(
+			array(
+				'included_user_ids'       => array( $user_id ),
+				'included_subscriber_ids' => array( $subscriber ),
+			)
+		);
+		$id             = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->worker()->run( 1 );
+		self::assertCount( 2, $this->transport->messages );
+
+		$tokens = array();
+		foreach ( $this->transport->messages as $message ) {
+			preg_match( '/token=([a-f0-9]{64})/', $message->body(), $match );
+			$tokens[ $message->recipient() ] = $match[1];
+			if ( 'member-links@example.com' === $message->recipient() ) {
+				self::assertStringContainsString(
+					'profile.php#' . \ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile::SECTION_ID,
+					html_entity_decode( (string) $message->alt_body() . $message->body() )
+				);
+			}
+		}
+
+		$subscribers = new SubscriberService( new SubscriberRepository(), new EmailIdentity(), $this->suppression() );
+		$controller  = new RecipientUnsubscribeController(
+			new CampaignRecipientRepository(),
+			$this->suppression(),
+			$subscribers,
+			new \ArgentWolf\PostNotifier\Subscriber\WordPressManageSubscriptionLinkFactory()
+		);
+
+		// Registered users are not offered standalone settings.
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET                      = array( 'token' => $tokens['member-links@example.com'] );
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_get' ) );
+		self::assertStringNotContainsString( 'Open subscription settings', $html );
+		self::assertNull( $controller->open_settings( $tokens['member-links@example.com'] ) );
+
+		// Standalone subscribers get a scanner-safe settings button.
+		$_GET = array( 'token' => $tokens['standalone-links@example.com'] );
+		$html = $this->capture_wp_die( array( $controller, 'handle_get' ) );
+		self::assertStringContainsString( 'Open subscription settings', $html );
+		self::assertStringContainsString( RecipientUnsubscribeController::INTENT_MANAGE, $html );
+		self::assertStringNotContainsString( 'standalone-links@example.com', $html );
+
+		// The POST issues a fresh management bearer and links to the manage page.
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = array(
+			'argentwolf_post_notifier_recipient_token'  => $tokens['standalone-links@example.com'],
+			'argentwolf_post_notifier_recipient_intent' => RecipientUnsubscribeController::INTENT_MANAGE,
+			'argentwolf_post_notifier_recipient_nonce'  => wp_create_nonce(
+				'argentwolf_post_notifier_recipient_unsubscribe'
+			),
+		);
+		$_REQUEST                  = $_POST;
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_confirm' ) );
+		$_REQUEST                  = array();
+		self::assertStringContainsString( 'Continue to subscription settings', $html );
+		preg_match( '/href="([^"]+)"/', $html, $link );
+		$url = html_entity_decode( $link[1] );
+		self::assertStringContainsString(
+			\ArgentWolf\PostNotifier\Subscriber\WordPressManageSubscriptionLinkFactory::GET_ACTION,
+			$url
+		);
+		parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+		$first = (string) $query['token'];
+		$row   = $subscribers->managed_subscriber( $first );
+		self::assertSame( $subscriber, (int) $row['id'] );
+
+		// Opening settings again rotates: the earlier link stops working.
+		$second_url = (string) $controller->open_settings( $tokens['standalone-links@example.com'] );
+		parse_str( (string) wp_parse_url( $second_url, PHP_URL_QUERY ), $query );
+		self::assertNull( $subscribers->managed_subscriber( $first ) );
+		self::assertNotNull( $subscribers->managed_subscriber( (string) $query['token'] ) );
+
+		// Invalid campaign tokens get the generic failure.
+		self::assertNull( $controller->open_settings( str_repeat( 'f', 64 ) ) );
 	}
 
 	public function test_message_builder_rejects_unfrozen_content(): void {

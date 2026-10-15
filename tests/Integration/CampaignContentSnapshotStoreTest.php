@@ -71,10 +71,10 @@ final class CampaignContentSnapshotStoreTest extends WP_UnitTestCase {
 	 */
 	public function test_wrong_post_and_nonbuilding_rows_cannot_be_frozen(): void {
 		global $wpdb;
-		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$id      = $this->reserve( $post_id );
-		$store   = new CampaignContentSnapshotStore();
-		$source  = $this->source( $post_id );
+		$post_id           = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$id                = $this->reserve( $post_id );
+		$store             = new CampaignContentSnapshotStore();
+		$source            = $this->source( $post_id );
 		$source['post_id'] = $post_id + 1000;
 		self::assertFalse( $store->freeze( $id, $source ) );
 		self::assertNull( $store->read( $id ) );

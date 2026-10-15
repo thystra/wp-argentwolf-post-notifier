@@ -54,7 +54,8 @@ Implementation and acceptance gates are complete for the development skeleton.
 - [x] Add the main plugin bootstrap file.
 - [x] Add Composer autoloading.
 - [x] Add namespaced service registration.
-- [x] Add PHPCS with WordPress Coding Standards.
+- [x] Add PHPCS with WordPress Coding Standards (tests/ included since
+      `feature/m11-completion`, with documented test-scoped relaxations).
 - [x] Add PHPUnit and the WordPress test environment.
 - [x] Add JavaScript build tooling for editor and blocks.
 - [x] Add lint commands for PHP, JavaScript, CSS, and Markdown as appropriate.
@@ -648,8 +649,9 @@ Acceptance criteria:
 
 Target: `0.1.0-rc.2`
 
-Implemented locally on `feature/m8-m11-followups` (local suites pass; Forgejo
-CI qualification pending). Integration evidence: `CampaignDeliveryTest`.
+Implemented on `feature/m8-m11-followups` (Forgejo CI green) and completed
+locally on `feature/m11-completion` (local suites pass; Forgejo CI pending).
+Integration evidence: `CampaignDeliveryTest`, `ManageSubscriptionControllerTest`.
 
 - [x] Add visible unsubscribe management page (campaign links).
 - [x] Require POST confirmation for visible-link unsubscribe.
@@ -658,11 +660,17 @@ CI qualification pending). Integration evidence: `CampaignDeliveryTest`.
 - [x] Add `List-Unsubscribe` header.
 - [x] Add `List-Unsubscribe-Post` header.
 - [x] Apply global suppression.
-- [ ] Add user-profile and standalone-subscriber manage links.
+- [x] Add user-profile and standalone-subscriber manage links (profile
+      section anchor; campaign page "Open subscription settings" POST issues a
+      fresh management bearer; `test_campaign_manage_links_*`). Forgejo CI pending.
 - [x] Add verified resubscribe from campaign links (only lifts campaign-link
       suppressions; token possession proves receipt).
-- [ ] Rotate management tokens after sensitive state changes (campaign
-      tokens are not rotated: links in the delivered email must keep working).
+- [x] Rotate management tokens after sensitive state changes (self-service
+      unsubscribe/resubscribe and settings issue rotate the bearer;
+      `test_management_token_rotates_*`, `test_rotation_is_compare_and_set_*`).
+      Campaign recipient tokens are deliberately not rotated so delivered
+      unsubscribe links keep working. Replay is closed by the single-use
+      suppression-event binding instead. Forgejo CI pending.
 - [x] Add expiry where appropriate (unsubscribe 1 year, resubscribe 30 days).
 - [x] Add scanner and replay tests.
 - [x] Bind resubscribe to the current campaign-link suppression event

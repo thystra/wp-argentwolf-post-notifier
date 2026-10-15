@@ -17,4 +17,4 @@ final class VersionTest extends TestCase {
 	}
 }
 
-// EOF: tests/Unit/VersionTest.php
+// EOF: tests/Unit/VersionTest.php.

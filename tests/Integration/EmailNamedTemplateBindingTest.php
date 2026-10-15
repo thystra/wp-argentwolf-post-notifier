@@ -53,8 +53,8 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_selected_named_template_controls_canonical_preview(): void {
-		$defaults = ( new EmailTemplateSettings() )->defaults();
-		$site     = $defaults;
+		$defaults        = ( new EmailTemplateSettings() )->defaults();
+		$site            = $defaults;
 		$site['subject'] = 'Default {{post_title}}';
 		( new EmailTemplateSettings() )->save( $site );
 
@@ -87,8 +87,8 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_site_default_retains_unsaved_override(): void {
-		$post_id = $this->post_id();
-		$fields  = ( new EmailTemplateSettings() )->defaults();
+		$post_id           = $this->post_id();
+		$fields            = ( new EmailTemplateSettings() )->defaults();
 		$fields['subject'] = 'Draft {{post_title}}';
 		update_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, 0 );
 		self::assertSame(
@@ -108,7 +108,7 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 	 */
 	public function test_deleted_external_and_malformed_ids_fail_closed(): void {
 		$post_id = $this->post_id();
-		$id = $this->library()->create( 'Temporary', ( new EmailTemplateSettings() )->defaults() );
+		$id      = $this->library()->create( 'Temporary', ( new EmailTemplateSettings() )->defaults() );
 		$this->library()->delete( $id );
 		foreach ( array( $id, 17, -3 ) as $invalid ) {
 			update_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, $invalid );
@@ -142,7 +142,7 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 	 */
 	public function test_corrupt_library_and_invalid_unsaved_text_are_rejected(): void {
 		$post_id = $this->post_id();
-		$id = $this->library()->create( 'Persisted', ( new EmailTemplateSettings() )->defaults() );
+		$id      = $this->library()->create( 'Persisted', ( new EmailTemplateSettings() )->defaults() );
 		update_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, $id );
 		$bad            = ( new EmailTemplateSettings() )->defaults();
 		$bad['subject'] = "Unsafe\r\nBcc: other@example.com";
@@ -163,14 +163,14 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_named_test_mail_uses_canonical_preview_and_does_not_reserve(): void {
-		$post_id          = $this->post_id();
-		$fields           = ( new EmailTemplateSettings() )->defaults();
+		$post_id           = $this->post_id();
+		$fields            = ( new EmailTemplateSettings() )->defaults();
 		$fields['subject'] = 'Named mail {{post_title}}';
-		$id               = $this->library()->create( 'Mail variant', $fields );
+		$id                = $this->library()->create( 'Mail variant', $fields );
 		update_post_meta( $post_id, PostNotificationMeta::TEMPLATE_ID_KEY, $id );
-		$transport = $this->transport();
-		$sender    = new EmailTemplateTestMailer( $this->preview(), $transport );
-		$reserved  = 0;
+		$transport   = $this->transport();
+		$sender      = new EmailTemplateTestMailer( $this->preview(), $transport );
+		$reserved    = 0;
 		$on_campaign = static function () use ( &$reserved ): void {
 			++$reserved;
 		};
@@ -236,7 +236,12 @@ final class EmailNamedTemplateBindingTest extends WP_UnitTestCase {
 			/** @var MailMessage[] Captured submissions. */
 			public array $messages = array();
 
-			/** Capture without a real outbound delivery. */
+			/**
+			 * Capture without a real outbound delivery.
+			 *
+			 * @param MailMessage $message Message.
+			 * @return DeliveryResult
+			 */
 			public function send( MailMessage $message ): DeliveryResult {
 				$this->messages[] = $message;
 				return DeliveryResult::submitted();

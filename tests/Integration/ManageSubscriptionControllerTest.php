@@ -68,7 +68,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_get_is_display_only_for_subscribed_address(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$_GET['token']             = $manage_token;
@@ -83,14 +83,14 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_valid_post_unsubscribes_globally(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$_GET['token']             = $manage_token;
 		$get_html                  = $this->capture_wp_die(
 			static fn () => $controller->handle_get()
 		);
-		$nonce = $this->hidden_value( $get_html, 'argentwolf_post_notifier_manage_nonce' );
+		$nonce                     = $this->hidden_value( $get_html, 'argentwolf_post_notifier_manage_nonce' );
 
 		$_GET                      = array();
 		$_SERVER['REQUEST_METHOD'] = 'POST';
@@ -115,7 +115,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_verified_post_can_remove_same_source_suppression(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 		self::assertTrue( $service->unsubscribe_managed( $manage_token ) );
 
 		$_SERVER['REQUEST_METHOD'] = 'GET';
@@ -143,9 +143,100 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 		self::assertFalse( $suppression->is_suppressed( 'person@example.com' ) );
 	}
 
+	public function test_management_token_rotates_after_each_state_change(): void {
+		[ $controller, $service, $suppression ] = $this->controller_services();
+		$first                                  = $this->confirmed_manage_token( $service );
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET['token']             = $first;
+		$nonce                     = $this->hidden_value(
+			$this->capture_wp_die( static fn () => $controller->handle_get() ),
+			'argentwolf_post_notifier_manage_nonce'
+		);
+
+		$_GET                      = array();
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = array(
+			'argentwolf_post_notifier_manage_token'  => $first,
+			'argentwolf_post_notifier_manage_intent' => 'unsubscribe',
+			'argentwolf_post_notifier_manage_nonce'  => $nonce,
+		);
+		$_REQUEST                  = $_POST;
+		$html                      = $this->capture_wp_die( static fn () => $controller->handle_post() );
+		self::assertStringContainsString( 'Subscription updated', $html );
+		self::assertTrue( $suppression->is_suppressed( 'person@example.com' ) );
+
+		// The result page carries a fresh bearer offering the opposite action.
+		$second = $this->hidden_value( $html, 'argentwolf_post_notifier_manage_token' );
+		self::assertNotSame( $first, $second );
+		self::assertSame( 'resubscribe', $this->hidden_value( $html, 'argentwolf_post_notifier_manage_intent' ) );
+		self::assertStringNotContainsString( 'person@example.com', $html );
+
+		// The presented token stopped working: GET and replayed POST fail.
+		self::assertNull( $service->managed_subscriber( $first ) );
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET['token']             = $first;
+		self::assertStringContainsString(
+			'invalid',
+			$this->capture_wp_die( static fn () => $controller->handle_get() )
+		);
+		$_GET                      = array();
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST['argentwolf_post_notifier_manage_intent'] = 'resubscribe';
+
+		$_REQUEST = $_POST;
+		self::assertStringContainsString(
+			'Unable to update',
+			$this->capture_wp_die( static fn () => $controller->handle_post() )
+		);
+		self::assertTrue( $suppression->is_suppressed( 'person@example.com' ) );
+
+		// The fresh token resubscribes and rotates again.
+		$_POST    = array(
+			'argentwolf_post_notifier_manage_token'  => $second,
+			'argentwolf_post_notifier_manage_intent' => 'resubscribe',
+			'argentwolf_post_notifier_manage_nonce'  => $nonce,
+		);
+		$_REQUEST = $_POST;
+		$html     = $this->capture_wp_die( static fn () => $controller->handle_post() );
+		self::assertStringContainsString( 'Subscription updated', $html );
+		self::assertFalse( $suppression->is_suppressed( 'person@example.com' ) );
+		self::assertSame( SubscriberStatus::Subscribed->value, $this->status_for( 'person@example.com' ) );
+		$third = $this->hidden_value( $html, 'argentwolf_post_notifier_manage_token' );
+		self::assertNotSame( $second, $third );
+		self::assertNull( $service->managed_subscriber( $second ) );
+		self::assertNotNull( $service->managed_subscriber( $third ) );
+		$_POST    = array();
+		$_REQUEST = array();
+	}
+
+	public function test_rotation_is_compare_and_set_and_issue_requires_confirmation(): void {
+		[ , $service ] = $this->controller_services();
+		$token         = $this->confirmed_manage_token( $service );
+		$next          = $service->rotate_managed( $token );
+		self::assertNotNull( $next );
+		self::assertNull( $service->rotate_managed( $token ), 'A stale bearer cannot rotate.' );
+		self::assertNull( $service->rotate_managed( 'not-a-token' ) );
+
+		$pending = $service->request_confirmation(
+			'pending@example.com',
+			null,
+			'I agree to receive post notifications.',
+			'block'
+		);
+		self::assertNull( $service->issue_management_token( $pending->subscriber_id() ) );
+		self::assertNull( $service->issue_management_token( 0 ) );
+
+		$row    = $service->managed_subscriber( (string) $next );
+		$issued = $service->issue_management_token( (int) $row['id'] );
+		self::assertNotNull( $issued );
+		self::assertNull( $service->managed_subscriber( (string) $next ), 'Issuing replaces the old bearer.' );
+		self::assertNotNull( $service->managed_subscriber( (string) $issued ) );
+	}
+
 	public function test_invalid_nonce_does_not_unsubscribe(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST                     = array(
@@ -165,7 +256,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 
 	public function test_administrator_suppression_is_not_offered_for_resubscribe(): void {
 		[ $controller, $service, $suppression ] = $this->controller_services();
-		$manage_token = $this->confirmed_manage_token( $service );
+		$manage_token                           = $this->confirmed_manage_token( $service );
 		$suppression->suppress(
 			'person@example.com',
 			SuppressionService::REASON_MANUAL,
@@ -214,7 +305,7 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 			'I agree to receive post notifications.',
 			'block'
 		);
-		$token = $service->confirm_with_management(
+		$token  = $service->confirm_with_management(
 			(string) $signup->confirmation_token()
 		);
 		self::assertNotNull( $token );

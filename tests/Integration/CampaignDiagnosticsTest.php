@@ -62,7 +62,12 @@ final class CampaignDiagnosticsTest extends WP_UnitTestCase {
 			update_post_meta( $post_id, PostNotificationMeta::SEND_INTENT_KEY, SendIntent::Send->value );
 			self::assertSame( array(), $events );
 
-			wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+			wp_update_post(
+				array(
+					'ID'          => $post_id,
+					'post_status' => 'publish',
+				)
+			);
 			self::assertCount( 1, $events );
 			self::assertSame( $post_id, $events[0][0] );
 			self::assertGreaterThan( 0, $events[0][1] );
@@ -73,7 +78,12 @@ final class CampaignDiagnosticsTest extends WP_UnitTestCase {
 			self::assertIsArray( $campaign );
 			self::assertSame( (int) $campaign['id'], $events[0][1] );
 
-			wp_update_post( array( 'ID' => $post_id, 'post_title' => 'Published edit' ) );
+			wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => 'Published edit',
+				)
+			);
 			self::assertCount( 1, $events );
 		} finally {
 			remove_action( 'argentwolf_post_notifier_campaign_reservation_resolved', $record, 20 );

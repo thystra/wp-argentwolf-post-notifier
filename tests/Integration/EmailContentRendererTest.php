@@ -34,7 +34,7 @@ final class EmailContentRendererTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_cutoff_returns_matching_html_and_text_without_markers(): void {
-		$post = $this->paragraph( '<strong>Alpha</strong>' )
+		$post   = $this->paragraph( '<strong>Alpha</strong>' )
 			. '<!-- wp:more /-->'
 			. $this->paragraph( 'Beta' )
 			. '<!-- wp:argentwolf-post-notifier/email-cutoff /-->'
@@ -104,7 +104,7 @@ final class EmailContentRendererTest extends WP_UnitTestCase {
 		);
 
 		try {
-			$post = $this->paragraph( 'Before [awpn_renderer_test] after' )
+			$post   = $this->paragraph( 'Before [awpn_renderer_test] after' )
 				. '<!-- wp:shortcode -->[awpn_renderer_test]<!-- /wp:shortcode -->'
 				. '<!-- wp:embed {"url":"https://example.org"} -->'
 				. '<figure>REMOTE</figure><!-- /wp:embed -->'
@@ -133,7 +133,7 @@ final class EmailContentRendererTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_markup_sanitization_keeps_only_inert_elements(): void {
-		$post = $this->paragraph(
+		$post   = $this->paragraph(
 			'<a href="javascript:alert(1)" onclick="bad()">No</a>'
 			. '<script>SECRET_SCRIPT()</script>'
 			. '<img src="https://remote.test/track.gif" alt="tracker">'
@@ -156,7 +156,7 @@ final class EmailContentRendererTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_nested_cutoff_produces_escaped_plain_text(): void {
-		$post = $this->paragraph( 'Outside' )
+		$post   = $this->paragraph( 'Outside' )
 			. '<!-- wp:group --><div class="wp-block-group">'
 			. $this->paragraph( 'Inside' )
 			. '<!-- wp:argentwolf-post-notifier/email-cutoff /-->'

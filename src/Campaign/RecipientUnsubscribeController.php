@@ -8,6 +8,8 @@
 namespace ArgentWolf\PostNotifier\Campaign;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Subscriber\ManageSubscriptionLinkFactory;
+use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 use InvalidArgumentException;
 
@@ -46,6 +48,7 @@ final class RecipientUnsubscribeController implements Registerable {
 
 	public const INTENT_UNSUBSCRIBE = 'unsubscribe';
 	public const INTENT_RESUBSCRIBE = 'resubscribe';
+	public const INTENT_MANAGE      = 'manage';
 
 	/**
 	 * Default unsubscribe-link lifetime after submission (seconds, one year).
@@ -60,12 +63,16 @@ final class RecipientUnsubscribeController implements Registerable {
 	/**
 	 * Construct the controller.
 	 *
-	 * @param CampaignRecipientRepository $recipients  Recipient token lookup.
-	 * @param SuppressionService          $suppression Global suppression.
+	 * @param CampaignRecipientRepository        $recipients   Recipient token lookup.
+	 * @param SuppressionService                 $suppression  Global suppression.
+	 * @param SubscriberService|null             $subscribers  Standalone-subscriber service.
+	 * @param ManageSubscriptionLinkFactory|null $manage_links Manage-page links.
 	 */
 	public function __construct(
 		private CampaignRecipientRepository $recipients,
-		private SuppressionService $suppression
+		private SuppressionService $suppression,
+		private ?SubscriberService $subscribers = null,
+		private ?ManageSubscriptionLinkFactory $manage_links = null
 	) {
 	}
 
@@ -141,8 +148,22 @@ final class RecipientUnsubscribeController implements Registerable {
 				? esc_html__( 'Resume post notifications', 'argentwolf-post-notifier' )
 				: esc_html__( 'Stop post notifications', 'argentwolf-post-notifier' ) )
 			. '</button></p></form>';
+		if ( $this->can_open_settings( $row ) ) {
+			$html .= '<form method="post" action="';
+			$html .= esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			$html .= $this->hidden_input( 'action', self::CONFIRM_ACTION );
+			$html .= $this->hidden_input( self::TOKEN_FIELD, $token );
+			$html .= $this->hidden_input(
+				self::NONCE_FIELD,
+				wp_create_nonce( self::NONCE_ACTION )
+			);
+			$html .= $this->hidden_input( self::INTENT_FIELD, self::INTENT_MANAGE );
+			$html .= '<p><button type="submit">'
+				. esc_html__( 'Open subscription settings', 'argentwolf-post-notifier' )
+				. '</button></p></form>';
+		}
 		$html .= '<p>' . esc_html__(
-			'Nothing changes until you choose the button above.',
+			'Nothing changes until you choose a button above.',
 			'argentwolf-post-notifier'
 		) . '</p>';
 
@@ -161,8 +182,13 @@ final class RecipientUnsubscribeController implements Registerable {
 		}
 		check_admin_referer( self::NONCE_ACTION, self::NONCE_FIELD );
 
-		$token = $this->request_value( $_POST, self::TOKEN_FIELD );
-		if ( self::INTENT_RESUBSCRIBE === $this->request_value( $_POST, self::INTENT_FIELD ) ) {
+		$token  = $this->request_value( $_POST, self::TOKEN_FIELD );
+		$intent = $this->request_value( $_POST, self::INTENT_FIELD );
+		if ( self::INTENT_MANAGE === $intent ) {
+			$this->render_settings_link( $this->open_settings( $token ) );
+			return;
+		}
+		if ( self::INTENT_RESUBSCRIBE === $intent ) {
 			$this->render_resubscribe_result(
 				$this->resubscribe( $token, $this->request_value( $_POST, self::BINDING_FIELD ) )
 			);
@@ -263,6 +289,61 @@ final class RecipientUnsubscribeController implements Registerable {
 		$event = null === $row ? null : $this->resubscribable_event( $row );
 
 		return null === $event ? '' : $this->binding( $row, $event );
+	}
+
+	/**
+	 * Issue a fresh standalone-subscriber management link for a valid token.
+	 *
+	 * The new bearer replaces any earlier management link (rotation), so only
+	 * the most recent page a recipient opened can change settings.
+	 *
+	 * @param string $token Plaintext campaign recipient token.
+	 * @return string|null Management URL, or null when unavailable.
+	 */
+	public function open_settings( string $token ): ?string {
+		$row = $this->lookup( $token );
+		if ( null === $row || ! $this->can_open_settings( $row ) ) {
+			return null;
+		}
+		$plaintext = $this->subscribers->issue_management_token( (int) $row['subscriber_id'] );
+
+		return null === $plaintext ? null : $this->manage_links->create( $plaintext );
+	}
+
+	/**
+	 * Whether this recipient row can be linked to standalone settings.
+	 *
+	 * @param array<string,mixed> $row Recipient row.
+	 * @return bool
+	 */
+	private function can_open_settings( array $row ): bool {
+		return null !== $this->subscribers
+			&& null !== $this->manage_links
+			&& 'subscriber' === (string) ( $row['recipient_type'] ?? '' )
+			&& (int) ( $row['subscriber_id'] ?? 0 ) > 0;
+	}
+
+	/**
+	 * Render the one-time settings link (or a generic failure).
+	 *
+	 * @param string|null $url Management URL.
+	 * @return void
+	 */
+	private function render_settings_link( ?string $url ): void {
+		if ( null === $url ) {
+			$this->render_result( false, 200 );
+			return;
+		}
+		$html  = '<h1>';
+		$html .= esc_html__( 'Subscription settings', 'argentwolf-post-notifier' ) . '</h1>';
+		$html .= '<p>' . esc_html__(
+			'Use this private link to manage this subscription. Earlier links no longer work.',
+			'argentwolf-post-notifier'
+		) . '</p>';
+		$html .= '<p><a href="' . esc_url( $url ) . '" rel="noreferrer">';
+		$html .= esc_html__( 'Continue to subscription settings', 'argentwolf-post-notifier' );
+		$html .= '</a></p>';
+		$this->render_page( $html, 200 );
 	}
 
 	/**
@@ -442,6 +523,10 @@ final class RecipientUnsubscribeController implements Registerable {
 						'value' => true,
 					),
 					'button' => array( 'type' => true ),
+					'a'      => array(
+						'href' => true,
+						'rel'  => true,
+					),
 				)
 			),
 			esc_html__( 'Manage subscription', 'argentwolf-post-notifier' ),

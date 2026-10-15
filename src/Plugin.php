@@ -915,7 +915,9 @@ final class Plugin {
 			static fn ( Container $services ): RecipientUnsubscribeController =>
 				new RecipientUnsubscribeController(
 					self::typed( $services, CampaignRecipientRepository::class ),
-					self::typed( $services, SuppressionService::class )
+					self::typed( $services, SuppressionService::class ),
+					self::typed( $services, SubscriberService::class ),
+					new WordPressManageSubscriptionLinkFactory()
 				)
 		);
 	}

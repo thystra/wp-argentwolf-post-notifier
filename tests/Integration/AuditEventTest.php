@@ -75,8 +75,8 @@ final class AuditEventTest extends WP_UnitTestCase {
 			$identity,
 			$audit
 		);
-		$email       = 'Audit.Person@example.com';
-		$email_hash  = $identity->hash( $email );
+		$email      = 'Audit.Person@example.com';
+		$email_hash = $identity->hash( $email );
 		self::assertNotNull( $email_hash );
 
 		$service->suppress(

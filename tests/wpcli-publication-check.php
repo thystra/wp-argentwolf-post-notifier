@@ -19,6 +19,7 @@ use ArgentWolf\PostNotifier\Editor\ContentMode;
  * @param bool   $condition Assertion condition.
  * @param string $message   Description without private recipient information.
  * @return void
+ * @throws RuntimeException When the condition is false.
  */
 function argentwolf_post_notifier_wpcli_assert( bool $condition, string $message ): void {
 	if ( ! $condition ) {
@@ -26,14 +27,15 @@ function argentwolf_post_notifier_wpcli_assert( bool $condition, string $message
 	}
 }
 
+$check    = 'argentwolf_post_notifier_wpcli_assert';
 $mode     = getenv( 'AWPN_CLI_TEST_MODE' );
 $post_id  = (int) getenv( 'AWPN_CLI_TEST_POST_ID' );
 $expected = (int) getenv( 'AWPN_CLI_TEST_EXPECT_ID' );
 
-argentwolf_post_notifier_wpcli_assert( PHP_SAPI === 'cli', 'WP-CLI PHP runtime required.' );
-argentwolf_post_notifier_wpcli_assert( is_string( $mode ) && '' !== $mode, 'Test mode is required.' );
-argentwolf_post_notifier_wpcli_assert( $post_id > 0, 'Test post ID is required.' );
-argentwolf_post_notifier_wpcli_assert( class_exists( CampaignRepository::class ), 'Installed notifier is not active.' );
+$check( PHP_SAPI === 'cli', 'WP-CLI PHP runtime required.' );
+$check( is_string( $mode ) && '' !== $mode, 'Test mode is required.' );
+$check( $post_id > 0, 'Test post ID is required.' );
+$check( class_exists( CampaignRepository::class ), 'Installed notifier is not active.' );
 
 /** @var wpdb $wpdb */
 global $wpdb;
@@ -43,9 +45,9 @@ $key       = CampaignRepository::initial_key( get_current_blog_id(), $post_id );
 
 if ( 'backdate' === $mode ) {
 	$post = get_post( $post_id );
-	argentwolf_post_notifier_wpcli_assert( $post instanceof WP_Post, 'Scheduled fixture is missing.' );
-	argentwolf_post_notifier_wpcli_assert( 'future' === $post->post_status, 'Fixture must still be scheduled.' );
-	argentwolf_post_notifier_wpcli_assert(
+	$check( $post instanceof WP_Post, 'Scheduled fixture is missing.' );
+	$check( 'future' === $post->post_status, 'Fixture must still be scheduled.' );
+	$check(
 		false !== wp_next_scheduled( 'publish_future_post', array( $post_id ) ),
 		'WordPress did not schedule the publication cron event.'
 	);
@@ -64,7 +66,7 @@ if ( 'backdate' === $mode ) {
 		array( 'ID' => $post_id )
 	);
 	// phpcs:enable
-	argentwolf_post_notifier_wpcli_assert( 1 === $updated, 'Could not backdate scheduled fixture.' );
+	$check( 1 === $updated, 'Could not backdate scheduled fixture.' );
 	clean_post_cache( $post_id );
 	return;
 }
@@ -76,7 +78,7 @@ if ( 'cleanup' === $mode ) {
 		$wpdb->prepare( 'DELETE FROM %i WHERE campaign_key = %s', $tables->campaigns(), $key )
 	);
 	// phpcs:enable
-	argentwolf_post_notifier_wpcli_assert( false !== $removed, 'Failed to clean up campaign fixture.' );
+	$check( false !== $removed, 'Failed to clean up campaign fixture.' );
 	return;
 }
 
@@ -95,20 +97,20 @@ $count = (int) $wpdb->get_var(
 // phpcs:enable
 
 if ( 'none' === $mode ) {
-	argentwolf_post_notifier_wpcli_assert( 0 === $count, 'Prepublication CLI command created a campaign.' );
+	$check( 0 === $count, 'Prepublication CLI command created a campaign.' );
 	return;
 }
 
-argentwolf_post_notifier_wpcli_assert( 'one' === $mode, 'Unknown WP-CLI qualification mode.' );
-argentwolf_post_notifier_wpcli_assert( 1 === $count, 'CLI publication did not preserve exactly one campaign.' );
+$check( 'one' === $mode, 'Unknown WP-CLI qualification mode.' );
+$check( 1 === $count, 'CLI publication did not preserve exactly one campaign.' );
 $row = $campaigns->find_by_key( $key );
-argentwolf_post_notifier_wpcli_assert( is_array( $row ), 'Initial campaign idempotency key was not reserved.' );
+$check( is_array( $row ), 'Initial campaign idempotency key was not reserved.' );
 $id = (int) $row['id'];
-argentwolf_post_notifier_wpcli_assert( $id > 0, 'Campaign ID is invalid.' );
-argentwolf_post_notifier_wpcli_assert( $expected === 0 || $expected === $id, 'Republish/update changed initial campaign ID.' );
-argentwolf_post_notifier_wpcli_assert( CampaignRepository::STATUS_BUILDING === $row['status'], 'Campaign status was changed before build.' );
-argentwolf_post_notifier_wpcli_assert( ContentMode::Full->value === $row['content_mode'], 'Unexpected content mode.' );
-argentwolf_post_notifier_wpcli_assert(
+$check( $id > 0, 'Campaign ID is invalid.' );
+$check( 0 === $expected || $id === $expected, 'Republish/update changed initial campaign ID.' );
+$check( CampaignRepository::STATUS_BUILDING === $row['status'], 'Campaign status was changed before build.' );
+$check( ContentMode::Full->value === $row['content_mode'], 'Unexpected content mode.' );
+$check(
 	'' === $row['subject'] && '' === $row['html_body'] && '' === $row['text_body'],
 	'CLI publication prematurely populated message bodies.'
 );
@@ -119,7 +121,7 @@ $recipients = (int) $wpdb->get_var(
 	$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE campaign_id = %d', $tables->campaign_recipients(), $id )
 );
 // phpcs:enable
-argentwolf_post_notifier_wpcli_assert( 0 === $recipients, 'CLI publication prematurely materialized recipients.' );
-echo $id;
+$check( 0 === $recipients, 'CLI publication prematurely materialized recipients.' );
+echo (int) $id;
 
 // EOF: tests/wpcli-publication-check.php.

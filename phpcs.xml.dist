@@ -5,11 +5,13 @@
 	<file>autoload.php</file>
 	<file>src</file>
 	<file>uninstall.php</file>
+	<file>tests</file>
 	<exclude-pattern>vendor/*</exclude-pattern>
 	<exclude-pattern>node_modules/*</exclude-pattern>
 	<exclude-pattern>dist/*</exclude-pattern>
 	<arg name="basepath" value="."/>
 	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
 	<arg value="sp"/>
 	<config name="minimum_supported_wp_version" value="7.0"/>
 	<!--
@@ -33,5 +35,52 @@
 			<property name="lineLimit" value="100"/>
 			<property name="absoluteLineLimit" value="120"/>
 		</properties>
+	</rule>
+	<!--
+		Test-only relaxations. Test methods document themselves through their
+		names; fixtures intentionally use direct SQL, raw files, superglobals and
+		multiple helper classes per file. Lines over 100 characters are allowed
+		in tests, but the 120-character absolute limit still applies.
+		EmptyPHPStatement is excluded because its fixer deletes the required
+		semicolon after `static fn () => static function () {...};`.
+	-->
+	<rule ref="Squiz.Commenting.FunctionComment.Missing">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Squiz.Commenting.ClassComment.Missing">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Commenting.DocComment.MissingShort">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.NonceVerification">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.ValidatedSanitizedInput">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile.MultipleFound">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.PHP.DiscouragedPHPFunctions.system_calls_exec">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.LineLength.TooLong">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.CodeAnalysis.EmptyPHPStatement.SemicolonWithoutCodeDetected">
+		<exclude-pattern>tests/*</exclude-pattern>
 	</rule>
 </ruleset>

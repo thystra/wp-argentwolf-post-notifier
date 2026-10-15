@@ -89,9 +89,9 @@ final class EmailMoreSettingsTest extends WP_UnitTestCase {
 		self::assertInstanceOf( EmailMoreSettings::class, $settings );
 		self::assertInstanceOf( EmailTemplatePreview::class, $preview );
 
-		$sent = 0;
-		$campaigns = 0;
-		$mail_filter = static function ( $result ) use ( &$sent ) {
+		$sent            = 0;
+		$campaigns       = 0;
+		$mail_filter     = static function ( $result ) use ( &$sent ) {
 			++$sent;
 			return $result;
 		};
@@ -127,7 +127,7 @@ final class EmailMoreSettingsTest extends WP_UnitTestCase {
 	 */
 	public function test_disabled_more_falls_back_to_generated_excerpt(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-		$post_id = self::factory()->post->create(
+		$post_id  = self::factory()->post->create(
 			array(
 				'post_status'  => 'publish',
 				'post_excerpt' => '',
@@ -151,7 +151,7 @@ final class EmailMoreSettingsTest extends WP_UnitTestCase {
 	 */
 	public function test_full_and_email_cutoff_keep_their_precedence(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-		$post_id = self::factory()->post->create(
+		$post_id  = self::factory()->post->create(
 			array(
 				'post_status'  => 'publish',
 				'post_content' => '<!-- wp:paragraph --><p>First</p><!-- /wp:paragraph -->'

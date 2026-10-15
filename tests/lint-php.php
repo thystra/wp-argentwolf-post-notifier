@@ -3,6 +3,8 @@
  * Dependency-free PHP syntax runner.
  *
  * File: tests/lint-php.php
+ *
+ * @package ArgentWolf\PostNotifier
  */
 
 $root      = dirname( __DIR__ );
@@ -50,4 +52,4 @@ if ( array() !== $failures ) {
 
 fwrite( STDOUT, "All PHP files passed syntax validation.\n" );
 
-// EOF: tests/lint-php.php
+// EOF: tests/lint-php.php.

@@ -57,4 +57,4 @@ final class ActivationTest extends WP_UnitTestCase {
 	}
 }
 
-// EOF: tests/Integration/ActivationTest.php
+// EOF: tests/Integration/ActivationTest.php.

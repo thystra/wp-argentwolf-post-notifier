@@ -340,7 +340,7 @@ final class PublicationObserverTest extends WP_UnitTestCase {
 		$first  = new CampaignRepository( $wpdb );
 		$second = new CampaignRepository( $wpdb );
 
-		$first_id = $first->create_initial_building(
+		$first_id  = $first->create_initial_building(
 			get_current_blog_id(),
 			$post_id,
 			(string) $post->post_modified_gmt,

@@ -133,14 +133,14 @@ final class ConfirmationControllerTest extends WP_UnitTestCase {
 		);
 		$nonce                     = $this->hidden_value( $get_html, 'argentwolf_post_notifier_nonce' );
 
-		$_GET                        = array();
-		$_SERVER['REQUEST_METHOD']   = 'POST';
-		$_POST                       = array(
+		$_GET                      = array();
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = array(
 			'argentwolf_post_notifier_token' => $token,
 			'argentwolf_post_notifier_nonce' => $nonce,
 		);
-		$_REQUEST                    = $_POST;
-		$post_html                   = $this->capture_wp_die(
+		$_REQUEST                  = $_POST;
+		$post_html                 = $this->capture_wp_die(
 			static fn () => ( new ConfirmationController( $service ) )->handle_post()
 		);
 

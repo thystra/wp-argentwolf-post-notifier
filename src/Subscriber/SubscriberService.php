@@ -285,6 +285,91 @@ final class SubscriberService {
 	}
 
 	/**
+	 * Apply one management intent and rotate the bearer that authorized it.
+	 *
+	 * The presented token stops working once the change succeeds. The new
+	 * plaintext is returned only to the requester so the same page can offer
+	 * the opposite action; no new token is emailed or logged.
+	 *
+	 * @param string                 $plaintext_token Plaintext management token.
+	 * @param string                 $intent          `unsubscribe` or `resubscribe`.
+	 * @param DateTimeInterface|null $now             Testable current time override.
+	 * @return array{changed:bool,token:?string}
+	 */
+	public function apply_managed(
+		string $plaintext_token,
+		string $intent,
+		?DateTimeInterface $now = null
+	): array {
+		$changed = match ( $intent ) {
+			'unsubscribe' => $this->unsubscribe_managed( $plaintext_token, $now ),
+			'resubscribe' => $this->resubscribe_managed( $plaintext_token, $now ),
+			default       => false,
+		};
+		if ( ! $changed ) {
+			return array(
+				'changed' => false,
+				'token'   => null,
+			);
+		}
+
+		return array(
+			'changed' => true,
+			'token'   => $this->rotate_managed( $plaintext_token, $now ),
+		);
+	}
+
+	/**
+	 * Replace one valid management bearer with a fresh one.
+	 *
+	 * @param string                 $plaintext_token Current plaintext management token.
+	 * @param DateTimeInterface|null $now             Testable current time override.
+	 * @return string|null New plaintext token, or null when the old one was not current.
+	 */
+	public function rotate_managed(
+		string $plaintext_token,
+		?DateTimeInterface $now = null
+	): ?string {
+		$old_hash = ManageSubscriptionToken::hash_plaintext( $plaintext_token );
+		if ( null === $old_hash ) {
+			return null;
+		}
+		$next = ManageSubscriptionToken::generate();
+
+		return $this->repository->rotate_manage_token(
+			$old_hash,
+			$next->hash(),
+			$this->normalize_now( $now )
+		) ? $next->plaintext() : null;
+	}
+
+	/**
+	 * Issue a fresh management bearer for a confirmed subscriber.
+	 *
+	 * Used when the holder of a campaign recipient token asks to open the full
+	 * subscription settings. Any earlier management link stops working.
+	 *
+	 * @param int                    $subscriber_id Subscriber ID.
+	 * @param DateTimeInterface|null $now           Testable current time override.
+	 * @return string|null New plaintext token, or null when the row is ineligible.
+	 */
+	public function issue_management_token(
+		int $subscriber_id,
+		?DateTimeInterface $now = null
+	): ?string {
+		if ( $subscriber_id < 1 ) {
+			return null;
+		}
+		$next = ManageSubscriptionToken::generate();
+
+		return $this->repository->issue_manage_token(
+			$subscriber_id,
+			$next->hash(),
+			$this->normalize_now( $now )
+		) ? $next->plaintext() : null;
+	}
+
+	/**
 	 * Return a UTC immutable current-time value.
 	 *
 	 * @param DateTimeInterface|null $now Optional current-time override.

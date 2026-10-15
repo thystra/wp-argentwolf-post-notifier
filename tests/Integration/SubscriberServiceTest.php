@@ -72,9 +72,9 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 	}
 
 	public function test_repeated_signup_respects_cooldown_then_rotates_token(): void {
-		$service = $this->service();
-		$start   = $this->utc( '2026-09-25 12:00:00' );
-		$first   = $service->request_confirmation(
+		$service   = $this->service();
+		$start     = $this->utc( '2026-09-25 12:00:00' );
+		$first     = $service->request_confirmation(
 			'person@example.com',
 			'First Name',
 			'Consent one',
@@ -92,7 +92,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 			2,
 			$start->modify( '+10 minutes' )
 		);
-		$cooldown_row = $this->subscriber_row( $within_cooldown->subscriber_id() );
+		$cooldown_row    = $this->subscriber_row( $within_cooldown->subscriber_id() );
 
 		self::assertSame( $first->subscriber_id(), $within_cooldown->subscriber_id() );
 		self::assertFalse( $within_cooldown->should_send_confirmation() );
@@ -114,7 +114,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 			2,
 			$start->modify( '+15 minutes' )
 		);
-		$rotated_row = $this->subscriber_row( $after_cooldown->subscriber_id() );
+		$rotated_row    = $this->subscriber_row( $after_cooldown->subscriber_id() );
 
 		self::assertTrue( $after_cooldown->should_send_confirmation() );
 		self::assertNotNull( $after_cooldown->confirmation_token() );
@@ -147,7 +147,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 			null,
 			$start
 		);
-		$table = TableNames::from_database( $wpdb )->subscribers();
+		$table   = TableNames::from_database( $wpdb )->subscribers();
 		$wpdb->update(
 			$table,
 			array( 'status' => $status->value ),
@@ -164,7 +164,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 			9,
 			$start->modify( '+2 days' )
 		);
-		$row = $this->subscriber_row( $first->subscriber_id() );
+		$row    = $this->subscriber_row( $first->subscriber_id() );
 
 		self::assertSame( $first->subscriber_id(), $repeat->subscriber_id() );
 		self::assertFalse( $repeat->should_send_confirmation() );
@@ -196,7 +196,7 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 			null,
 			$start
 		);
-		$token = (string) $signup->confirmation_token();
+		$token   = (string) $signup->confirmation_token();
 
 		self::assertTrue( $service->confirm( $token, $start->modify( '+1 hour' ) ) );
 		self::assertFalse( $service->confirm( $token, $start->modify( '+1 hour' ) ) );
@@ -257,6 +257,9 @@ final class SubscriberServiceTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Read one subscriber row.
+	 *
+	 * @param int $subscriber_id Subscriber ID.
 	 * @return array<string,mixed>
 	 */
 	private function subscriber_row( int $subscriber_id ): array {

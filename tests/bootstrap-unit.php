@@ -17,4 +17,4 @@ if ( is_readable( $composer ) ) {
 	require_once dirname( __DIR__ ) . '/autoload.php';
 }
 
-// EOF: tests/bootstrap-unit.php
+// EOF: tests/bootstrap-unit.php.

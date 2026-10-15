@@ -20,11 +20,11 @@ if ( PHP_SAPI !== 'cli' || count( $argv ) < 4 ) {
 	exit( 2 );
 }
 
-$mode       = $argv[1];
-$wp_root    = rtrim( $argv[2], '/\\' );
-$run_dir    = rtrim( $argv[3], '/\\' );
-$worker_id  = $argv[4] ?? '';
-$wordpress  = $wp_root . '/wp-load.php';
+$mode      = $argv[1];
+$wp_root   = rtrim( $argv[2], '/\\' );
+$run_dir   = rtrim( $argv[3], '/\\' );
+$worker_id = $argv[4] ?? '';
+$wordpress = $wp_root . '/wp-load.php';
 
 if ( ! is_readable( $wordpress ) || ! is_dir( $run_dir ) ) {
 	fwrite( STDERR, "WordPress bootstrap or test coordination directory unavailable.\n" );
@@ -40,6 +40,7 @@ require $wordpress;
  * @param bool   $condition Assertion condition.
  * @param string $message   Failure message.
  * @return void
+ * @throws RuntimeException When the condition is false.
  */
 function argentwolf_post_notifier_test_concurrent_assert( bool $condition, string $message ): void {
 	if ( ! $condition ) {
@@ -66,6 +67,7 @@ function argentwolf_post_notifier_test_concurrent_post_id( string $directory ): 
  * @param string $path    Signal filename.
  * @param string $purpose Purpose for a failure message.
  * @return void
+ * @throws RuntimeException When the deadline passes.
  */
 function argentwolf_post_notifier_test_concurrent_wait( string $path, string $purpose ): void {
 	$deadline = microtime( true ) + 45;
@@ -112,8 +114,9 @@ function argentwolf_post_notifier_test_concurrent_observe( int $post_id ): void 
 }
 
 try {
+	$check = 'argentwolf_post_notifier_test_concurrent_assert';
 	global $wpdb;
-	argentwolf_post_notifier_test_concurrent_assert( $wpdb instanceof wpdb, 'WordPress database unavailable.' );
+	$check( $wpdb instanceof wpdb, 'WordPress database unavailable.' );
 
 	$campaigns = new CampaignRepository( $wpdb );
 	$tables    = TableNames::from_database( $wpdb );
@@ -129,14 +132,14 @@ try {
 				),
 				true
 			);
-			argentwolf_post_notifier_test_concurrent_assert( is_int( $post_id ) && $post_id > 0, 'Fixture creation failed.' );
+			$check( is_int( $post_id ) && $post_id > 0, 'Fixture creation failed.' );
 
 			// Deliberately set send intent after initial publication (no campaign yet).
 			update_post_meta( $post_id, PostNotificationMeta::SEND_INTENT_KEY, SendIntent::Send->value );
 			update_post_meta( $post_id, PostNotificationMeta::CONTENT_MODE_KEY, ContentMode::Full->value );
 			$key = CampaignRepository::initial_key( get_current_blog_id(), $post_id );
-			argentwolf_post_notifier_test_concurrent_assert( null === $campaigns->find_by_key( $key ), 'Fixture already has a campaign.' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check( null === $campaigns->find_by_key( $key ), 'Fixture already has a campaign.' );
+			$check(
 				false !== file_put_contents( $run_dir . '/post-id', (string) $post_id ),
 				'Could not write fixture identifier.'
 			);
@@ -145,69 +148,69 @@ try {
 		case 'holder':
 			$post_id = argentwolf_post_notifier_test_concurrent_post_id( $run_dir );
 			$key     = CampaignRepository::initial_key( get_current_blog_id(), $post_id );
-			argentwolf_post_notifier_test_concurrent_assert( false !== $wpdb->query( 'START TRANSACTION' ), 'Could not begin transaction.' );
+			$check( false !== $wpdb->query( 'START TRANSACTION' ), 'Could not begin transaction.' );
 			argentwolf_post_notifier_test_concurrent_observe( $post_id );
 			$row = $campaigns->find_by_key( $key );
-			argentwolf_post_notifier_test_concurrent_assert( null !== $row, 'Holding transaction has no campaign row.' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check( null !== $row, 'Holding transaction has no campaign row.' );
+			$check(
 				false !== file_put_contents( $run_dir . '/holder-ready', (string) $row['id'] ),
 				'Could not report held reservation.'
 			);
 			// The row and its unique key remain uncommitted while contenders arrive.
 			argentwolf_post_notifier_test_concurrent_wait( $run_dir . '/commit', 'transaction release' );
-			argentwolf_post_notifier_test_concurrent_assert( false !== $wpdb->query( 'COMMIT' ), 'Could not commit reservation.' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check( false !== $wpdb->query( 'COMMIT' ), 'Could not commit reservation.' );
+			$check(
 				false !== file_put_contents( $run_dir . '/result-holder', (string) $row['id'] ),
 				'Could not report committed reservation.'
 			);
 			break;
 
 		case 'contender':
-			argentwolf_post_notifier_test_concurrent_assert( preg_match( '/^[1-9][0-9]*$/', $worker_id ) === 1, 'Invalid worker ID.' );
+			$check( preg_match( '/^[1-9][0-9]*$/', $worker_id ) === 1, 'Invalid worker ID.' );
 			$post_id = argentwolf_post_notifier_test_concurrent_post_id( $run_dir );
 			$key     = CampaignRepository::initial_key( get_current_blog_id(), $post_id );
 			argentwolf_post_notifier_test_concurrent_wait( $run_dir . '/holder-ready', 'held reservation' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check(
 				false !== file_put_contents( $run_dir . '/attempt-' . $worker_id, '1' ),
 				'Could not report contention attempt.'
 			);
 			argentwolf_post_notifier_test_concurrent_observe( $post_id );
 			$row = $campaigns->find_by_key( $key );
-			argentwolf_post_notifier_test_concurrent_assert( null !== $row, 'Contender did not resolve a campaign.' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check( null !== $row, 'Contender did not resolve a campaign.' );
+			$check(
 				false !== file_put_contents( $run_dir . '/result-' . $worker_id, (string) $row['id'] ),
 				'Could not report contender result.'
 			);
 			break;
 
 		case 'verify':
-			argentwolf_post_notifier_test_concurrent_assert( preg_match( '/^[1-9][0-9]*$/', $worker_id ) === 1, 'Invalid worker count.' );
+			$check( preg_match( '/^[1-9][0-9]*$/', $worker_id ) === 1, 'Invalid worker count.' );
 			$post_id  = argentwolf_post_notifier_test_concurrent_post_id( $run_dir );
 			$key      = CampaignRepository::initial_key( get_current_blog_id(), $post_id );
 			$expected = (int) file_get_contents( $run_dir . '/result-holder' );
 			$row      = $campaigns->find_by_key( $key );
-			argentwolf_post_notifier_test_concurrent_assert( $expected > 0 && null !== $row, 'Committed campaign is missing.' );
-			argentwolf_post_notifier_test_concurrent_assert( (int) $row['id'] === $expected, 'Campaign ID changed.' );
-			argentwolf_post_notifier_test_concurrent_assert( 'building' === $row['status'], 'Campaign build state was altered.' );
-			argentwolf_post_notifier_test_concurrent_assert( 'post' === $row['campaign_kind'], 'Campaign kind was altered.' );
-			argentwolf_post_notifier_test_concurrent_assert( ContentMode::Full->value === $row['content_mode'], 'Content mode was altered.' );
-			argentwolf_post_notifier_test_concurrent_assert(
+			$check( $expected > 0 && null !== $row, 'Committed campaign is missing.' );
+			$check( (int) $row['id'] === $expected, 'Campaign ID changed.' );
+			$check( 'building' === $row['status'], 'Campaign build state was altered.' );
+			$check( 'post' === $row['campaign_kind'], 'Campaign kind was altered.' );
+			$check( ContentMode::Full->value === $row['content_mode'], 'Content mode was altered.' );
+			$check(
 				'' === $row['subject'] && '' === $row['html_body'] && '' === $row['text_body'],
 				'Content was populated before build qualification.'
 			);
 
 			for ( $i = 1; $i <= (int) $worker_id; ++$i ) {
 				$result_path = $run_dir . '/result-' . $i;
-				argentwolf_post_notifier_test_concurrent_assert( is_readable( $result_path ), 'Contender result missing.' );
-				argentwolf_post_notifier_test_concurrent_assert(
-				(int) file_get_contents( $result_path ) === $expected,
-				'Concurrent contender did not resolve the original campaign.'
+				$check( is_readable( $result_path ), 'Contender result missing.' );
+				$check(
+					(int) file_get_contents( $result_path ) === $expected,
+					'Concurrent contender did not resolve the original campaign.'
 				);
 			}
 
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-			$count = (int) $wpdb->get_var(
+			$count          = (int) $wpdb->get_var(
 				$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE campaign_key = %s', $tables->campaigns(), $key )
 			);
 			$post_campaigns = (int) $wpdb->get_var(
@@ -218,14 +221,23 @@ try {
 					CampaignRepository::KIND_POST
 				)
 			);
-			$recipients = (int) $wpdb->get_var(
-				$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE campaign_id = %d', $tables->campaign_recipients(), $expected )
+			$recipients     = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM %i WHERE campaign_id = %d',
+					$tables->campaign_recipients(),
+					$expected
+				)
 			);
 			// phpcs:enable
-			argentwolf_post_notifier_test_concurrent_assert( 1 === $count, 'Concurrent attempts created duplicate campaign keys.' );
-			argentwolf_post_notifier_test_concurrent_assert( 1 === $post_campaigns, 'Concurrent attempts created multiple post campaigns.' );
-			argentwolf_post_notifier_test_concurrent_assert( 0 === $recipients, 'Reservation unexpectedly created recipients.' );
-			printf( "CONCURRENT_CAMPAIGN_RESERVATION=PASS contenders=%d unique_rows=%d recipients=%d\n", (int) $worker_id, $count, $recipients );
+			$check( 1 === $count, 'Concurrent attempts created duplicate campaign keys.' );
+			$check( 1 === $post_campaigns, 'Concurrent attempts created multiple post campaigns.' );
+			$check( 0 === $recipients, 'Reservation unexpectedly created recipients.' );
+			printf(
+				"CONCURRENT_CAMPAIGN_RESERVATION=PASS contenders=%d unique_rows=%d recipients=%d\n",
+				(int) $worker_id,
+				(int) $count,
+				(int) $recipients
+			);
 			break;
 
 		case 'cleanup':

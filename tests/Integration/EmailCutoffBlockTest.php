@@ -58,4 +58,4 @@ final class EmailCutoffBlockTest extends WP_UnitTestCase {
 	}
 }
 
-// EOF: tests/Integration/EmailCutoffBlockTest.php
+// EOF: tests/Integration/EmailCutoffBlockTest.php.

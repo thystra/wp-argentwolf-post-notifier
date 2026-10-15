@@ -152,7 +152,7 @@ final class AudienceResolverTest extends WP_UnitTestCase {
 	}
 
 	public function test_site_default_never_implies_opt_in_without_request_policy(): void {
-		$user_id = self::factory()->user->create(
+		$user_id  = self::factory()->user->create(
 			array( 'user_email' => 'default@example.com' )
 		);
 		$resolver = $this->resolver( array( $user_id => VerificationStatus::Verified ) );

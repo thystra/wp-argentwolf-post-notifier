@@ -3,6 +3,8 @@
  * Dependency-free project contract tests.
  *
  * File: tests/run.php
+ *
+ * @package ArgentWolf\PostNotifier
  */
 
 $root     = dirname( __DIR__ );
@@ -43,108 +45,108 @@ use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
 use ArgentWolf\PostNotifier\Verification\VerificationProviderResolver;
 use ArgentWolf\PostNotifier\Verification\VerificationStatus;
 
-$main   = file_get_contents( $root . '/argentwolf-post-notifier.php' );
-$readme = file_get_contents( $root . '/readme.txt' );
-$todo         = file_get_contents( $root . '/TODO.md' );
-$architecture = file_get_contents( $root . '/ARCHITECTURE.md' );
-$installer = file_get_contents( $root . '/bin/install-wp-tests.sh' );
-$workflow_path = $root . '/.forgejo/workflows/ci.yml';
-$workflow      = is_readable( $workflow_path )
+$main                               = file_get_contents( $root . '/argentwolf-post-notifier.php' );
+$readme                             = file_get_contents( $root . '/readme.txt' );
+$todo                               = file_get_contents( $root . '/TODO.md' );
+$architecture                       = file_get_contents( $root . '/ARCHITECTURE.md' );
+$installer                          = file_get_contents( $root . '/bin/install-wp-tests.sh' );
+$workflow_path                      = $root . '/.forgejo/workflows/ci.yml';
+$workflow                           = is_readable( $workflow_path )
 	? file_get_contents( $workflow_path )
 	: '';
-$qualified_images_path = $root . '/ci/images/qualified-images.json';
-$qualified_images      = is_readable( $qualified_images_path )
+$qualified_images_path              = $root . '/ci/images/qualified-images.json';
+$qualified_images                   = is_readable( $qualified_images_path )
 	? json_decode( (string) file_get_contents( $qualified_images_path ), true )
 	: null;
-$image_verifier_path = $root . '/ci/images/php/verify-image.sh';
-$image_verifier      = is_readable( $image_verifier_path )
+$image_verifier_path                = $root . '/ci/images/php/verify-image.sh';
+$image_verifier                     = is_readable( $image_verifier_path )
 	? file_get_contents( $image_verifier_path )
 	: '';
-$build_script = file_get_contents( $root . '/build/build-plugin.sh' );
-$package_manifest_script = file_get_contents( $root . '/tests/package-manifest.sh' );
-$plugin_check_script = file_get_contents( $root . '/scripts/run-plugin-check.sh' );
-$companion_installer = file_get_contents( $root . '/bin/install-verification-companion.sh' );
-$package_manifest = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
-$package_lock = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
-$schema_one_source = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
-$schema_two_source = file_get_contents( $root . '/src/Database/Migrations/Schema2.php' );
-$schema_one_digest_path = $root . '/tests/fixtures/schema-1.sha256';
-$schema_one_digest      = is_readable( $schema_one_digest_path )
+$build_script                       = file_get_contents( $root . '/build/build-plugin.sh' );
+$package_manifest_script            = file_get_contents( $root . '/tests/package-manifest.sh' );
+$plugin_check_script                = file_get_contents( $root . '/scripts/run-plugin-check.sh' );
+$companion_installer                = file_get_contents( $root . '/bin/install-verification-companion.sh' );
+$package_manifest                   = json_decode( (string) file_get_contents( $root . '/package.json' ), true );
+$package_lock                       = json_decode( (string) file_get_contents( $root . '/package-lock.json' ), true );
+$schema_one_source                  = file_get_contents( $root . '/src/Database/Migrations/Schema1.php' );
+$schema_two_source                  = file_get_contents( $root . '/src/Database/Migrations/Schema2.php' );
+$schema_one_digest_path             = $root . '/tests/fixtures/schema-1.sha256';
+$schema_one_digest                  = is_readable( $schema_one_digest_path )
 	? trim( (string) file_get_contents( $schema_one_digest_path ) )
 	: '';
-$activator_source = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
-$uninstall_source = file_get_contents( $root . '/uninstall.php' );
-$capabilities_source = file_get_contents( $root . '/src/Admin/Capabilities.php' );
-$post_notification_meta_source = file_get_contents(
+$activator_source                   = file_get_contents( $root . '/src/Lifecycle/Activator.php' );
+$uninstall_source                   = file_get_contents( $root . '/uninstall.php' );
+$capabilities_source                = file_get_contents( $root . '/src/Admin/Capabilities.php' );
+$post_notification_meta_source      = file_get_contents(
 	$root . '/src/Editor/PostNotificationMeta.php'
 );
-$editor_assets_source = file_get_contents( $root . '/src/Editor/EditorAssets.php' );
-$editor_template_catalog_source = file_get_contents(
+$editor_assets_source               = file_get_contents( $root . '/src/Editor/EditorAssets.php' );
+$editor_template_catalog_source     = file_get_contents(
 	$root . '/src/Editor/EditorTemplateCatalog.php'
 );
-$editor_contact_lookup_source = file_get_contents(
+$editor_contact_lookup_source       = file_get_contents(
 	$root . '/src/Editor/EditorContactLookup.php'
 );
-$editor_audience_estimate_source = file_get_contents(
+$editor_audience_estimate_source    = file_get_contents(
 	$root . '/src/Editor/EditorAudienceEstimate.php'
 );
-$audience_request_builder_source = file_get_contents(
+$audience_request_builder_source    = file_get_contents(
 	$root . '/src/Recipient/AudienceRequestBuilder.php'
 );
-$post_editor_runtime_source = file_get_contents(
+$post_editor_runtime_source         = file_get_contents(
 	$root . '/assets/runtime/post-editor.js'
 );
-$cleanup_source = file_get_contents( $root . '/src/Database/DataCleanup.php' );
-$pending_cleanup_source = file_get_contents(
+$cleanup_source                     = file_get_contents( $root . '/src/Database/DataCleanup.php' );
+$pending_cleanup_source             = file_get_contents(
 	$root . '/src/Subscriber/PendingSubscriberCleanup.php'
 );
-$subscriber_admin_page_source = file_get_contents(
+$subscriber_admin_page_source       = file_get_contents(
 	$root . '/src/Admin/SubscriberAdminPage.php'
 );
-$named_list_admin_page_source = file_get_contents(
+$named_list_admin_page_source       = file_get_contents(
 	$root . '/src/Admin/NamedListAdminPage.php'
 );
-$named_list_repository_source = file_get_contents(
+$named_list_repository_source       = file_get_contents(
 	$root . '/src/Recipient/NamedListRepository.php'
 );
-$audience_resolver_source = file_get_contents(
+$audience_resolver_source           = file_get_contents(
 	$root . '/src/Recipient/AudienceResolver.php'
 );
-$audience_request_source = file_get_contents(
+$audience_request_source            = file_get_contents(
 	$root . '/src/Recipient/AudienceResolutionRequest.php'
 );
 $subscriber_admin_repository_source = file_get_contents(
 	$root . '/src/Admin/SubscriberAdminRepository.php'
 );
-$subscriber_csv_exporter_source = file_get_contents(
+$subscriber_csv_exporter_source     = file_get_contents(
 	$root . '/src/Admin/SubscriberCsvExporter.php'
 );
-$user_preference_profile_source = file_get_contents(
+$user_preference_profile_source     = file_get_contents(
 	$root . '/src/Admin/UserNotificationPreferenceProfile.php'
 );
-$registered_user_preference_source = file_get_contents(
+$registered_user_preference_source  = file_get_contents(
 	$root . '/src/Recipient/RegisteredUserPreference.php'
 );
 $registered_user_preference_repository_source = file_get_contents(
 	$root . '/src/Recipient/RegisteredUserPreferenceRepository.php'
 );
-$suppression_repository_source = file_get_contents(
+$suppression_repository_source                = file_get_contents(
 	$root . '/src/Suppression/SuppressionRepository.php'
 );
-$suppression_service_source = file_get_contents(
+$suppression_service_source                   = file_get_contents(
 	$root . '/src/Suppression/SuppressionService.php'
 );
-$manage_controller_source = file_get_contents(
+$manage_controller_source                     = file_get_contents(
 	$root . '/src/Subscriber/ManageSubscriptionController.php'
 );
-$subscriber_service_source = file_get_contents(
+$subscriber_service_source                    = file_get_contents(
 	$root . '/src/Subscriber/SubscriberService.php'
 );
-$deactivator_source = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
-$destructive_uninstaller_source = file_get_contents(
+$deactivator_source                           = file_get_contents( $root . '/src/Lifecycle/Deactivator.php' );
+$destructive_uninstaller_source               = file_get_contents(
 	$root . '/src/Database/DestructiveUninstaller.php'
 );
-$migrator_source = file_get_contents( $root . '/src/Database/SchemaMigrator.php' );
+$migrator_source                              = file_get_contents( $root . '/src/Database/SchemaMigrator.php' );
 
 preg_match( '/^[\h]*\*[\h]+Version:[\h]*(\S+)[\h]*$/m', (string) $main, $header );
 preg_match( '/^Stable tag:[\h]*(\S+)[\h]*$/m', (string) $readme, $stable );
@@ -403,15 +405,15 @@ $assert(
 		&& ! SubscriberStatus::Suppressed->accepts_confirmation_refresh(),
 	'Subscriber lifecycle rules must fail closed outside subscribed/pending states.'
 );
-$rate_limiter_source = file_get_contents( $root . '/src/Subscriber/SignupRateLimiter.php' );
-$signup_processor_source = file_get_contents( $root . '/src/Subscriber/PublicSignupProcessor.php' );
-$mail_transport_source = file_get_contents( $root . '/src/Mail/WpMailTransport.php' );
-$confirmation_controller_source = file_get_contents( $root . '/src/Subscriber/ConfirmationController.php' );
+$rate_limiter_source             = file_get_contents( $root . '/src/Subscriber/SignupRateLimiter.php' );
+$signup_processor_source         = file_get_contents( $root . '/src/Subscriber/PublicSignupProcessor.php' );
+$mail_transport_source           = file_get_contents( $root . '/src/Mail/WpMailTransport.php' );
+$confirmation_controller_source  = file_get_contents( $root . '/src/Subscriber/ConfirmationController.php' );
 $public_signup_controller_source = file_get_contents( $root . '/src/Subscriber/PublicSignupController.php' );
-$signup_form_context_source = file_get_contents( $root . '/src/Subscriber/SignupFormContext.php' );
-$subscribe_block_source = file_get_contents( $root . '/src/Subscriber/SubscribeBlock.php' );
-$subscribe_editor_source = file_get_contents( $root . '/assets/runtime/subscribe-editor.js' );
-$subscribe_block_metadata = json_decode(
+$signup_form_context_source      = file_get_contents( $root . '/src/Subscriber/SignupFormContext.php' );
+$subscribe_block_source          = file_get_contents( $root . '/src/Subscriber/SubscribeBlock.php' );
+$subscribe_editor_source         = file_get_contents( $root . '/assets/runtime/subscribe-editor.js' );
+$subscribe_block_metadata        = json_decode(
 	(string) file_get_contents( $root . '/blocks/subscribe/block.json' ),
 	true
 );
@@ -557,11 +559,11 @@ $assert(
 	false !== $post_notification_meta_source
 		&& str_contains(
 			(string) $post_notification_meta_source,
-			"_argentwolf_post_notifier_send_intent"
+			'_argentwolf_post_notifier_send_intent'
 		)
 		&& str_contains(
 			(string) $post_notification_meta_source,
-			"_argentwolf_post_notifier_audience_config"
+			'_argentwolf_post_notifier_audience_config'
 		)
 		&& str_contains( (string) $post_notification_meta_source, "'revisions_enabled' => true" )
 		&& str_contains( (string) $post_notification_meta_source, "'context' => array( 'edit' )" )
@@ -583,7 +585,7 @@ $assert(
 		&& false !== $editor_audience_estimate_source
 		&& false !== $audience_request_builder_source
 		&& false !== $post_editor_runtime_source
-		&& str_contains( $editor_assets_source, "enqueue_block_editor_assets" )
+		&& str_contains( $editor_assets_source, 'enqueue_block_editor_assets' )
 		&& str_contains( $editor_assets_source, 'Capabilities::SEND_NOTIFICATIONS' )
 		&& str_contains( $editor_assets_source, 'assets/runtime/post-editor.js' )
 		&& str_contains( $editor_assets_source, "'audience'" )
@@ -645,7 +647,7 @@ $assert(
 	'Manual subscriber suppression must clear reusable bearer hashes.'
 );
 $assert(
-	str_contains( (string) $subscriber_csv_exporter_source, "private const BATCH_SIZE = 500" )
+	str_contains( (string) $subscriber_csv_exporter_source, 'private const BATCH_SIZE = 500' )
 		&& str_contains( (string) $subscriber_csv_exporter_source, 'safe_cell' )
 		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'confirmation_token_hash' )
 		&& ! str_contains( (string) $subscriber_csv_exporter_source, 'manage_token_hash' ),
@@ -769,22 +771,22 @@ $assert(
 );
 $qualified_php_images = array(
 	'php84' => array(
-		'minor' => '8.4',
+		'minor'  => '8.4',
 		'digest' => 'sha256:22dd9b45874452a5da42870b41f33b80d9af6c58c2f0aaa37f800619fc275e95',
 	),
 	'php85' => array(
-		'minor' => '8.5',
+		'minor'  => '8.5',
 		'digest' => 'sha256:f0b19c7643297e618f50f02853a64305f87988ad0f03bcbb7b2489450c435ace',
 	),
 );
 foreach ( $qualified_php_images as $image_key => $expected_image ) {
 	$image = $qualified_images['images'][ $image_key ] ?? array();
 	$assert(
-		$expected_image['minor'] === ( $image['phpMinor'] ?? null ),
+		( $image['phpMinor'] ?? null ) === $expected_image['minor'],
 		sprintf( 'Qualified %s metadata must record the expected PHP minor.', $image_key )
 	);
 	$assert(
-		$expected_image['digest'] === ( $image['indexDigest'] ?? null ),
+		( $image['indexDigest'] ?? null ) === $expected_image['digest'],
 		sprintf( 'Qualified %s metadata must record the reviewed OCI index digest.', $image_key )
 	);
 	$assert(
@@ -901,11 +903,11 @@ foreach ( $required_test_constants as $test_constant ) {
 		sprintf( 'Installer must define %s.', $test_constant )
 	);
 }
-$composer_manifest = json_decode(
+$composer_manifest          = json_decode(
 	(string) file_get_contents( $root . '/composer.json' ),
 	true
 );
-$unit_phpunit_config = file_get_contents(
+$unit_phpunit_config        = file_get_contents(
 	$root . '/phpunit.xml.dist'
 );
 $integration_phpunit_config = file_get_contents(
@@ -1022,7 +1024,7 @@ $missing_provider = new ArgentWolfEmailVerificationProvider(
 	static fn (): bool => false,
 	static fn (): ?string => null
 );
-$missing_policy = new RegisteredUserEligibility( $missing_provider );
+$missing_policy   = new RegisteredUserEligibility( $missing_provider );
 $assert(
 	! $missing_policy->is_eligible( 10 ),
 	'Missing providers must fail closed.'
@@ -1042,7 +1044,8 @@ $assert(
 	'Invalid alternate providers must fail closed.'
 );
 $verification_source = '';
-foreach ( glob( $root . '/src/Verification/*.php' ) ?: array() as $source_file ) {
+$verification_files  = glob( $root . '/src/Verification/*.php' );
+foreach ( false === $verification_files ? array() : $verification_files as $source_file ) {
 	$verification_source .= (string) file_get_contents( $source_file );
 }
 $assert(
@@ -1089,4 +1092,4 @@ if ( array() !== $failures ) {
 
 fwrite( STDOUT, "All dependency-free project tests passed.\n" );
 
-// EOF: tests/run.php
+// EOF: tests/run.php.

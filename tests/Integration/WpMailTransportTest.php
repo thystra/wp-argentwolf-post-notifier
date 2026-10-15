@@ -14,8 +14,8 @@ use WP_UnitTestCase;
 final class WpMailTransportTest extends WP_UnitTestCase {
 	public function test_wp_mail_true_maps_to_submitted_only(): void {
 		$captured = null;
-		$filter   = static function ( $return, array $atts ) use ( &$captured ) {
-			unset( $return );
+		$filter   = static function ( $short_circuit, array $atts ) use ( &$captured ) {
+			unset( $short_circuit );
 			$captured = $atts;
 			return true;
 		};

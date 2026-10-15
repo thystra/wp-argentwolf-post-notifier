@@ -43,8 +43,8 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 	 */
 	public function test_published_post_preview_is_inert_and_uses_saved_settings(): void {
 		$this->administrator();
-		$settings = new EmailTemplateSettings();
-		$fields   = $settings->defaults();
+		$settings          = new EmailTemplateSettings();
+		$fields            = $settings->defaults();
 		$fields['heading'] = 'Preview: {{post_title}}';
 		$settings->save( $fields );
 		$post_id = self::factory()->post->create(
@@ -57,9 +57,9 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 			)
 		);
 		update_post_meta( $post_id, PostNotificationMeta::CONTENT_MODE_KEY, 'site_default' );
-		$sent  = 0;
-		$hooks = 0;
-		$mail_filter = static function ( $result ) use ( &$sent ) {
+		$sent            = 0;
+		$hooks           = 0;
+		$mail_filter     = static function ( $result ) use ( &$sent ) {
 			++$sent;
 			return $result;
 		};
@@ -114,8 +114,8 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 	 */
 	public function test_preview_denies_ineligible_post_or_user(): void {
 		$this->administrator();
-		$draft = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$page  = self::factory()->post->create(
+		$draft    = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$page     = self::factory()->post->create(
 			array(
 				'post_type'   => 'page',
 				'post_status' => 'publish',
@@ -131,7 +131,7 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 			}
 		}
 		self::assertSame( 3, $rejected );
-		$published = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$published  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber );
 		$this->expectException( InvalidArgumentException::class );
@@ -148,7 +148,7 @@ final class EmailTemplatePreviewTest extends WP_UnitTestCase {
 		if ( ! function_exists( 'submit_button' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/template.php';
 		}
-		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$post_id     = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$old_get     = $_GET;
 		$old_request = $_REQUEST;
 		$_GET        = array(

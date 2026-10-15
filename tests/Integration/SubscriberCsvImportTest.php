@@ -81,16 +81,16 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 	public function test_duplicate_invalid_existing_and_suppressed_rows_do_not_reactivate(): void {
 		global $wpdb;
 
-		$transport = new CsvImportRecordingMailTransport();
-		$importer  = $this->importer( $transport );
-		$service   = $this->service();
+		$transport    = new CsvImportRecordingMailTransport();
+		$importer     = $this->importer( $transport );
+		$service      = $this->service();
 		$unsubscribed = $service->request_confirmation(
 			'unsubscribed@example.com',
 			null,
 			'I agree to receive email notifications when new posts are published.',
 			'block'
 		);
-		$subscribed = $service->request_confirmation(
+		$subscribed   = $service->request_confirmation(
 			'subscribed@example.com',
 			null,
 			'I agree to receive email notifications when new posts are published.',
@@ -125,7 +125,7 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
 		);
 
-		$csv = "email\nnew@example.com\nNEW@example.com\nnot-an-email\n"
+		$csv    = "email\nnew@example.com\nNEW@example.com\nnot-an-email\n"
 			. "unsubscribed@example.com\nsubscribed@example.com\nsuppressed@example.com\n";
 		$result = $importer->import( $this->csv_stream( $csv ) );
 
@@ -200,6 +200,9 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Open an in-memory CSV stream.
+	 *
+	 * @param string $csv CSV contents.
 	 * @return resource
 	 */
 	private function csv_stream( string $csv ) {
@@ -211,6 +214,9 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Find one subscriber row by email.
+	 *
+	 * @param string $email Email address.
 	 * @return array<string,mixed>|null
 	 */
 	private function subscriber( string $email ): ?array {

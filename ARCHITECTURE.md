@@ -1278,6 +1278,12 @@ may remove only a suppression whose recorded source is `subscriber_manage`. An
 administrator-created `subscriber_admin` suppression cannot be removed by the
 self-service management path.
 
+The management bearer rotates after every successful self-service state change
+(compare-and-set on the stored hash). The result page carries the new bearer in
+a form offering the opposite action, so the flow continues while the presented
+link, a replayed POST or a leaked URL stops working. The bearer also rotates
+whenever a campaign link issues a new one (see below).
+
 Campaign links follow the same rule. When the address is suppressed with
 source `campaign_link`, the campaign manage page offers a nonce-protected
 "Resume post notifications" POST. Holding the per-recipient token proves receipt
@@ -1287,6 +1293,14 @@ tokens expire: unsubscribe one year and resubscribe 30 days after submission
 `argentwolf_post_notifier_recipient_resubscribe_ttl_seconds`). Campaign tokens
 are not rotated after a state change, because the delivered email must keep
 working for unsubscribe.
+
+Manage links: for registered users, the campaign manage link opens the plugin's
+own profile section (`profile.php#argentwolf-post-notifier`). For standalone
+subscribers, the campaign manage page also offers a nonce-protected "Open
+subscription settings" POST. It issues a fresh management bearer, only for rows
+that completed double opt-in, and replaces any earlier one. The result page
+links to the full self-service management page. A GET never issues or rotates
+a bearer.
 
 Replay protection without rotation (no schema change): the confirmation page
 embeds a binding, which is an HMAC (keyed by `wp_salt( 'nonce' )`) over the
@@ -1583,9 +1597,9 @@ non-blocking MySQL advisory lock):
 At send time `RecipientMessageBuilder` appends
 `EmailTemplateComposer::recipient_footer()` — the same mandatory footer used by
 previews — with recipient-specific links from `RecipientLinkFactory`:
-unsubscribe and (for standalone subscribers) manage pages at
+unsubscribe and (for standalone subscribers) campaign manage pages at
 `admin-post.php?action=argentwolf_post_notifier_recipient_{unsubscribe,manage}`,
-the WordPress profile for registered users, and an RFC 8058 one-click endpoint
+the plugin's profile section for registered users, and an RFC 8058 one-click endpoint
 in `List-Unsubscribe` plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
 Messages carry `X-ArgentWolf-PN-Campaign`/`-Recipient` UUIDs, never database IDs.
 A fresh 256-bit `RecipientToken` is generated for each attempt and only its
