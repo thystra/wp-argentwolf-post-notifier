@@ -3,6 +3,20 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Add safe email layout and theme customization: validated colours, a font
+  enum, a bounded content width and a CTA style. Only administrators can
+  change it. The layout is frozen into each campaign's input snapshot.
+- Add an administrator-only Delivery screen with aggregate queue status, skip
+  statistics and a nonce-protected bounded manual run.
+- Rate-limit editor exact-email contact lookup and audience estimates per
+  user (HTTP 429), closing an unbounded address/eligibility oracle.
+- Fail a campaign closed when retryable preparation deferral (for example an
+  unhealthy verification provider) exceeds one day, instead of retrying
+  forever.
+- Add verified resubscribe from campaign links (lifts only campaign-link
+  suppressions) and expiry for recipient tokens: one year for unsubscribe,
+  30 days for resubscribe.
+
 - Add the campaign send queue and worker (schema 3 adds a recipient
   `lease_token`). Workers atomically claim bounded, filterable batches with
   expiring leases, recheck hard eligibility (suppression, verification,

@@ -530,7 +530,9 @@ one-click headers, and the pre-queue eligibility gate.
 - [x] Resolve a selected named template into canonical previews and test email,
       failing closed for deleted IDs and external-only selections.
       Tranche 12 merged and CI-qualified in PR #53.
-- [ ] Add safe layout and theme customization beyond the text-only fields.
+- [x] Add safe layout and theme customization beyond the text-only fields
+      (closed-schema colours/font/width/CTA style, frozen into the campaign
+      input snapshot; `EmailLayoutSettingsTest`). Forgejo CI pending.
 - [x] Qualify the write-once, versioned campaign input-snapshot store.
       Tranche 13 merged and CI-qualified in PR #54.
 - [x] Qualify automatic campaign input capture on first publication, including
@@ -584,17 +586,19 @@ campaign `building` → `queued` (or `completed` when empty) in one compare-and-
 - [x] Recheck hard eligibility immediately before send.
 - [x] Add filterable recipient eligibility extension point
       (`argentwolf_post_notifier_recipient_eligible`, veto-only).
-- [ ] Prevent any recipient enumeration through editor endpoints beyond the
-      requesting user's capabilities (existing endpoints are aggregate-only;
-      needs a dedicated review/test pass).
+- [x] Prevent any recipient enumeration through editor endpoints beyond the
+      requesting user's capabilities. Review pass done: saved-ID hydration is
+      scoped to the post; exact-email lookup and audience estimates are now
+      per-user rate limited (429). Residual: within the budget an editor can
+      still confirm a known address or ID, by design. Forgejo CI pending.
 
 Acceptance criteria:
 
 - [x] Audience counts and recipient rows agree.
 - [x] Every registered recipient is checked during audience resolution.
 - [x] Pending and unknown registered users are skipped with distinct reasons.
-- [ ] All skip reasons are testable and visible in aggregate statistics
-      (stored and tested; no administrator statistics screen yet).
+- [x] All skip reasons are testable and visible in aggregate statistics
+      (Delivery admin screen; `test_delivery_status_page_*`). Forgejo CI pending.
 - [x] No unverified or pending recipient enters the active send queue.
 - [x] No shared To/CC/BCC delivery path exists (`MailMessage` rejects lists and
       To/CC/BCC headers).
@@ -616,7 +620,10 @@ Implemented locally (local PHPUnit/integration suites pass; Forgejo CI qualifica
 - [x] Add WP-Cron wake-up.
 - [x] Add WP-CLI worker command for system cron
       (`wp argentwolf-post-notifier queue run|status|prepare`).
-- [ ] Add queue status and manual-run administration (WP-CLI only; no admin screen yet).
+- [x] Add queue status and manual-run administration (WP-CLI plus the
+      administrator-only Delivery screen). Forgejo CI pending.
+- [x] Bound preparation deferral while the provider is unhealthy (fail closed
+      after one day, filterable). Forgejo CI pending.
 - [x] Add test transport (recording transport in the integration suite).
 - [x] Send one message per recipient.
 - [x] Add HTML and plain-text content types safely.
@@ -641,26 +648,32 @@ Acceptance criteria:
 
 Target: `0.1.0-rc.2`
 
-- [ ] Add visible unsubscribe management page.
-- [ ] Require POST confirmation for visible-link unsubscribe.
-- [ ] Add opaque token lookup.
-- [ ] Add standardized one-click POST endpoint.
-- [ ] Add `List-Unsubscribe` header.
-- [ ] Add `List-Unsubscribe-Post` header.
-- [ ] Apply global suppression.
+Implemented locally on `feature/m8-m11-followups` (local suites pass; Forgejo
+CI qualification pending). Integration evidence: `CampaignDeliveryTest`.
+
+- [x] Add visible unsubscribe management page (campaign links).
+- [x] Require POST confirmation for visible-link unsubscribe.
+- [x] Add opaque token lookup (sha256 of a 256-bit token).
+- [x] Add standardized one-click POST endpoint.
+- [x] Add `List-Unsubscribe` header.
+- [x] Add `List-Unsubscribe-Post` header.
+- [x] Apply global suppression.
 - [ ] Add user-profile and standalone-subscriber manage links.
-- [ ] Add verified resubscribe.
-- [ ] Rotate management tokens after sensitive state changes.
-- [ ] Add expiry where appropriate.
-- [ ] Add scanner and replay tests.
-- [ ] Add generic public responses.
+- [x] Add verified resubscribe from campaign links (only lifts campaign-link
+      suppressions; token possession proves receipt).
+- [ ] Rotate management tokens after sensitive state changes (campaign
+      tokens are not rotated: links in the delivered email must keep working).
+- [x] Add expiry where appropriate (unsubscribe 1 year, resubscribe 30 days).
+- [x] Add scanner and replay tests.
+- [x] Add generic public responses.
 
 Acceptance criteria:
 
-- [ ] GET link inspection cannot unsubscribe an address.
-- [ ] Valid standardized one-click POST unsubscribes.
-- [ ] Unsubscribe suppresses all recipient-source paths.
-- [ ] Replay and invalid-token requests do not leak state.
+- [x] GET link inspection cannot unsubscribe an address.
+- [x] Valid standardized one-click POST unsubscribes.
+- [x] Unsubscribe suppresses all recipient-source paths (global suppression
+      rechecked before send).
+- [x] Replay and invalid-token requests do not leak state.
 
 ## Milestone 12 — Click tracking and campaign statistics
 
