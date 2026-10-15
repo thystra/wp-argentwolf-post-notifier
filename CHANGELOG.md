@@ -3,6 +3,13 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Fix a crash under concurrent queue workers. A claim could deadlock with
+  another worker's status update, and the failed write crashed the worker
+  after the message was submitted, so it could be re-sent later. Queue writes
+  now retry InnoDB deadlocks and lock-wait timeouts, up to five attempts.
+- Add a cross-process delivery-queue lease qualification
+  (`tests/concurrent-queue.sh`) to Forgejo CI.
+
 - Rotate the standalone-subscriber management token after every self-service
   unsubscribe or resubscribe. The result page carries the new token, so old
   links and replayed requests stop working.

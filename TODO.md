@@ -637,8 +637,13 @@ Implemented locally (local PHPUnit/integration suites pass; Forgejo CI qualifica
 Acceptance criteria:
 
 - [x] Publishing request does not synchronously send the campaign.
-- [x] Two workers cannot own the same unexpired recipient lease (single-process
-      test; multi-process MySQL contention CI lane still to add).
+- [x] Two workers cannot own the same unexpired recipient lease. Covered
+      single-process by `CampaignDeliveryTest` and cross-process by
+      `tests/concurrent-queue.sh` (Forgejo CI step "Qualify cross-process
+      delivery-queue leases"): 200 recipients and 6 real worker processes,
+      exactly-once submission, zero lost leases, dead-worker takeover and
+      stale-lease writes refused. The lane found and fixed an InnoDB deadlock
+      crash (queue writes now retry lock conflicts). Forgejo CI pending.
 - [x] Expired leases recover.
 - [x] Retry limits are enforced.
 - [x] Every registered recipient is rechecked immediately before send.
