@@ -60,7 +60,7 @@ final class SuppressionRepository {
 	 */
 	public function find_by_hash( string $email_hash ): ?array {
 		$query = $this->database->prepare(
-			'SELECT email_hash, email_snapshot_or_redacted, reason, source,
+			'SELECT id, email_hash, email_snapshot_or_redacted, reason, source,
 				created_at_gmt, updated_at_gmt
 			FROM %i
 			WHERE email_hash = %s
@@ -187,6 +187,53 @@ final class SuppressionRepository {
 		if ( false === $result ) {
 			throw new RuntimeException( 'Email suppression could not be saved safely.' );
 		}
+	}
+
+	/**
+	 * Remove exactly one suppression event: same row, source and timestamps.
+	 *
+	 * A later re-suppression changes the row ID or `updated_at_gmt`, and a
+	 * completed removal deletes the row, so a stale or reused binding matches
+	 * nothing.
+	 *
+	 * @param string $email_hash      Canonical keyed email hash.
+	 * @param string $expected_source Source allowed to remove its own suppression.
+	 * @param int    $id              Suppression row ID.
+	 * @param string $created_at_gmt  Row creation time.
+	 * @param string $updated_at_gmt  Row last-update time.
+	 * @return bool True when the bound row was removed.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function delete_if_event(
+		string $email_hash,
+		string $expected_source,
+		int $id,
+		string $created_at_gmt,
+		string $updated_at_gmt
+	): bool {
+		$query = $this->database->prepare(
+			'DELETE FROM %i WHERE id = %d AND email_hash = %s AND source = %s
+				AND created_at_gmt = %s AND updated_at_gmt = %s',
+			$this->table,
+			$id,
+			$email_hash,
+			$expected_source,
+			$created_at_gmt,
+			$updated_at_gmt
+		);
+
+		// Plugin-owned suppression writes intentionally update the custom table.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->database->query( $query );
+		// phpcs:enable
+
+		if ( false === $result ) {
+			throw new RuntimeException( 'Email suppression could not be removed.' );
+		}
+
+		return 1 === $result;
 	}
 
 	/**

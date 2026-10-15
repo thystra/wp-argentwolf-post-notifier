@@ -665,6 +665,10 @@ CI qualification pending). Integration evidence: `CampaignDeliveryTest`.
       tokens are not rotated: links in the delivered email must keep working).
 - [x] Add expiry where appropriate (unsubscribe 1 year, resubscribe 30 days).
 - [x] Add scanner and replay tests.
+- [x] Bind resubscribe to the current campaign-link suppression event
+      (single-use HMAC binding; replay-after-unsubscribe and double-submit
+      rejected; `test_resubscribe_replay_after_later_unsubscribe_*`).
+      Forgejo CI pending.
 - [x] Add generic public responses.
 
 Acceptance criteria:

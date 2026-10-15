@@ -16,6 +16,9 @@
 - Add verified resubscribe from campaign links (lifts only campaign-link
   suppressions) and expiry for recipient tokens: one year for unsubscribe,
   30 days for resubscribe.
+- Bind campaign-link resubscribe to the exact current suppression event with a
+  single-use HMAC binding. A replayed or double-submitted resubscribe form can
+  no longer undo a later unsubscribe. No schema change.
 
 - Add the campaign send queue and worker (schema 3 adds a recipient
   `lease_token`). Workers atomically claim bounded, filterable batches with

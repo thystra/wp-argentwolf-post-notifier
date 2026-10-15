@@ -39,6 +39,11 @@ final class RecipientUnsubscribeController implements Registerable {
 	private const NONCE_ACTION = 'argentwolf_post_notifier_recipient_unsubscribe';
 	private const INTENT_FIELD = 'argentwolf_post_notifier_recipient_intent';
 
+	/**
+	 * Hidden field binding a resubscribe form to one suppression event.
+	 */
+	public const BINDING_FIELD = 'argentwolf_post_notifier_recipient_binding';
+
 	public const INTENT_UNSUBSCRIBE = 'unsubscribe';
 	public const INTENT_RESUBSCRIBE = 'resubscribe';
 
@@ -101,7 +106,8 @@ final class RecipientUnsubscribeController implements Registerable {
 			return;
 		}
 
-		$resubscribe = $this->may_resubscribe( $row );
+		$event       = $this->resubscribable_event( $row );
+		$resubscribe = null !== $event;
 		$html        = '<h1>';
 		$html       .= esc_html__( 'Manage post notifications', 'argentwolf-post-notifier' );
 		$html       .= '</h1><p>';
@@ -127,12 +133,15 @@ final class RecipientUnsubscribeController implements Registerable {
 			self::INTENT_FIELD,
 			$resubscribe ? self::INTENT_RESUBSCRIBE : self::INTENT_UNSUBSCRIBE
 		);
-		$html       .= '<p><button type="submit">'
+		if ( null !== $event ) {
+			$html .= $this->hidden_input( self::BINDING_FIELD, $this->binding( $row, $event ) );
+		}
+		$html .= '<p><button type="submit">'
 			. ( $resubscribe
 				? esc_html__( 'Resume post notifications', 'argentwolf-post-notifier' )
 				: esc_html__( 'Stop post notifications', 'argentwolf-post-notifier' ) )
 			. '</button></p></form>';
-		$html       .= '<p>' . esc_html__(
+		$html .= '<p>' . esc_html__(
 			'Nothing changes until you choose the button above.',
 			'argentwolf-post-notifier'
 		) . '</p>';
@@ -154,7 +163,9 @@ final class RecipientUnsubscribeController implements Registerable {
 
 		$token = $this->request_value( $_POST, self::TOKEN_FIELD );
 		if ( self::INTENT_RESUBSCRIBE === $this->request_value( $_POST, self::INTENT_FIELD ) ) {
-			$this->render_resubscribe_result( $this->resubscribe( $token ) );
+			$this->render_resubscribe_result(
+				$this->resubscribe( $token, $this->request_value( $_POST, self::BINDING_FIELD ) )
+			);
 			return;
 		}
 		$this->render_result( $this->unsubscribe( $token ), 200 );
@@ -208,20 +219,31 @@ final class RecipientUnsubscribeController implements Registerable {
 	}
 
 	/**
-	 * Lift only a campaign-link suppression for one valid, recent token.
+	 * Lift one specific campaign-link suppression event for a valid, recent token.
 	 *
-	 * @param string $token Plaintext token.
-	 * @return bool True when the suppression was removed.
+	 * The binding (from the confirmation page) names the suppression row and
+	 * its timestamps under an HMAC keyed by the site secret and the token hash.
+	 * The bound row is deleted atomically, so the binding is single-use; any
+	 * later unsubscribe creates a different event and invalidates it.
+	 *
+	 * @param string $token   Plaintext token.
+	 * @param string $binding Binding from the confirmation form.
+	 * @return bool True when the bound suppression was removed.
 	 */
-	public function resubscribe( string $token ): bool {
+	public function resubscribe( string $token, string $binding ): bool {
 		$row = $this->lookup( $token );
-		if ( null === $row || ! $this->may_resubscribe( $row ) ) {
+		if ( null === $row ) {
+			return false;
+		}
+		$event = $this->resubscribable_event( $row );
+		if ( null === $event || ! hash_equals( $this->binding( $row, $event ), $binding ) ) {
 			return false;
 		}
 		try {
-			return $this->suppression->resubscribe(
+			return $this->suppression->resubscribe_event(
 				(string) $row['email_snapshot'],
-				SuppressionService::SOURCE_CAMPAIGN_LINK
+				SuppressionService::SOURCE_CAMPAIGN_LINK,
+				$event
 			);
 		} catch ( InvalidArgumentException ) {
 			return false;
@@ -229,12 +251,51 @@ final class RecipientUnsubscribeController implements Registerable {
 	}
 
 	/**
-	 * Whether this token may lift the current suppression.
+	 * Current resubscribe binding for a token, or empty when none is allowed.
+	 *
+	 * Mirrors what the confirmation page embeds; useful for tests and tooling.
+	 *
+	 * @param string $token Plaintext token.
+	 * @return string
+	 */
+	public function current_binding( string $token ): string {
+		$row   = $this->lookup( $token );
+		$event = null === $row ? null : $this->resubscribable_event( $row );
+
+		return null === $event ? '' : $this->binding( $row, $event );
+	}
+
+	/**
+	 * Keyed binding of one token to one suppression event.
+	 *
+	 * @param array<string,mixed>                                       $row   Recipient row.
+	 * @param array{id:int,created_at_gmt:string,updated_at_gmt:string} $event Suppression event.
+	 * @return string
+	 */
+	private function binding( array $row, array $event ): string {
+		return hash_hmac(
+			'sha256',
+			implode(
+				'|',
+				array(
+					'campaign_link_resubscribe',
+					(string) ( $row['id'] ?? '' ),
+					(string) $event['id'],
+					$event['created_at_gmt'],
+					$event['updated_at_gmt'],
+				)
+			),
+			wp_salt( 'nonce' )
+		);
+	}
+
+	/**
+	 * The campaign-link suppression event this token may lift, if any.
 	 *
 	 * @param array<string,mixed> $row Recipient row.
-	 * @return bool
+	 * @return array{id:int,created_at_gmt:string,updated_at_gmt:string}|null
 	 */
-	private function may_resubscribe( array $row ): bool {
+	private function resubscribable_event( array $row ): ?array {
 		/**
 		 * Filter how long after submission a campaign link may resume notifications.
 		 *
@@ -245,16 +306,18 @@ final class RecipientUnsubscribeController implements Registerable {
 			self::RESUBSCRIBE_TTL_SECONDS
 		);
 		if ( ! $this->within( $row, $ttl ) ) {
-			return false;
+			return null;
 		}
 		try {
-			return $this->suppression->can_resubscribe(
+			$event = $this->suppression->current_event(
 				(string) $row['email_snapshot'],
 				SuppressionService::SOURCE_CAMPAIGN_LINK
 			);
 		} catch ( InvalidArgumentException ) {
-			return false;
+			return null;
 		}
+
+		return null !== $event && $event['id'] > 0 ? $event : null;
 	}
 
 	/**

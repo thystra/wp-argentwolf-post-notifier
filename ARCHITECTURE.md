@@ -1286,8 +1286,17 @@ tokens expire: unsubscribe one year and resubscribe 30 days after submission
 (`argentwolf_post_notifier_recipient_token_ttl_seconds`,
 `argentwolf_post_notifier_recipient_resubscribe_ttl_seconds`). Campaign tokens
 are not rotated after a state change, because the delivered email must keep
-working. A replayed resubscribe can therefore re-lift a later campaign-link
-unsubscribe within the 30-day window. This is an accepted, documented residual.
+working for unsubscribe.
+
+Replay protection without rotation (no schema change): the confirmation page
+embeds a binding, which is an HMAC (keyed by `wp_salt( 'nonce' )`) over the
+recipient row ID and the current suppression event's row ID, `created_at_gmt`
+and `updated_at_gmt`. A resubscribe is honored only when the binding matches
+the address's current `campaign_link` suppression event. It is consumed by an
+atomic `DELETE … WHERE id AND source AND created_at_gmt AND updated_at_gmt`.
+A double submit therefore matches no row. A later unsubscribe creates a new
+row (new ID) or updates `updated_at_gmt`, so an earlier captured form can no
+longer lift it.
 
 ### 11.5 Editor endpoint enumeration
 
