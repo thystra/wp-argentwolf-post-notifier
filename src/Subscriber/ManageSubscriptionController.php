@@ -79,20 +79,6 @@ final class ManageSubscriptionController implements Registerable {
 			return;
 		}
 
-		$status = SubscriberStatus::tryFrom( (string) ( $row['status'] ?? '' ) );
-		$email  = (string) ( $row['email'] ?? '' );
-		$source = $this->suppression->source_for( $email );
-
-		$intent = null;
-		if ( SubscriberStatus::Subscribed === $status && null === $source ) {
-			$intent = self::INTENT_UNSUBSCRIBE;
-		} elseif (
-			SubscriberStatus::Unsubscribed === $status
-			&& SuppressionService::SOURCE_SUBSCRIBER_MANAGE === $source
-		) {
-			$intent = self::INTENT_RESUBSCRIBE;
-		}
-
 		$html  = '<h1>';
 		$html .= esc_html__( 'Manage post notifications', 'argentwolf-post-notifier' );
 		$html .= '</h1>';
@@ -102,35 +88,7 @@ final class ManageSubscriptionController implements Registerable {
 			'argentwolf-post-notifier'
 		);
 		$html .= '</p>';
-
-		if ( null === $intent ) {
-			$html .= '<p>';
-			$html .= esc_html__(
-				'This subscription cannot be changed from this link.',
-				'argentwolf-post-notifier'
-			);
-			$html .= '</p>';
-			$this->render_page( $html, 200 );
-			return;
-		}
-
-		$button = self::INTENT_UNSUBSCRIBE === $intent
-			? __( 'Stop post notifications', 'argentwolf-post-notifier' )
-			: __( 'Resume post notifications', 'argentwolf-post-notifier' );
-		$nonce  = wp_create_nonce( self::NONCE_ACTION );
-		$html  .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		$html  .= $this->hidden_input( 'action', self::POST_ACTION );
-		$html  .= $this->hidden_input( self::TOKEN_FIELD, $token );
-		$html  .= $this->hidden_input( self::INTENT_FIELD, $intent );
-		$html  .= $this->hidden_input( self::NONCE_FIELD, $nonce );
-		$html  .= '<p><button type="submit">' . esc_html( $button ) . '</button></p>';
-		$html  .= '</form>';
-		$html  .= '<p>';
-		$html  .= esc_html__(
-			'Nothing changes until you choose the button above.',
-			'argentwolf-post-notifier'
-		);
-		$html  .= '</p>';
+		$html .= $this->management_form( $token, $row );
 
 		$this->render_page( $html, 200 );
 	}
@@ -155,13 +113,77 @@ final class ManageSubscriptionController implements Registerable {
 			return;
 		}
 
-		$changed = match ( $intent ) {
-			self::INTENT_UNSUBSCRIBE => $this->service->unsubscribe_managed( $token ),
-			self::INTENT_RESUBSCRIBE => $this->service->resubscribe_managed( $token ),
-			default => false,
-		};
+		$outcome = $this->service->apply_managed( $token, $intent );
+		if ( ! $outcome['changed'] ) {
+			$this->render_result( false, 400 );
+			return;
+		}
 
-		$this->render_result( $changed, $changed ? 200 : 400 );
+		// The presented bearer was rotated; offer the next action on the new one.
+		$html  = '<h1>';
+		$html .= esc_html__( 'Subscription updated', 'argentwolf-post-notifier' ) . '</h1>';
+		$html .= '<p>' . esc_html__(
+			'Your post notification preference has been updated.',
+			'argentwolf-post-notifier'
+		) . '</p>';
+		$next  = null === $outcome['token']
+			? null
+			: $this->service->managed_subscriber( $outcome['token'] );
+		if ( null !== $next ) {
+			$html .= $this->management_form( (string) $outcome['token'], $next );
+		}
+		$this->render_page( $html, 200 );
+	}
+
+	/**
+	 * Build the intent form for one current management bearer.
+	 *
+	 * @param string              $token Current plaintext management token.
+	 * @param array<string,mixed> $row   Subscriber row.
+	 * @return string Escaped HTML.
+	 */
+	private function management_form( string $token, array $row ): string {
+		$status = SubscriberStatus::tryFrom( (string) ( $row['status'] ?? '' ) );
+		$email  = (string) ( $row['email'] ?? '' );
+		$source = $this->suppression->source_for( $email );
+
+		$intent = null;
+		if ( SubscriberStatus::Subscribed === $status && null === $source ) {
+			$intent = self::INTENT_UNSUBSCRIBE;
+		} elseif (
+			SubscriberStatus::Unsubscribed === $status
+			&& SuppressionService::SOURCE_SUBSCRIBER_MANAGE === $source
+		) {
+			$intent = self::INTENT_RESUBSCRIBE;
+		}
+
+		if ( null === $intent ) {
+			return '<p>' . esc_html__(
+				'This subscription cannot be changed from this link.',
+				'argentwolf-post-notifier'
+			) . '</p>';
+		}
+		$html = '';
+
+		$button = self::INTENT_UNSUBSCRIBE === $intent
+			? __( 'Stop post notifications', 'argentwolf-post-notifier' )
+			: __( 'Resume post notifications', 'argentwolf-post-notifier' );
+		$nonce  = wp_create_nonce( self::NONCE_ACTION );
+		$html  .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		$html  .= $this->hidden_input( 'action', self::POST_ACTION );
+		$html  .= $this->hidden_input( self::TOKEN_FIELD, $token );
+		$html  .= $this->hidden_input( self::INTENT_FIELD, $intent );
+		$html  .= $this->hidden_input( self::NONCE_FIELD, $nonce );
+		$html  .= '<p><button type="submit">' . esc_html( $button ) . '</button></p>';
+		$html  .= '</form>';
+		$html  .= '<p>';
+		$html  .= esc_html__(
+			'Nothing changes until you choose the button above.',
+			'argentwolf-post-notifier'
+		);
+		$html  .= '</p>';
+
+		return $html;
 	}
 
 	/**
