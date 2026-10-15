@@ -235,6 +235,35 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertSame( 0, $this->recipient_count( $id ) );
 	}
 
+	public function test_unhealthy_provider_deferral_is_bounded_then_fails_closed(): void {
+		$user_id       = self::factory()->user->create();
+		$post_id       = $this->publish( array( 'included_user_ids' => array( $user_id ) ) );
+		$id            = (int) $this->campaign_for( $post_id )['id'];
+		$this->healthy = false;
+
+		self::assertSame( CampaignPreparation::RESULT_DEFERRED, $this->preparation()->prepare( $id )['result'] );
+		self::assertSame(
+			CampaignQueueGate::VERIFICATION_UNHEALTHY,
+			( new CampaignRepository() )->find( $id )['last_error_code']
+		);
+
+		$limit = static fn (): int => 0;
+		add_filter( 'argentwolf_post_notifier_max_preparation_deferral_seconds', $limit );
+		$outcome = $this->preparation()->prepare( $id );
+		remove_filter( 'argentwolf_post_notifier_max_preparation_deferral_seconds', $limit );
+
+		self::assertSame( CampaignPreparation::RESULT_FAILED, $outcome['result'] );
+		self::assertSame( CampaignQueueGate::VERIFICATION_UNHEALTHY, $outcome['code'] );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_FAILED, $campaign['status'] );
+		self::assertSame( 0, $this->recipient_count( $id ) );
+
+		// A recovered provider cannot revive the failed campaign.
+		$this->healthy = true;
+		self::assertSame( CampaignPreparation::RESULT_SKIPPED, $this->preparation()->prepare( $id )['result'] );
+		self::assertSame( array(), $this->transport->messages );
+	}
+
 	public function test_zero_recipient_campaign_completes_with_counts(): void {
 		$post_id = $this->publish( array() );
 		$id      = (int) $this->campaign_for( $post_id )['id'];
