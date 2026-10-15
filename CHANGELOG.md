@@ -3,6 +3,15 @@
 
 ## 0.1.0-beta.3 — In development
 
+- Rotate the standalone-subscriber management token after every self-service
+  unsubscribe or resubscribe. The result page carries the new token, so old
+  links and replayed requests stop working.
+- Campaign manage links: registered users land on the plugin's profile
+  section. Standalone subscribers can open their full subscription settings
+  from the campaign page, which issues a fresh management token and invalidates
+  earlier ones.
+- PHPCS now also lints `tests/`, with documented test-scoped relaxations.
+
 - Add safe email layout and theme customization: validated colours, a font
   enum, a bounded content width and a CTA style. Only administrators can
   change it. The layout is frozen into each campaign's input snapshot.
