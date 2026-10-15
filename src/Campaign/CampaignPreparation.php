@@ -35,6 +35,11 @@ final class CampaignPreparation {
 	public const RESULT_FAILED    = 'failed';
 
 	/**
+	 * Default longest wait for a retryable preparation condition (seconds).
+	 */
+	public const MAX_DEFERRAL_SECONDS = 86400;
+
+	/**
 	 * Construct the preparation service.
 	 *
 	 * @param CampaignRepository            $campaigns Campaign persistence.
@@ -112,8 +117,7 @@ final class CampaignPreparation {
 		$gate = $this->gate->check( $row, $this->audience->read_config( $campaign_id ) );
 		if ( CampaignQueueGate::OK !== $gate['code'] ) {
 			if ( $gate['retryable'] ) {
-				$this->campaigns->note_building_error( $campaign_id, $gate['code'] );
-				return $this->result( self::RESULT_DEFERRED, $gate['code'] );
+				return $this->defer( $campaign_id, $row, $gate['code'] );
 			}
 			return $this->fail( $campaign_id, $gate['code'] );
 		}
@@ -121,8 +125,7 @@ final class CampaignPreparation {
 		try {
 			$outcome = $this->audience->materialize( $campaign_id );
 		} catch ( RuntimeException ) {
-			$this->campaigns->note_building_error( $campaign_id, 'audience_persistence_error' );
-			return $this->result( self::RESULT_DEFERRED, 'audience_persistence_error' );
+			return $this->defer( $campaign_id, $row, 'audience_persistence_error' );
 		}
 		if ( null === $outcome ) {
 			return $this->fail( $campaign_id, CampaignQueueGate::MISSING_AUDIENCE_SNAPSHOT );
@@ -136,6 +139,36 @@ final class CampaignPreparation {
 		}
 
 		return $this->result( $result, $outcome['status'] );
+	}
+
+	/**
+	 * Defer a retryable condition, or fail closed once the deferral window ends.
+	 *
+	 * The window is measured from campaign creation so it is bounded no matter
+	 * how often cron, the watchdog or an operator retries preparation.
+	 *
+	 * @param int                 $campaign_id Campaign ID.
+	 * @param array<string,mixed> $row         Campaign row.
+	 * @param string              $code        Stable retryable code.
+	 * @return array{result:string,code:string}
+	 */
+	private function defer( int $campaign_id, array $row, string $code ): array {
+		/**
+		 * Filter the longest time a campaign may wait in building for a retryable condition.
+		 *
+		 * @param int $seconds Default one day.
+		 */
+		$limit   = (int) apply_filters(
+			'argentwolf_post_notifier_max_preparation_deferral_seconds',
+			self::MAX_DEFERRAL_SECONDS
+		);
+		$created = strtotime( (string) ( $row['created_at_gmt'] ?? '' ) . ' UTC' );
+		if ( false === $created || time() - $created >= max( 0, $limit ) ) {
+			return $this->fail( $campaign_id, $code );
+		}
+		$this->campaigns->note_building_error( $campaign_id, $code );
+
+		return $this->result( self::RESULT_DEFERRED, $code );
 	}
 
 	/**

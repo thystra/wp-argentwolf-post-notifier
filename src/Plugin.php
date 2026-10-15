@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier;
 
+use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\NotificationTemplateSettingsPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
@@ -895,6 +896,13 @@ final class Plugin {
 			)
 		);
 		$container->set(
+			DeliveryStatusPage::class,
+			static fn ( Container $services ): DeliveryStatusPage => new DeliveryStatusPage(
+				static fn (): object => $services->get( QueueRepository::class ),
+				static fn (): object => $services->get( QueueWorker::class )
+			)
+		);
+		$container->set(
 			QueueCommand::class,
 			static fn ( Container $services ): QueueCommand => new QueueCommand(
 				static fn (): object => $services->get( QueueWorker::class ),
@@ -958,6 +966,7 @@ final class Plugin {
 				SubscriberAdminPage::class,
 				NotificationTemplateSettingsPage::class,
 				SubscriberCsvImportPage::class,
+				DeliveryStatusPage::class,
 				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,

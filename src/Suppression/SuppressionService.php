@@ -165,6 +165,64 @@ final class SuppressionService {
 	}
 
 	/**
+	 * Return the identity of the current suppression event when it has a source.
+	 *
+	 * @param string $email           Candidate email address.
+	 * @param string $expected_source Required current source.
+	 * @return array{id:int,created_at_gmt:string,updated_at_gmt:string}|null
+	 */
+	public function current_event( string $email, string $expected_source ): ?array {
+		$row    = $this->repository->find_by_hash( $this->required_hash( $email ) );
+		$source = $this->validated_code( $expected_source );
+		if ( null === $row || ( $row['source'] ?? null ) !== $source ) {
+			return null;
+		}
+
+		return array(
+			'id'             => (int) ( $row['id'] ?? 0 ),
+			'created_at_gmt' => (string) ( $row['created_at_gmt'] ?? '' ),
+			'updated_at_gmt' => (string) ( $row['updated_at_gmt'] ?? '' ),
+		);
+	}
+
+	/**
+	 * Remove one specific suppression event created by the same source.
+	 *
+	 * Event shape: array{id:int,created_at_gmt:string,updated_at_gmt:string}.
+	 *
+	 * @param string              $email           Candidate email address.
+	 * @param string              $expected_source Source that created the event.
+	 * @param array<string,mixed> $event           Bound event.
+	 * @return bool True when that exact event was removed.
+	 */
+	public function resubscribe_event(
+		string $email,
+		string $expected_source,
+		array $event
+	): bool {
+		$email_hash      = $this->required_hash( $email );
+		$expected_source = $this->validated_code( $expected_source );
+		$removed         = $this->repository->delete_if_event(
+			$email_hash,
+			$expected_source,
+			(int) $event['id'],
+			(string) $event['created_at_gmt'],
+			(string) $event['updated_at_gmt']
+		);
+
+		if ( $removed ) {
+			$this->audit->record_suppression_event(
+				AuditEventType::SuppressionRemoved,
+				$email_hash,
+				null,
+				$expected_source
+			);
+		}
+
+		return $removed;
+	}
+
+	/**
 	 * Determine whether a verified source may remove the current suppression.
 	 *
 	 * @param string $email           Candidate email address.

@@ -241,6 +241,33 @@ final class EditorContactLookupTest extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
+	public function test_exact_email_lookup_is_rate_limited_per_user(): void {
+		$limit = static fn (): int => 3;
+		add_filter( 'argentwolf_post_notifier_editor_request_limit', $limit );
+		for ( $i = 0; $i < 3; $i++ ) {
+			$response = $this->lookup(
+				EditorContactLookup::TYPE_USER,
+				array( 'email' => "guess{$i}@example.com" )
+			);
+			self::assertSame( 200, $response->get_status() );
+		}
+		$blocked = $this->lookup( EditorContactLookup::TYPE_USER, array( 'email' => 'guess9@example.com' ) );
+		self::assertSame( 429, $blocked->get_status() );
+		self::assertStringNotContainsString( 'guess9', wp_json_encode( $blocked->get_data() ) );
+
+		// Saved-ID hydration stays available: it cannot enumerate new contacts.
+		$hydrated = $this->lookup( EditorContactLookup::TYPE_USER, array( 'include' => '1' ) );
+		self::assertSame( 200, $hydrated->get_status() );
+
+		// The budget is per user.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		self::assertSame(
+			200,
+			$this->lookup( EditorContactLookup::TYPE_USER, array( 'email' => 'guess9@example.com' ) )->get_status()
+		);
+		remove_filter( 'argentwolf_post_notifier_editor_request_limit', $limit );
+	}
+
 	public function test_editor_without_send_capability_cannot_lookup_contacts(): void {
 		$editor_id = self::factory()->user->create(
 			array( 'role' => 'editor' )

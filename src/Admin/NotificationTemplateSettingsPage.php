@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
+use ArgentWolf\PostNotifier\Content\EmailLayoutSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Content\EmailTemplatePreview;
@@ -31,6 +32,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 
 	/** Independent POST action for More-block selection. */
 	public const MORE_ACTION = 'argentwolf_post_notifier_save_more_setting';
+
+	/** Layout and theme save/reset action. */
+	public const LAYOUT_ACTION = 'argentwolf_post_notifier_save_email_layout';
 
 	/** Independent POST action for named reusable template administration. */
 	public const NAMED_ACTION = 'argentwolf_post_notifier_save_named_template';
@@ -59,6 +63,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 	 * @param EmailExcerptSettings      $excerpts Generated excerpt word count.
 	 * @param EmailMoreSettings         $more     Site-wide More-block preference.
 	 * @param EmailNamedTemplateLibrary $named    Persistent named template library.
+	 * @param EmailLayoutSettings|null  $layouts  Safe layout/theme settings.
 	 */
 	public function __construct(
 		private EmailTemplateSettings $settings,
@@ -66,8 +71,10 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		private EmailTemplateTestMailer $mailer,
 		private EmailExcerptSettings $excerpts,
 		private EmailMoreSettings $more,
-		private EmailNamedTemplateLibrary $named
+		private EmailNamedTemplateLibrary $named,
+		private ?EmailLayoutSettings $layouts = null
 	) {
+		$this->layouts ??= new EmailLayoutSettings();
 	}
 
 	/**
@@ -80,6 +87,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'admin_post_' . self::EXCERPT_ACTION, array( $this, 'handle_excerpt_save' ) );
 		add_action( 'admin_post_' . self::MORE_ACTION, array( $this, 'handle_more_save' ) );
+		add_action( 'admin_post_' . self::LAYOUT_ACTION, array( $this, 'handle_layout_save' ) );
 		add_action( 'admin_post_' . self::NAMED_ACTION, array( $this, 'handle_named_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_preview_assets' ) );
 		add_action( 'wp_ajax_' . self::LIVE_PREVIEW_ACTION, array( $this, 'handle_live_preview' ) );
@@ -190,6 +198,9 @@ final class NotificationTemplateSettingsPage implements Registerable {
 				'more_saved',
 				'more_restored',
 				'more_invalid',
+				'layout_saved',
+				'layout_restored',
+				'layout_invalid',
 				'named_saved',
 				'named_deleted',
 				'named_invalid',
@@ -215,6 +226,13 @@ final class NotificationTemplateSettingsPage implements Registerable {
 			} elseif ( 'more_invalid' === $status ) {
 				$message = __(
 					'Invalid More-block preference; no changes saved.',
+					'argentwolf-post-notifier'
+				);
+			} elseif ( 'layout_saved' === $status || 'layout_restored' === $status ) {
+				$message = __( 'Email layout updated.', 'argentwolf-post-notifier' );
+			} elseif ( 'layout_invalid' === $status ) {
+				$message = __(
+					'Invalid email layout; no changes saved.',
 					'argentwolf-post-notifier'
 				);
 			} elseif ( 'named_saved' === $status ) {
@@ -280,6 +298,7 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '</form>';
 		$this->render_excerpt_settings();
 		$this->render_more_settings();
+		$this->render_layout_settings();
 		$this->render_named_templates();
 		$this->render_preview();
 		echo '</div>';
@@ -345,6 +364,76 @@ final class NotificationTemplateSettingsPage implements Registerable {
 		echo '<button class="button" type="submit" name="awpn_more_reset"';
 		echo ' value="1" formnovalidate>';
 		echo esc_html__( 'Restore enabled default', 'argentwolf-post-notifier' );
+		echo '</button></form>';
+	}
+
+	/**
+	 * Render the closed-schema layout and theme form.
+	 *
+	 * @return void
+	 */
+	private function render_layout_settings(): void {
+		$layout = $this->layouts->get();
+		echo '<hr><h2>';
+		echo esc_html__( 'Email layout and theme', 'argentwolf-post-notifier' );
+		echo '</h2><p>';
+		echo esc_html__(
+			'Choose colours, font, width and link style. Custom CSS and HTML are not accepted.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p><form method="post" action="';
+		echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::LAYOUT_ACTION ) . '">';
+		wp_nonce_field( self::LAYOUT_ACTION );
+		echo '<table class="form-table" role="presentation">';
+		$colors = array(
+			'background_color'   => __( 'Outer background', 'argentwolf-post-notifier' ),
+			'content_background' => __( 'Content background', 'argentwolf-post-notifier' ),
+			'text_color'         => __( 'Text colour', 'argentwolf-post-notifier' ),
+			'accent_color'       => __( 'Link and button colour', 'argentwolf-post-notifier' ),
+		);
+		foreach ( $colors as $key => $label ) {
+			$id = 'awpn_layout_' . $key;
+			echo '<tr><th scope="row"><label for="' . esc_attr( $id ) . '">';
+			echo esc_html( $label ) . '</label></th><td>';
+			echo '<input type="color" id="' . esc_attr( $id ) . '" name="awpn_layout[';
+			echo esc_attr( $key ) . ']" value="' . esc_attr( (string) $layout[ $key ] ) . '">';
+			echo '</td></tr>';
+		}
+		echo '<tr><th scope="row"><label for="awpn_layout_font_family">';
+		echo esc_html__( 'Font', 'argentwolf-post-notifier' );
+		echo '</label></th><td>';
+		echo '<select id="awpn_layout_font_family" name="awpn_layout[font_family]">';
+		$fonts = array(
+			'system'    => __( 'System sans-serif', 'argentwolf-post-notifier' ),
+			'serif'     => __( 'Serif', 'argentwolf-post-notifier' ),
+			'monospace' => __( 'Monospace', 'argentwolf-post-notifier' ),
+		);
+		foreach ( $fonts as $value => $label ) {
+			echo '<option value="' . esc_attr( $value ) . '" ';
+			echo selected( $layout['font_family'], $value, false ) . '>' . esc_html( $label );
+			echo '</option>';
+		}
+		echo '</select></td></tr>';
+		echo '<tr><th scope="row"><label for="awpn_layout_content_width">';
+		echo esc_html__( 'Content width (px)', 'argentwolf-post-notifier' );
+		echo '</label></th><td><input type="number" id="awpn_layout_content_width"';
+		echo ' name="awpn_layout[content_width]" min="';
+		echo esc_attr( (string) EmailLayoutSettings::MIN_WIDTH );
+		echo '" max="' . esc_attr( (string) EmailLayoutSettings::MAX_WIDTH ) . '" value="';
+		echo esc_attr( (string) $layout['content_width'] ) . '"></td></tr>';
+		echo '<tr><th scope="row"><label for="awpn_layout_cta_style">';
+		echo esc_html__( 'Read-post link style', 'argentwolf-post-notifier' );
+		echo '</label></th><td><select id="awpn_layout_cta_style" name="awpn_layout[cta_style]">';
+		echo '<option value="link" ' . selected( $layout['cta_style'], 'link', false ) . '>';
+		echo esc_html__( 'Text link', 'argentwolf-post-notifier' ) . '</option>';
+		echo '<option value="button" ' . selected( $layout['cta_style'], 'button', false ) . '>';
+		echo esc_html__( 'Button', 'argentwolf-post-notifier' ) . '</option>';
+		echo '</select></td></tr></table>';
+		submit_button( __( 'Save layout', 'argentwolf-post-notifier' ) );
+		echo '<button class="button" type="submit" name="awpn_layout_reset"';
+		echo ' value="1" formnovalidate>';
+		echo esc_html__( 'Restore default layout', 'argentwolf-post-notifier' );
 		echo '</button></form>';
 	}
 
@@ -772,6 +861,40 @@ final class NotificationTemplateSettingsPage implements Registerable {
 				$this->more->save( $value );
 			} catch ( InvalidArgumentException ) {
 				$status = 'more_invalid';
+			}
+		}
+		wp_safe_redirect(
+			add_query_arg(
+				'awpn_status',
+				$status,
+				admin_url( 'options-general.php?page=' . self::PAGE_SLUG )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Save or reset layout settings with capability and nonce checks.
+	 *
+	 * @return void
+	 */
+	public function handle_layout_save(): void {
+		$this->require_capability();
+		check_admin_referer( self::LAYOUT_ACTION );
+		$status = 'layout_saved';
+		if ( isset( $_POST['awpn_layout_reset'] ) ) {
+			$this->layouts->restore_defaults();
+			$status = 'layout_restored';
+		} else {
+			// Raw input is strictly validated by EmailLayoutSettings::validate().
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$fields = isset( $_POST['awpn_layout'] ) && is_array( $_POST['awpn_layout'] )
+				? wp_unslash( $_POST['awpn_layout'] ) : array();
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			try {
+				$this->layouts->save( $fields );
+			} catch ( InvalidArgumentException ) {
+				$status = 'layout_invalid';
 			}
 		}
 		wp_safe_redirect(

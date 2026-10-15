@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
@@ -172,9 +173,9 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 			$user_id      => VerificationStatus::Verified,
 			$pending_user => VerificationStatus::Pending,
 		);
-		$subscriber  = $this->subscriber( 'reader@example.com' );
-		$shared      = $this->subscriber( 'member@example.com' );
-		$suppressed  = $this->subscriber( 'blocked@example.com' );
+		$subscriber     = $this->subscriber( 'reader@example.com' );
+		$shared         = $this->subscriber( 'member@example.com' );
+		$suppressed     = $this->subscriber( 'blocked@example.com' );
 		$this->suppression()->suppress(
 			'blocked@example.com',
 			SuppressionService::REASON_MANUAL,
@@ -232,6 +233,35 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertSame( CampaignPreparation::RESULT_FAILED, $outcome['result'] );
 		self::assertSame( CampaignQueueGate::POST_NOT_PUBLISHED, $outcome['code'] );
 		self::assertSame( 0, $this->recipient_count( $id ) );
+	}
+
+	public function test_unhealthy_provider_deferral_is_bounded_then_fails_closed(): void {
+		$user_id       = self::factory()->user->create();
+		$post_id       = $this->publish( array( 'included_user_ids' => array( $user_id ) ) );
+		$id            = (int) $this->campaign_for( $post_id )['id'];
+		$this->healthy = false;
+
+		self::assertSame( CampaignPreparation::RESULT_DEFERRED, $this->preparation()->prepare( $id )['result'] );
+		self::assertSame(
+			CampaignQueueGate::VERIFICATION_UNHEALTHY,
+			( new CampaignRepository() )->find( $id )['last_error_code']
+		);
+
+		$limit   = static fn (): int => 0;
+		add_filter( 'argentwolf_post_notifier_max_preparation_deferral_seconds', $limit );
+		$outcome = $this->preparation()->prepare( $id );
+		remove_filter( 'argentwolf_post_notifier_max_preparation_deferral_seconds', $limit );
+
+		self::assertSame( CampaignPreparation::RESULT_FAILED, $outcome['result'] );
+		self::assertSame( CampaignQueueGate::VERIFICATION_UNHEALTHY, $outcome['code'] );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_FAILED, $campaign['status'] );
+		self::assertSame( 0, $this->recipient_count( $id ) );
+
+		// A recovered provider cannot revive the failed campaign.
+		$this->healthy = true;
+		self::assertSame( CampaignPreparation::RESULT_SKIPPED, $this->preparation()->prepare( $id )['result'] );
+		self::assertSame( array(), $this->transport->messages );
 	}
 
 	public function test_zero_recipient_campaign_completes_with_counts(): void {
@@ -382,6 +412,58 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertSame( 3, (int) $campaign['skipped_count'] );
 	}
 
+	public function test_delivery_status_page_is_admin_only_aggregate_and_runs_manually(): void {
+		$blocked = $this->subscriber( 'skip-me@example.com' );
+		$sent    = $this->subscriber( 'send-me@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $blocked, $sent ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->suppression()->suppress(
+			'skip-me@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		$worker = $this->worker();
+		$page   = new DeliveryStatusPage(
+			static fn (): object => new QueueRepository(),
+			static fn (): object => $worker
+		);
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		self::assertStringContainsString(
+			'permission',
+			$this->capture_wp_die( static fn () => $page->render() )
+		);
+		self::assertStringContainsString(
+			'permission',
+			$this->capture_wp_die( static fn () => $page->handle_run() )
+		);
+		self::assertSame( array(), $this->transport->messages );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$this->capture_wp_die( static fn () => $page->handle_run() );
+		self::assertSame( array(), $this->transport->messages, 'Missing nonce must not run the queue.' );
+
+		$totals = $page->run_manual();
+		self::assertSame( 1, $totals['submitted'] );
+		self::assertSame( 1, $totals['skipped'] );
+
+		$_GET = array(
+			'awpn_ran'       => '1',
+			'awpn_submitted' => '1<script>',
+		);
+		ob_start();
+		$page->render();
+		$html = (string) ob_get_clean();
+		self::assertStringContainsString( 'suppressed', $html );
+		self::assertStringContainsString( 'completed', $html );
+		self::assertStringContainsString( 'name="_wpnonce"', $html );
+		self::assertStringContainsString( DeliveryStatusPage::RUN_ACTION, $html );
+		self::assertStringNotContainsString( '<script>', $html );
+		self::assertStringNotContainsString( 'example.com', $html );
+	}
+
 	public function test_recipient_links_unsubscribe_safely(): void {
 		$subscriber = $this->subscriber( 'leaver@example.com' );
 		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
@@ -417,6 +499,132 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertFalse( $controller->unsubscribe( 'not-a-token' ) );
 		self::assertTrue( $controller->unsubscribe( $token ) );
 		self::assertNull( RecipientToken::hash_plaintext( 'ABC' ) );
+	}
+
+	public function test_campaign_link_resubscribe_expiry_and_replay(): void {
+		$subscriber = $this->subscriber( 'returner@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->worker()->run( 1 );
+		preg_match( '/token=([a-f0-9]{64})/', $this->transport->messages[0]->body(), $match );
+		$token      = $match[1];
+		$controller = new RecipientUnsubscribeController( new CampaignRecipientRepository(), $this->suppression() );
+
+		// Not suppressed: resubscribe is a no-op and the page offers only "stop".
+		self::assertFalse( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		// GET (scanner) shows the resume form but changes nothing.
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET                      = array( 'token' => $token );
+		$html                      = $this->capture_wp_die( array( $controller, 'handle_get' ) );
+		self::assertStringContainsString( 'Resume post notifications', $html );
+		self::assertStringContainsString( RecipientUnsubscribeController::INTENT_RESUBSCRIBE, $html );
+		self::assertStringNotContainsString( 'returner@example.com', $html );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		// The confirmation POST requires the nonce.
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		preg_match( '/name="' . RecipientUnsubscribeController::BINDING_FIELD . '" value="([a-f0-9]{64})"/', $html, $bound );
+		self::assertSame( $controller->current_binding( $token ), $bound[1] );
+		$_POST = array(
+			'argentwolf_post_notifier_recipient_token'    => $token,
+			'argentwolf_post_notifier_recipient_intent'   => RecipientUnsubscribeController::INTENT_RESUBSCRIBE,
+			RecipientUnsubscribeController::BINDING_FIELD => $bound[1],
+		);
+		$this->capture_wp_die( array( $controller, 'handle_confirm' ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+
+		$_POST['argentwolf_post_notifier_recipient_nonce'] = wp_create_nonce(
+			'argentwolf_post_notifier_recipient_unsubscribe'
+		);
+		$_REQUEST = $_POST;
+		$html     = $this->capture_wp_die( array( $controller, 'handle_confirm' ) );
+		self::assertStringContainsString( 'will resume', $html );
+		self::assertFalse( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+		$_REQUEST = array();
+
+		// Replay after resuming is a generic failure and changes nothing.
+		self::assertFalse( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+
+		// An operator suppression can never be lifted from a campaign link.
+		$this->suppression()->suppress(
+			'returner@example.com',
+			SuppressionService::REASON_MANUAL,
+			SuppressionService::SOURCE_SUBSCRIBER_ADMIN
+		);
+		self::assertFalse( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'returner@example.com' ) );
+		$this->suppression()->resubscribe( 'returner@example.com', SuppressionService::SOURCE_SUBSCRIBER_ADMIN );
+
+		// Resubscribe expires before unsubscribe does.
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		$short = static fn (): int => -1;
+		add_filter( 'argentwolf_post_notifier_recipient_resubscribe_ttl_seconds', $short );
+		self::assertFalse( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		remove_filter( 'argentwolf_post_notifier_recipient_resubscribe_ttl_seconds', $short );
+
+		// Fully expired tokens are rejected for every intent.
+		add_filter( 'argentwolf_post_notifier_recipient_token_ttl_seconds', $short );
+		self::assertFalse( $controller->unsubscribe( $token ) );
+		self::assertFalse( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		self::assertStringContainsString(
+			'invalid',
+			$this->capture_wp_die( array( $controller, 'handle_get' ) )
+		);
+		remove_filter( 'argentwolf_post_notifier_recipient_token_ttl_seconds', $short );
+	}
+
+	public function test_resubscribe_replay_after_later_unsubscribe_and_double_submit_are_rejected(): void {
+		$subscriber = $this->subscriber( 'replay@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$this->worker()->run( 1 );
+		preg_match( '/token=([a-f0-9]{64})/', $this->transport->messages[0]->body(), $match );
+		$token      = $match[1];
+		$controller = new RecipientUnsubscribeController( new CampaignRecipientRepository(), $this->suppression() );
+
+		// Normal flow: unsubscribe, then resubscribe with the page's binding.
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		$first = $controller->current_binding( $token );
+		self::assertMatchesRegularExpression( '/\A[a-f0-9]{64}\z/', $first );
+		self::assertFalse( $controller->resubscribe( $token, '' ), 'Missing binding is rejected.' );
+		self::assertFalse( $controller->resubscribe( $token, str_repeat( 'a', 64 ) ), 'Forged binding is rejected.' );
+		self::assertTrue( $controller->resubscribe( $token, $first ) );
+		self::assertFalse( $this->suppression()->is_suppressed( 'replay@example.com' ) );
+
+		// Double submit of the same form is rejected (the event was consumed).
+		self::assertFalse( $controller->resubscribe( $token, $first ) );
+		self::assertSame( '', $controller->current_binding( $token ) );
+
+		// A later unsubscribe creates a new event; replaying the old form fails.
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'replay@example.com' ) );
+		self::assertFalse( $controller->resubscribe( $token, $first ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'replay@example.com' ) );
+		self::assertNotSame( $first, $controller->current_binding( $token ) );
+
+		// The delivered link keeps working for unsubscribe, and a binding taken
+		// before a newer suppression update is stale.
+		global $wpdb;
+		$table = TableNames::from_database( $wpdb )->suppressions();
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( 'UPDATE %i SET updated_at_gmt = %s', $table, '2000-01-01 00:00:00' ) );
+		// phpcs:enable
+		$second = $controller->current_binding( $token );
+		self::assertTrue( $controller->unsubscribe( $token ) );
+		self::assertFalse( $controller->resubscribe( $token, $second ) );
+		self::assertTrue( $this->suppression()->is_suppressed( 'replay@example.com' ) );
+
+		// The current page binding still allows the legitimate resubscribe.
+		self::assertTrue( $controller->resubscribe( $token, $controller->current_binding( $token ) ) );
+		self::assertFalse( $this->suppression()->is_suppressed( 'replay@example.com' ) );
 	}
 
 	public function test_message_builder_rejects_unfrozen_content(): void {

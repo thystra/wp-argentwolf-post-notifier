@@ -337,6 +337,57 @@ final class QueueRepository {
 	}
 
 	/**
+	 * Count recipient rows per skip reason, without recipient identities.
+	 *
+	 * @return array<string,int> Skip reason => rows, largest first.
+	 */
+	public function skip_reason_counts(): array {
+		$query = $this->database->prepare(
+			'SELECT skip_reason, COUNT(*) AS total FROM %i
+			WHERE status = %s GROUP BY skip_reason ORDER BY total DESC, skip_reason',
+			$this->table,
+			Recipients::STATUS_SKIPPED
+		);
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $this->database->get_results( $query, ARRAY_A );
+		// phpcs:enable
+
+		$result = array();
+		foreach ( (array) $rows as $row ) {
+			$reason = (string) ( $row['skip_reason'] ?? '' );
+			$result[ '' === $reason ? 'unknown' : $reason ] = (int) $row['total'];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Count recipient rows per delivery status, without recipient identities.
+	 *
+	 * @return array<string,int> Recipient status => rows.
+	 */
+	public function recipient_status_counts(): array {
+		$query = $this->database->prepare(
+			'SELECT status, COUNT(*) AS total FROM %i GROUP BY status ORDER BY status',
+			$this->table
+		);
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $this->database->get_results( $query, ARRAY_A );
+		// phpcs:enable
+
+		$result = array();
+		foreach ( (array) $rows as $row ) {
+			$result[ (string) $row['status'] ] = (int) $row['total'];
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Aggregate queue status without recipient identities.
 	 *
 	 * @return array<string,array<string,int>> Campaign status => counts.

@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Database;
 
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
+use ArgentWolf\PostNotifier\Content\EmailLayoutSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
@@ -101,6 +102,7 @@ final class DestructiveUninstaller {
 		delete_option( EmailTemplateSettings::OPTION );
 		delete_option( EmailExcerptSettings::OPTION );
 		delete_option( EmailMoreSettings::OPTION );
+		delete_option( EmailLayoutSettings::OPTION );
 		delete_option( EmailNamedTemplateLibrary::OPTION );
 		delete_option( self::DELETE_DATA_OPTION );
 	}

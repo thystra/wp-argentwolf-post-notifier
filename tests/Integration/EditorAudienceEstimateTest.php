@@ -84,11 +84,11 @@ final class EditorAudienceEstimateTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_estimate_returns_aggregate_counts_without_recipient_identity(): void {
-		$post_id       = $this->draft_post();
-		$subscriber_id = $this->subscribed_subscriber(
+		$post_id                             = $this->draft_post();
+		$subscriber_id                       = $this->subscribed_subscriber(
 			'estimate-person@example.com'
 		);
-		$audience      = PostNotificationMeta::default_audience_config();
+		$audience                            = PostNotificationMeta::default_audience_config();
 		$audience['included_subscriber_ids'] = array( $subscriber_id );
 
 		$response = $this->estimate( $post_id, $audience );
@@ -164,6 +164,19 @@ final class EditorAudienceEstimateTest extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
+	public function test_estimate_is_rate_limited_per_user(): void {
+		$limit    = static fn ( int $value, string $route ): int => 'estimate' === $route ? 2 : $value;
+		add_filter( 'argentwolf_post_notifier_editor_request_limit', $limit, 10, 2 );
+		$post_id  = $this->draft_post();
+		$audience = PostNotificationMeta::default_audience_config();
+		self::assertSame( 200, $this->estimate( $post_id, $audience )->get_status() );
+		self::assertSame( 200, $this->estimate( $post_id, $audience )->get_status() );
+		$blocked = $this->estimate( $post_id, $audience );
+		remove_filter( 'argentwolf_post_notifier_editor_request_limit', $limit, 10 );
+		self::assertSame( 429, $blocked->get_status() );
+		self::assertArrayNotHasKey( 'eligible', (array) $blocked->get_data() );
+	}
+
 	public function test_estimate_rejects_unknown_audience_properties(): void {
 		$audience               = PostNotificationMeta::default_audience_config();
 		$audience['unexpected'] = array( 1 );
@@ -228,7 +241,7 @@ final class EditorAudienceEstimateTest extends WP_UnitTestCase {
 				$identity
 			)
 		);
-		$signup = $service->request_confirmation(
+		$signup   = $service->request_confirmation(
 			$email,
 			'Estimate Person',
 			'Consent',

@@ -149,10 +149,17 @@ final class EditorAudienceEstimate implements Registerable {
 	 * until a later site policy explicitly supplies an opt-in default.
 	 *
 	 * @param WP_REST_Request $request Request object.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 * @throws LogicException When the deferred audience resolver is invalid.
 	 */
-	public function estimate( WP_REST_Request $request ): WP_REST_Response {
+	public function estimate( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$budget = EditorRequestThrottle::consume(
+			'estimate',
+			EditorRequestThrottle::ESTIMATE_LIMIT
+		);
+		if ( true !== $budget ) {
+			return $budget;
+		}
 		$resolver = ( $this->resolver_provider )();
 		if ( ! $resolver instanceof AudienceResolver ) {
 			throw new LogicException( 'The audience resolver is invalid.' );

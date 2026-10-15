@@ -728,6 +728,15 @@ Template tokens are allow-listed. Initial tokens:
 
 Arbitrary PHP and unbounded shortcode execution are not supported in templates.
 
+Layout and theme customization (`EmailLayoutSettings`, option
+`argentwolf_post_notifier_email_layout`) is a closed schema of validated
+primitives only: four `#rrggbb` colours, a font enum mapped to fixed
+font stacks, an integer content width (480–800 px) and a link/button CTA
+style. No free-form CSS or markup is accepted. Values are written into inline
+styles and still escaped. Capture freezes the current layout into the campaign
+input snapshot as an optional `layout` key (snapshot version unchanged), so
+later edits never change a frozen campaign and older snapshots use defaults.
+
 ## 5. Publication lifecycle
 
 Beta.2 tranche 1 implements the first runtime boundary of this design. AWPN observes
@@ -1187,6 +1196,18 @@ Suggested default batch size is conservative and filterable.
 Production installations may call a WP-CLI worker from system cron. No queue
 feature may depend solely on site traffic.
 
+Retryable preparation conditions (unhealthy verification provider, audience
+persistence error) defer preparation every 15 minutes, but only for a bounded
+window measured from campaign creation (default one day,
+`argentwolf_post_notifier_max_preparation_deferral_seconds`). After that the
+campaign fails closed with the original code, so a stale post is never mailed
+long after publication.
+
+Administrators (`manage_options`) get a Delivery screen below the subscriber
+menu with aggregate campaign, recipient-row and skip-reason counts, the next
+queued attempt and a nonce-protected manual run of a bounded number of
+claims. It never reads or renders recipient identities.
+
 ## 10. Delivery transport
 
 Transport interface:
@@ -1256,6 +1277,35 @@ created at successful confirmation and stores only its SHA-256 hash. The bearer
 may remove only a suppression whose recorded source is `subscriber_manage`. An
 administrator-created `subscriber_admin` suppression cannot be removed by the
 self-service management path.
+
+Campaign links follow the same rule. When the address is suppressed with
+source `campaign_link`, the campaign manage page offers a nonce-protected
+"Resume post notifications" POST. Holding the per-recipient token proves receipt
+at that address. Any other suppression source is left untouched. Campaign
+tokens expire: unsubscribe one year and resubscribe 30 days after submission
+(`argentwolf_post_notifier_recipient_token_ttl_seconds`,
+`argentwolf_post_notifier_recipient_resubscribe_ttl_seconds`). Campaign tokens
+are not rotated after a state change, because the delivered email must keep
+working for unsubscribe.
+
+Replay protection without rotation (no schema change): the confirmation page
+embeds a binding, which is an HMAC (keyed by `wp_salt( 'nonce' )`) over the
+recipient row ID and the current suppression event's row ID, `created_at_gmt`
+and `updated_at_gmt`. A resubscribe is honored only when the binding matches
+the address's current `campaign_link` suppression event. It is consumed by an
+atomic `DELETE … WHERE id AND source AND created_at_gmt AND updated_at_gmt`.
+A double submit therefore matches no row. A later unsubscribe creates a new
+row (new ID) or updates `updated_at_gmt`, so an earlier captured form can no
+longer lift it.
+
+### 11.5 Editor endpoint enumeration
+
+Editor REST routes require `send_post_notifications` plus `edit_post`.
+Saved-ID hydration returns only IDs already stored on the post. Exact-email
+lookup and audience estimates each answer a membership question, so both
+have a per-user fixed-window budget (30 and 120 per 10 minutes, filterable
+via `argentwolf_post_notifier_editor_request_limit`) and return HTTP 429 when
+the budget is exhausted.
 
 ## 12. Click tracking
 

@@ -206,6 +206,13 @@ final class EditorContactLookup implements Registerable {
 		}
 
 		if ( '' !== $email ) {
+			$budget = EditorRequestThrottle::consume(
+				'lookup',
+				EditorRequestThrottle::LOOKUP_LIMIT
+			);
+			if ( true !== $budget ) {
+				return $budget;
+			}
 			$normalized_email = strtolower( trim( $email ) );
 			$validated_email  = is_email( $normalized_email );
 			if ( false === $validated_email ) {
