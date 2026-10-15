@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier\Campaign;
 
 use ArgentWolf\PostNotifier\Content\EmailContentSelector;
 use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
+use ArgentWolf\PostNotifier\Content\EmailLayoutSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Editor\ContentMode;
@@ -193,7 +194,7 @@ final class CampaignContentSnapshotStore {
 	 * @throws InvalidArgumentException When a field is missing or unsafe.
 	 */
 	private function validate( array $input ): array {
-		$keys        = array(
+		$keys = array(
 			'version',
 			'site_id',
 			'post_id',
@@ -208,6 +209,12 @@ final class CampaignContentSnapshotStore {
 			'excerpt_words',
 			'template_fields',
 		);
+		// Layout is an additive optional key: version-1 snapshots captured
+		// before layout support stay valid and render with default layout.
+		$has_layout = array_key_exists( 'layout', $input );
+		if ( $has_layout ) {
+			$keys[] = 'layout';
+		}
 		$actual_keys = array_keys( $input );
 		sort( $keys );
 		sort( $actual_keys );
@@ -251,7 +258,14 @@ final class CampaignContentSnapshotStore {
 		if ( ! $this->is_local_url( $input['post_url'] ) ) {
 			throw new InvalidArgumentException( 'Snapshot permalink must be local.' );
 		}
-		return array(
+		$layout = null;
+		if ( $has_layout ) {
+			$layout = ( new EmailLayoutSettings() )->validate( $input['layout'] );
+			if ( $layout !== $input['layout'] ) {
+				throw new InvalidArgumentException( 'Layout snapshot requires canonical values.' );
+			}
+		}
+		$checked = array(
 			'version'         => $input['version'],
 			'site_id'         => $input['site_id'],
 			'post_id'         => $input['post_id'],
@@ -266,6 +280,11 @@ final class CampaignContentSnapshotStore {
 			'excerpt_words'   => $input['excerpt_words'],
 			'template_fields' => $fields,
 		);
+		if ( null !== $layout ) {
+			$checked['layout'] = $layout;
+		}
+
+		return $checked;
 	}
 
 	/**

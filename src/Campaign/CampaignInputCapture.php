@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Campaign;
 use ArgentWolf\PostNotifier\Content\EmailExcerptSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
+use ArgentWolf\PostNotifier\Content\EmailLayoutSettings;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
 use ArgentWolf\PostNotifier\Editor\ContentMode;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
@@ -74,6 +75,7 @@ final class CampaignInputCapture {
 			'more_enabled'    => ( new EmailMoreSettings() )->enabled(),
 			'excerpt_words'   => ( new EmailExcerptSettings() )->get(),
 			'template_fields' => $fields,
+			'layout'          => ( new EmailLayoutSettings() )->get(),
 		);
 
 		if ( $store->freeze( $campaign_id, $input ) ) {

@@ -39,10 +39,12 @@ final class EmailTemplateComposer {
 	 *
 	 * @param EmailContentRenderer       $renderer Canonical inert fragment renderer.
 	 * @param EmailTemplateSettings|null $settings Validated template settings.
+	 * @param EmailLayoutSettings|null   $layouts  Validated layout/theme settings.
 	 */
 	public function __construct(
 		private EmailContentRenderer $renderer,
-		private ?EmailTemplateSettings $settings = null
+		private ?EmailTemplateSettings $settings = null,
+		private ?EmailLayoutSettings $layouts = null
 	) {
 	}
 
@@ -88,7 +90,8 @@ final class EmailTemplateComposer {
 			$more_enabled,
 			$excerpt_words,
 			$template_override,
-			(string) get_bloginfo( 'name' )
+			(string) get_bloginfo( 'name' ),
+			( $this->layouts ?? new EmailLayoutSettings() )->get()
 		);
 		$message['html'] .= $this->mandatory_html_footer( $unsubscribe_url, $manage_url );
 		$message['text'] .= $this->mandatory_text_footer( $unsubscribe_url, $manage_url );
@@ -138,7 +141,11 @@ final class EmailTemplateComposer {
 			$input['more_enabled'],
 			$input['excerpt_words'],
 			$input['template_fields'],
-			$input['site_name']
+			$input['site_name'],
+			// Snapshots captured before layout support render with defaults.
+			( $this->layouts ?? new EmailLayoutSettings() )->validate(
+				$input['layout'] ?? ( new EmailLayoutSettings() )->defaults()
+			)
 		);
 	}
 
@@ -154,6 +161,7 @@ final class EmailTemplateComposer {
 	 * @param int        $excerpt_words     Generated excerpt length.
 	 * @param array|null $template_override Canonical text fields.
 	 * @param string     $site_name         Captured or current site name.
+	 * @param array      $layout            Validated layout settings.
 	 * @return array{source:string,subject:string,html:string,text:string}
 	 */
 	private function compose_body(
@@ -165,7 +173,8 @@ final class EmailTemplateComposer {
 		bool $more_enabled,
 		int $excerpt_words,
 		?array $template_override,
-		string $site_name
+		string $site_name,
+		array $layout
 	): array {
 		$post_url = $this->require_site_url( $post_url );
 
@@ -216,7 +225,7 @@ final class EmailTemplateComposer {
 		);
 
 		// Subscriber-control links are appended only in compose(), never here.
-		$html  = $this->replace_body_tokens( $this->html_body_template(), $html_values );
+		$html  = $this->replace_body_tokens( $this->html_body_template( $layout ), $html_values );
 		$html .= $this->html_paragraph( $note );
 		$text  = $this->replace_body_tokens( $this->text_body_template(), $text_values );
 		$text .= $this->text_paragraph( $note );
@@ -264,16 +273,34 @@ final class EmailTemplateComposer {
 	/**
 	 * Responsive-width default email body; no images or remote assets.
 	 *
+	 * @param array<string,mixed> $layout Validated layout settings.
 	 * @return string
 	 */
-	private function html_body_template(): string {
-		return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">'
+	private function html_body_template( array $layout ): string {
+		// Every interpolated value is a validated primitive (hex colour, fixed
+		// font-stack enum, bounded integer); esc_attr() is defence in depth.
+		$font   = EmailLayoutSettings::FONTS[ $layout['font_family'] ];
+		$width  = (int) $layout['content_width'];
+		$bg     = $layout['background_color'];
+		$panel  = $layout['content_background'];
+		$text   = $layout['text_color'];
+		$accent = $layout['accent_color'];
+		$cta    = 'button' === $layout['cta_style']
+			? 'display:inline-block;padding:10px 18px;border-radius:4px;'
+				. 'background-color:' . $accent . ';color:' . $panel . ';text-decoration:none'
+			: 'color:' . $accent;
+
+		return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"'
+			. ' style="' . esc_attr( 'background-color:' . $bg ) . '">'
 			. '<tr><td align="center" style="padding:20px">'
 			. '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
-			. 'width="100%" style="max-width:640px">'
-			. '<tr><td><p>{{site_name}}</p><h2>{{heading}}</h2>'
-			. '<div>{{before}}{{content}}{{after}}</div><p><a href="{{post_url}}">'
-			. '{{cta}}</a></p></td></tr></table></td></tr></table>';
+			. 'width="100%" style="' . esc_attr(
+				'max-width:' . $width . 'px;background-color:' . $panel
+				. ';color:' . $text . ';font-family:' . $font
+			) . '">'
+			. '<tr><td style="padding:16px"><p>{{site_name}}</p><h2>{{heading}}</h2>'
+			. '<div>{{before}}{{content}}{{after}}</div><p><a href="{{post_url}}" style="'
+			. esc_attr( $cta ) . '">{{cta}}</a></p></td></tr></table></td></tr></table>';
 	}
 
 	/**
