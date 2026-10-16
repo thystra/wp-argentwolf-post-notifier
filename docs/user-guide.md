@@ -1,6 +1,6 @@
 # ArgentWolf Post Notifier: user and operator guide
 
-Applies to 0.1.0-rc.3.
+Applies to 0.1.0-rc.4.
 
 ## Install and upgrade
 
@@ -75,9 +75,16 @@ import. Nobody is subscribed until they confirm. Suppressed users and users
 whose profile preference is already *subscribed* are skipped. Invitations go
 out via WP-Cron in batches of 25, one batch per minute, with the usual
 per-address cooldown. An optional list can be chosen. The screen shows
-progress (processed, invited, skipped, failed). The run can happen only once,
-and reactivating the plugin does not offer it again. The notice can be
-dismissed and the screen stays available.
+progress (processed, invited, skipped, failed). Before starting it shows how
+many users would be invited. Administrators are identified by their actual
+role, so custom roles and members without a role (for example from
+membership plugins) are counted. A run with no users finishes at once with
+a message. If the run never sent an invitation, it can be reset and started
+again; once any invitation has gone out, it can't be run again, and
+reactivating the plugin doesn't offer it again. A missing or stuck state
+repairs itself: it goes back to the start form, or the next batch is
+rescheduled if invitations were already sent. The notice can be dismissed
+and the screen stays available.
 
 ## Subscription block and double opt-in
 

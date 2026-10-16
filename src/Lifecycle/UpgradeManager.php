@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
 use ArgentWolf\PostNotifier\Admin\Capabilities;
+use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Version;
@@ -59,6 +60,8 @@ final class UpgradeManager implements Registerable {
 		Capabilities::install();
 
 		if ( Version::PLUGIN !== $installed_plugin ) {
+			// Upgrades never fire the activation hook; record the offer here too.
+			ExistingUserInvitations::offer();
 			update_option(
 				'argentwolf_post_notifier_version',
 				Version::PLUGIN,

@@ -14,6 +14,7 @@ use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use Throwable;
 use WP_User;
+use WP_User_Query;
 
 /**
  * One-time offer to invite existing users with the double opt-in flow.
@@ -30,6 +31,7 @@ final class ExistingUserInvitations implements Registerable {
 	public const PAGE_SLUG      = 'argentwolf-post-notifier-invite-users';
 	public const START_ACTION   = 'argentwolf_post_notifier_invite_users';
 	public const DISMISS_ACTION = 'argentwolf_post_notifier_dismiss_user_invitations';
+	public const RESET_ACTION   = 'argentwolf_post_notifier_reset_user_invitations';
 	public const CAPABILITY     = Capabilities::MANAGE_SUBSCRIBERS;
 	public const SOURCE         = 'user_invite';
 	public const BATCH_SIZE     = 25;
@@ -64,6 +66,7 @@ final class ExistingUserInvitations implements Registerable {
 		add_action( 'admin_notices', array( $this, 'render_notice' ) );
 		add_action( 'admin_post_' . self::START_ACTION, array( $this, 'handle_start' ) );
 		add_action( 'admin_post_' . self::DISMISS_ACTION, array( $this, 'handle_dismiss' ) );
+		add_action( 'admin_post_' . self::RESET_ACTION, array( $this, 'handle_reset' ) );
 	}
 
 	/**
@@ -90,6 +93,16 @@ final class ExistingUserInvitations implements Registerable {
 	 * @return array<string,mixed>
 	 */
 	public function state(): array {
+		return $this->heal( $this->stored_state() );
+	}
+
+	/**
+	 * Stored state without self-healing (used inside the cron batch, where the
+	 * running event has already been unscheduled by WP-Cron).
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function stored_state(): array {
 		$stored = get_option( self::OPTION, array() );
 		$stored = is_array( $stored ) ? $stored : array();
 		$state  = self::initial_state( '' );
@@ -101,6 +114,81 @@ final class ExistingUserInvitations implements Registerable {
 		}
 
 		return $state;
+	}
+
+	/**
+	 * Repair a missing, unknown or stuck state.
+	 *
+	 * - Missing or unknown status (for example a site upgraded from 0.1.0-rc.1,
+	 *   where the activation hook that records the offer never ran): offered.
+	 * - Running with nothing to do, or with no batch scheduled and nothing sent:
+	 *   back to offered, so an admin must start it explicitly.
+	 * - Running with invitations already sent but no batch scheduled (cron was
+	 *   cleared): the next batch is rescheduled; the once-only rule holds.
+	 *
+	 * @param array<string,mixed> $state Normalized state.
+	 * @return array<string,mixed>
+	 */
+	private function heal( array $state ): array {
+		$known = array( self::STATUS_OFFERED, self::STATUS_RUNNING, self::STATUS_DONE );
+		if ( ! in_array( $state['status'], $known, true ) ) {
+			$healed              = self::initial_state( self::STATUS_OFFERED );
+			$healed['dismissed'] = $state['dismissed'];
+			update_option( self::OPTION, $healed, false );
+
+			return $healed;
+		}
+		if ( self::STATUS_RUNNING !== $state['status'] ) {
+			return $state;
+		}
+		$scheduled = false !== wp_next_scheduled( self::HOOK );
+		if ( $state['sent'] < 1 && ( $state['total'] < 1 || ! $scheduled ) ) {
+			$healed              = self::initial_state( self::STATUS_OFFERED );
+			$healed['dismissed'] = $state['dismissed'];
+			update_option( self::OPTION, $healed, false );
+
+			return $healed;
+		}
+		if ( ! $scheduled ) {
+			wp_schedule_single_event( time(), self::HOOK );
+		}
+
+		return $state;
+	}
+
+	/**
+	 * Number of users an invitation run would process now.
+	 *
+	 * @return int
+	 */
+	public function audience_count(): int {
+		return count( $this->user_ids( 0, 0 ) );
+	}
+
+	/**
+	 * Whether the run may be reset: only when no invitation was ever sent.
+	 *
+	 * @return bool
+	 */
+	public function can_reset(): bool {
+		$state = $this->state();
+
+		return self::STATUS_OFFERED !== $state['status'] && $state['sent'] < 1;
+	}
+
+	/**
+	 * Reset an unsent run back to offered.
+	 *
+	 * @return bool False when invitations were already sent (once-only rule).
+	 */
+	public function reset(): bool {
+		if ( ! $this->can_reset() ) {
+			return false;
+		}
+		self::unschedule();
+		update_option( self::OPTION, self::initial_state( self::STATUS_OFFERED ), false );
+
+		return true;
 	}
 
 	/**
@@ -118,9 +206,16 @@ final class ExistingUserInvitations implements Registerable {
 		if ( $list_id > 0 && ! $known ) {
 			$list_id = 0;
 		}
-		$state['status']  = self::STATUS_RUNNING;
 		$state['list_id'] = $list_id;
-		$state['total']   = count( $this->user_ids( 0, 0 ) );
+		$state['total']   = $this->audience_count();
+		if ( $state['total'] < 1 ) {
+			// Nothing to send: finish immediately instead of a 0-of-0 "running" run.
+			$state['status'] = self::STATUS_DONE;
+			update_option( self::OPTION, $state, false );
+
+			return true;
+		}
+		$state['status'] = self::STATUS_RUNNING;
 		update_option( self::OPTION, $state, false );
 		wp_schedule_single_event( time(), self::HOOK );
 
@@ -133,7 +228,7 @@ final class ExistingUserInvitations implements Registerable {
 	 * @return array{status:string,processed:int}
 	 */
 	public function run_batch(): array {
-		$state = $this->state();
+		$state = $this->stored_state();
 		if ( self::STATUS_RUNNING !== $state['status'] ) {
 			return array(
 				'status'    => $state['status'],
@@ -328,22 +423,34 @@ final class ExistingUserInvitations implements Registerable {
 	 * @return array<int,int>
 	 */
 	private function user_ids( int $after, int $limit ): array {
-		$ids = get_users(
+		// Fetch every member of this site by ID, then exclude administrators by
+		// their actual roles. No role meta LIKE filter is used, so custom roles,
+		// role-less members created by membership plugins and alternate
+		// capability storage are all counted. Results are never cached.
+		$query = new WP_User_Query(
 			array(
-				'fields'       => 'ID',
-				'orderby'      => 'ID',
-				'order'        => 'ASC',
-				'number'       => -1,
-				'role__not_in' => array( 'administrator' ),
-				'blog_id'      => get_current_blog_id(),
+				'fields'      => 'ID',
+				'orderby'     => 'ID',
+				'order'       => 'ASC',
+				'number'      => -1,
+				'blog_id'     => get_current_blog_id(),
+				'count_total' => false,
 			)
 		);
-		$ids = array_values(
-			array_filter(
-				array_map( 'intval', $ids ),
-				static fn ( int $id ): bool => $id > $after
-			)
-		);
+		$ids   = array();
+		foreach ( (array) $query->get_results() as $id ) {
+			$id = (int) $id;
+			if ( $id <= $after ) {
+				continue;
+			}
+			$user = get_userdata( $id );
+			if ( ! $user instanceof WP_User ) {
+				continue;
+			}
+			if ( ! in_array( 'administrator', (array) $user->roles, true ) ) {
+				$ids[] = $id;
+			}
+		}
 
 		return $limit > 0 ? array_slice( $ids, 0, $limit ) : $ids;
 	}
@@ -374,6 +481,18 @@ final class ExistingUserInvitations implements Registerable {
 				echo '</select></p>';
 			}
 		}
+		echo '<p>' . esc_html(
+			sprintf(
+				/* translators: %d: number of users. */
+				_n(
+					'%d non-administrator user would be invited.',
+					'%d non-administrator users would be invited.',
+					$this->audience_count(),
+					'argentwolf-post-notifier'
+				),
+				$this->audience_count()
+			)
+		) . '</p>';
 		submit_button( __( 'Send invitations', 'argentwolf-post-notifier' ) );
 		echo '</form>';
 	}
@@ -385,6 +504,14 @@ final class ExistingUserInvitations implements Registerable {
 	 * @return void
 	 */
 	private function render_progress( array $state ): void {
+		if ( self::STATUS_DONE === $state['status'] && $state['total'] < 1 ) {
+			echo '<p><strong>' . esc_html__(
+				'There were no non-administrator users to invite, so nothing was sent.',
+				'argentwolf-post-notifier'
+			) . '</strong></p>';
+			$this->render_reset_form();
+			return;
+		}
 		echo '<p><strong>';
 		echo esc_html(
 			self::STATUS_DONE === $state['status']
@@ -407,6 +534,36 @@ final class ExistingUserInvitations implements Registerable {
 			)
 		);
 		echo '</p>';
+		$this->render_reset_form();
+	}
+
+	/**
+	 * Reset button, shown only while no invitation has been sent.
+	 *
+	 * @return void
+	 */
+	private function render_reset_form(): void {
+		if ( ! $this->can_reset() ) {
+			return;
+		}
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::RESET_ACTION ) . '">';
+		wp_nonce_field( self::RESET_ACTION );
+		submit_button( __( 'Reset and start again', 'argentwolf-post-notifier' ), 'secondary' );
+		echo '</form>';
+	}
+
+	/**
+	 * Handle the reset form.
+	 *
+	 * @return never
+	 */
+	public function handle_reset(): never {
+		$this->require_capability();
+		check_admin_referer( self::RESET_ACTION );
+		$this->reset();
+		wp_safe_redirect( $this->page_url() );
+		exit;
 	}
 
 	/**

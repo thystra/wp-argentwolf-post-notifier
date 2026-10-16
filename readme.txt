@@ -4,7 +4,7 @@ Tags: email, notifications, newsletter, subscribers, double opt-in
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-rc.3
+Stable tag: 0.1.0-rc.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,10 @@ See `docs/user-guide.md` in the source repository for filters such as `argentwol
 
 == Changelog ==
 
+= 0.1.0-rc.4 =
+* Fix the Invite existing users screen on upgraded sites; robust audience count; self-healing state.
+* Retry deadlocked campaign status updates under MySQL 8.
+
 = 0.1.0-rc.3 =
 * Per-recipient tracking consent is given only on the confirmation page (separate, unticked), never on the public form.
 
@@ -102,6 +106,9 @@ See `docs/user-guide.md` in the source repository for filters such as `argentwol
 Earlier development releases are listed in CHANGELOG.md in the source repository.
 
 == Upgrade Notice ==
+
+= 0.1.0-rc.4 =
+Fixes the existing-user invitation screen and a MySQL 8 queue deadlock.
 
 = 0.1.0-rc.3 =
 Tracking consent for new subscribers moves to the confirmation page.
