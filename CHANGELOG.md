@@ -1,7 +1,22 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-rc.3 — Release candidate (unreleased)
+## 0.1.0-rc.4 — Release candidate (unreleased)
+
+- Fix: on sites upgraded from rc.1, the Invite existing users screen showed
+  "Invitations are being sent. Processed 0 of 0" with no start form. The
+  offer was recorded only on activation, which upgrades don't trigger. The
+  screen now shows the start form, with a preview count and an optional list,
+  until an admin starts the run. Upgrades record the offer, and stuck or
+  invalid states repair themselves.
+- Invitations: administrators are excluded by their actual role, so custom
+  roles and members without a role are counted, and the audience is never
+  cached. A run with no users finishes at once with a message. A run can be
+  reset only while no invitation has been sent.
+- Queue: a campaign status change that hits a database deadlock is retried.
+  Under MySQL 8 this deadlock crashed concurrent workers (CI run 148).
+
+## 0.1.0-rc.3 — Release candidate
 
 - Per-recipient tracking consent is now tied to confirmation. The public
   signup form no longer has a tracking box, so a third party or a

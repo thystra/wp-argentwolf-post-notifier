@@ -907,7 +907,11 @@ Acceptance criteria:
       `SubscriberCsvImportTest` existing-user tests pass locally. Forgejo CI pending.
 - [x] rc.3: tracking consent tied to owner confirmation (no public-form box).
       `ConfirmationControllerTest` consent tests pass locally. Forgejo CI pending.
-- [ ] Staging validation of rc.3 by the site owner.
+- [x] rc.4: CI 148 MySQL 8 transition deadlock retried
+      (`CampaignTransitionLockRetryTest`, 30x concurrent-queue on MySQL 8.4 and
+      MariaDB) and invitation screen fixed for upgraded sites
+      (`SubscriberCsvImportTest` invitation tests) pass locally. Forgejo CI pending.
+- [ ] Staging validation of rc.4 by the site owner.
 
 ## Later candidates
 
