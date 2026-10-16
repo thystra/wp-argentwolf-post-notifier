@@ -905,7 +905,9 @@ Acceptance criteria:
       Forgejo CI pending.
 - [x] One-time double opt-in invitation for existing users (no auto-enrolment).
       `SubscriberCsvImportTest` existing-user tests pass locally. Forgejo CI pending.
-- [ ] Staging validation of rc.2 by the site owner.
+- [x] rc.3: tracking consent tied to owner confirmation (no public-form box).
+      `ConfirmationControllerTest` consent tests pass locally. Forgejo CI pending.
+- [ ] Staging validation of rc.3 by the site owner.
 
 ## Later candidates
 

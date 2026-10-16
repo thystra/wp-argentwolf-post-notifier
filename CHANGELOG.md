@@ -1,7 +1,19 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-rc.2 — Release candidate (unreleased)
+## 0.1.0-rc.3 — Release candidate (unreleased)
+
+- Per-recipient tracking consent is now tied to confirmation. The public
+  signup form no longer has a tracking box, so a third party or a
+  resubmission can never grant consent. The confirmation page shows a
+  separate, unticked tracking choice (with the wording version) next to the
+  confirm button. The confirmation and invitation emails say this optional
+  choice is offered there and that confirming alone does not grant it.
+  Confirming without the box clears any consent already on the row,
+  including rc.2 form pre-ticks. Profile and manage-page consent are
+  unchanged. Policy text and docs are updated.
+
+## 0.1.0-rc.2 — Release candidate
 
 - Lists: a newly created list now shows immediately. Creation redirects to the
   list index with a notice and highlights the new row. Failures after the
