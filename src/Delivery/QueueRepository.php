@@ -183,18 +183,26 @@ final class QueueRepository {
 	/**
 	 * Store the per-attempt recipient-token hash while the lease is held.
 	 *
-	 * @param int    $row_id      Recipient row ID.
-	 * @param string $lease_token Owning lease.
-	 * @param string $token_hash  SHA-256 of the plaintext token.
+	 * @param int         $row_id      Recipient row ID.
+	 * @param string      $lease_token Owning lease.
+	 * @param string      $token_hash  SHA-256 of the plaintext token.
+	 * @param string|null $click_hash  SHA-256 of this attempt's click token, or null in
+	 *                                 direct-link mode (clears any earlier click token).
 	 * @return bool Whether the lease is still owned.
 	 */
-	public function set_token_hash( int $row_id, string $lease_token, string $token_hash ): bool {
+	public function set_token_hash(
+		int $row_id,
+		string $lease_token,
+		string $token_hash,
+		?string $click_hash = null
+	): bool {
 		return 1 === $this->write(
 			$this->database->prepare(
-				'UPDATE %i SET unsubscribe_token_hash = %s
+				'UPDATE %i SET unsubscribe_token_hash = %s, click_token_hash = NULLIF(%s, \'\')
 				WHERE id = %d AND lease_token = %s AND status = %s',
 				$this->table,
 				$token_hash,
+				(string) $click_hash,
 				$row_id,
 				$lease_token,
 				Recipients::STATUS_CLAIMED
@@ -423,6 +431,32 @@ final class QueueRepository {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Most recent campaigns with aggregate delivery and click counters.
+	 *
+	 * Contains no recipient identities.
+	 *
+	 * @param int $limit Maximum rows, 1-100.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function recent_campaigns( int $limit = 20 ): array {
+		$query = $this->database->prepare(
+			'SELECT id, post_id, status, created_at_gmt, completed_at_gmt, recipient_count,
+				submitted_count, failed_count, skipped_count, unique_click_count,
+				total_click_count
+			FROM %i ORDER BY id DESC LIMIT %d',
+			$this->campaigns,
+			max( 1, min( 100, $limit ) )
+		);
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $this->database->get_results( $query, ARRAY_A );
+		// phpcs:enable
+
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**

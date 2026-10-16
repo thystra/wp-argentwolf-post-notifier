@@ -115,6 +115,8 @@ final class DeliveryStatusPage implements Registerable {
 			$campaign_rows
 		);
 
+		$this->render_recent_campaigns( $queue );
+
 		echo '<h2>' . esc_html__( 'Recipient rows', 'argentwolf-post-notifier' ) . '</h2>';
 		$this->render_pairs( $queue->recipient_status_counts() );
 
@@ -139,6 +141,72 @@ final class DeliveryStatusPage implements Registerable {
 		wp_nonce_field( self::RUN_ACTION );
 		submit_button( __( 'Run queue now', 'argentwolf-post-notifier' ), 'secondary' );
 		echo '</form></div>';
+	}
+
+	/**
+	 * Render the per-campaign dashboard with approximate click statistics.
+	 *
+	 * @param QueueRepository $queue Queue repository.
+	 * @return void
+	 */
+	private function render_recent_campaigns( QueueRepository $queue ): void {
+		echo '<h2>' . esc_html__( 'Recent campaigns', 'argentwolf-post-notifier' ) . '</h2>';
+		echo '<p class="description">';
+		echo esc_html__(
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'Click figures are tracked and approximate: they count requests to the tracked link, which mail security scanners may follow automatically, and they are not collected in direct-link mode. Opens are never tracked.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p>';
+		$rows = self::campaign_rows( $queue->recent_campaigns( 20 ) );
+		$this->render_table(
+			array(
+				__( 'Post', 'argentwolf-post-notifier' ),
+				__( 'Status', 'argentwolf-post-notifier' ),
+				__( 'Created (UTC)', 'argentwolf-post-notifier' ),
+				__( 'Recipients', 'argentwolf-post-notifier' ),
+				__( 'Submitted', 'argentwolf-post-notifier' ),
+				__( 'Failed', 'argentwolf-post-notifier' ),
+				__( 'Skipped', 'argentwolf-post-notifier' ),
+				__( 'Unique clickers (tracked, approx.)', 'argentwolf-post-notifier' ),
+				__( 'Total clicks (tracked, approx.)', 'argentwolf-post-notifier' ),
+				__( 'Click rate (approx.)', 'argentwolf-post-notifier' ),
+			),
+			$rows
+		);
+	}
+
+	/**
+	 * Format campaign rows as table cells.
+	 *
+	 * @param array<int,array<string,mixed>> $campaigns Campaign aggregate rows.
+	 * @return array<int,array<int,string|int>>
+	 */
+	public static function campaign_rows( array $campaigns ): array {
+		$rows = array();
+		foreach ( $campaigns as $campaign ) {
+			$post_id   = (int) ( $campaign['post_id'] ?? 0 );
+			$title     = $post_id > 0 ? get_the_title( $post_id ) : '';
+			$submitted = (int) ( $campaign['submitted_count'] ?? 0 );
+			$unique    = (int) ( $campaign['unique_click_count'] ?? 0 );
+			$rate      = $submitted > 0
+				? number_format_i18n( 100 * $unique / $submitted, 1 ) . '%'
+				: '-';
+			$rows[]    = array(
+				'' !== $title ? $title : sprintf( '#%d', $post_id ),
+				(string) ( $campaign['status'] ?? '' ),
+				(string) ( $campaign['created_at_gmt'] ?? '' ),
+				(int) ( $campaign['recipient_count'] ?? 0 ),
+				$submitted,
+				(int) ( $campaign['failed_count'] ?? 0 ),
+				(int) ( $campaign['skipped_count'] ?? 0 ),
+				$unique,
+				(int) ( $campaign['total_click_count'] ?? 0 ),
+				$rate,
+			);
+		}
+
+		return $rows;
 	}
 
 	/**

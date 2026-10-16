@@ -194,7 +194,7 @@ final class CampaignRepository {
 				html_body, text_body, template_snapshot_json, audience_snapshot_json,
 				content_mode, created_at_gmt, queued_at_gmt, started_at_gmt,
 				completed_at_gmt, recipient_count, submitted_count, failed_count,
-				skipped_count, last_error_code
+				skipped_count, unique_click_count, total_click_count, last_error_code
 			FROM %i WHERE id = %d LIMIT 1',
 			$this->table,
 			$campaign_id

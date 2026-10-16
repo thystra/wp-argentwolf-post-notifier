@@ -696,25 +696,29 @@ Acceptance criteria:
 
 Target: `0.1.0-rc.3`
 
-- [ ] Generate opaque recipient click tokens.
-- [ ] Map tokens only to server-generated allowed destinations.
-- [ ] Record total and unique clicks.
-- [ ] Redirect safely to canonical post permalink.
-- [ ] Add campaign dashboard.
-- [ ] Show queued, claimed, submitted, failed, and skipped counts.
-- [ ] Show skip reasons.
-- [ ] Show unique clickers and total clicks.
-- [ ] Label click-through as tracked/approximate.
-- [ ] Add tracking-disabled direct-link mode.
-- [ ] Add configurable click-event retention.
-- [ ] Do not implement open tracking in the initial release.
+- [x] Generate opaque recipient click tokens. (Per-attempt 256-bit token; only its SHA-256 is stored in `click_token_hash` while the lease is held.)
+- [x] Map tokens only to server-generated allowed destinations. (The request carries only the token; the destination is the campaign post.)
+- [x] Record total and unique clicks.
+- [x] Redirect safely to canonical post permalink. (`wp_safe_redirect` to the current permalink, or home when the token is unknown or the post is not public.)
+- [x] Add campaign dashboard. (Recent campaigns table on the Delivery screen.)
+- [x] Show queued, claimed, submitted, failed, and skipped counts. (Per campaign: recipients/submitted/failed/skipped. Queued/claimed are shown as site-wide recipient-row totals.)
+- [x] Show skip reasons.
+- [x] Show unique clickers and total clicks.
+- [x] Label click-through as tracked/approximate.
+- [x] Add tracking-disabled direct-link mode. (Plugin > Privacy; decided per message at send time.)
+- [x] Add configurable click-event retention. (Default 90 days, daily bounded job.)
+- [x] Do not implement open tracking in the initial release.
 
 Acceptance criteria:
 
-- [ ] Public requests cannot create open redirects.
-- [ ] Unique and total click calculations are correct.
-- [ ] Security scanner clicks are documented as a limitation.
-- [ ] No raw IP or user-agent retention occurs by default.
+- [x] Public requests cannot create open redirects.
+- [x] Unique and total click calculations are correct.
+- [x] Security scanner clicks are documented as a limitation. (Dashboard text and readme.)
+- [x] No raw IP or user-agent retention occurs by default. (No IP, user-agent, referrer or cookie in any mode.)
+
+Evidence: `CampaignDeliveryTest::test_tracked_links_count_clicks_and_redirect_only_to_the_post`,
+`test_direct_link_mode_issues_no_click_token` and
+`test_privacy_settings_sanitize_and_retention_cleanup_is_bounded` pass locally. Forgejo CI pending.
 
 ## Milestone 13 — Privacy, security, and administration
 

@@ -11,6 +11,7 @@ use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
+use ArgentWolf\PostNotifier\Campaign\CampaignContentSnapshotStore;
 use ArgentWolf\PostNotifier\Campaign\CampaignPreparation;
 use ArgentWolf\PostNotifier\Campaign\CampaignQueueGate;
 use ArgentWolf\PostNotifier\Campaign\CampaignRecipientRepository;
@@ -34,6 +35,9 @@ use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
+use ArgentWolf\PostNotifier\Database\DataCleanup;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
 use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
@@ -44,6 +48,8 @@ use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
 use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use ArgentWolf\PostNotifier\Tracking\ClickController;
+use ArgentWolf\PostNotifier\Tracking\ClickRepository;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
 use ArgentWolf\PostNotifier\Verification\VerificationProvider;
 use ArgentWolf\PostNotifier\Verification\VerificationProviderHealth;
@@ -96,7 +102,13 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		$tables = TableNames::from_database( $wpdb );
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-		foreach ( array( $tables->campaign_recipients(), $tables->campaigns(), $tables->suppressions() ) as $table ) {
+		$isolated = array(
+			$tables->campaign_recipients(),
+			$tables->campaigns(),
+			$tables->suppressions(),
+			$tables->clicks(),
+		);
+		foreach ( $isolated as $table ) {
 			$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', $table ) );
 		}
 		// phpcs:enable
@@ -118,6 +130,7 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		$_GET  = array();
 		$_POST = array();
 		DeliveryScheduler::unschedule_all();
+		delete_option( PrivacySettings::OPTION );
 		parent::tear_down();
 	}
 
@@ -714,6 +727,174 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertNull( $controller->open_settings( str_repeat( 'f', 64 ) ) );
 	}
 
+	public function test_tracked_links_count_clicks_and_redirect_only_to_the_post(): void {
+		$first   = $this->subscriber( 'click-one@example.com' );
+		$second  = $this->subscriber( 'click-two@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $first, $second ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$privacy = new PrivacySettings();
+		self::assertTrue( $privacy->click_tracking_enabled() );
+
+		self::assertSame( 2, $this->worker( $privacy )->run( 2 )['submitted'] );
+		$permalink = (string) get_permalink( $post_id );
+		$tokens    = array();
+		foreach ( $this->transport->messages as $message ) {
+			self::assertStringNotContainsString( 'href="' . esc_url( $permalink ) . '"', $message->body() );
+			self::assertStringNotContainsString( $permalink . "\n", (string) $message->alt_body() );
+			self::assertSame( 1, preg_match( $this->click_pattern(), $message->body(), $html ) );
+			self::assertSame( 1, preg_match( $this->click_pattern(), (string) $message->alt_body(), $text ) );
+			self::assertSame( $html[1], $text[1] );
+			self::assertStringNotContainsString( 'open', strtolower( implode( ' ', $message->headers() ) ) );
+			self::assertStringNotContainsString( '<img', $message->body() );
+			$tokens[] = $html[1];
+		}
+		self::assertNotSame( $tokens[0], $tokens[1] );
+
+		$controller = new ClickController( new ClickRepository(), $privacy );
+		self::assertSame( $permalink, $controller->resolve( $tokens[0] ) );
+		self::assertSame( $permalink, $controller->resolve( $tokens[0] ) );
+		self::assertSame( $permalink, $controller->resolve( $tokens[1] ) );
+		self::assertSame( home_url( '/' ), $controller->resolve( str_repeat( 'a', 64 ) ) );
+		self::assertSame( home_url( '/' ), $controller->resolve( 'https://evil.example/' ) );
+		self::assertSame( home_url( '/' ), $controller->resolve( '' ) );
+
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( 2, (int) $campaign['unique_click_count'] );
+		self::assertSame( 3, (int) $campaign['total_click_count'] );
+
+		global $wpdb;
+		$tables = TableNames::from_database( $wpdb );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$columns = $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', $tables->clicks() ) );
+		$events  = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $tables->clicks() ) );
+		$counts  = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT click_count FROM %i WHERE campaign_id = %d ORDER BY click_count',
+				$tables->campaign_recipients(),
+				$id
+			)
+		);
+		// phpcs:enable
+		self::assertSame( '', $wpdb->last_error );
+		self::assertSame(
+			array( 'id', 'campaign_recipient_id', 'clicked_at_gmt', 'destination_kind' ),
+			$columns
+		);
+		self::assertSame( 3, $events );
+		self::assertSame( array( '1', '2' ), $counts );
+
+		// Expired tokens and direct-link mode still redirect but record nothing.
+		$later = new DateTimeImmutable( '+2 years', new DateTimeZone( 'UTC' ) );
+		self::assertSame( $permalink, $controller->resolve( $tokens[1], $later ) );
+		$privacy->save( array( 'click_tracking' => '0' ) );
+		self::assertSame( $permalink, $controller->resolve( $tokens[1] ) );
+		self::assertSame( 3, (int) ( new CampaignRepository() )->find( $id )['total_click_count'] );
+
+		// Dashboard rows expose aggregates only.
+		$rows = DeliveryStatusPage::campaign_rows( ( new QueueRepository() )->recent_campaigns( 5 ) );
+		self::assertSame( 'Delivery title', $rows[0][0] );
+		self::assertSame( array( 2, 0, 0, 2, 3 ), array_slice( $rows[0], 4, 5 ) );
+		self::assertStringNotContainsString( '@', wp_json_encode( $rows ) );
+
+		// A post that is no longer public is never the redirect target.
+		wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'draft',
+			)
+		);
+		self::assertSame( home_url( '/' ), $controller->resolve( $tokens[0] ) );
+	}
+
+	public function test_direct_link_mode_issues_no_click_token(): void {
+		( new PrivacySettings() )->save( array( 'click_tracking' => '0' ) );
+		$subscriber = $this->subscriber( 'direct@example.com' );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+
+		self::assertSame( 1, $this->worker( new PrivacySettings() )->run( 1 )['submitted'] );
+		$message = $this->transport->messages[0];
+		$direct  = 'href="' . esc_url( (string) get_permalink( $post_id ) ) . '"';
+		self::assertStringContainsString( $direct, $message->body() );
+		self::assertStringNotContainsString( RecipientLinkFactory::CLICK_ACTION, $message->body() );
+		self::assertStringNotContainsString( RecipientLinkFactory::CLICK_ACTION, (string) $message->alt_body() );
+
+		global $wpdb;
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$hashes = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i WHERE campaign_id = %d AND click_token_hash IS NOT NULL',
+				TableNames::from_database( $wpdb )->campaign_recipients(),
+				$id
+			)
+		);
+		// phpcs:enable
+		self::assertSame( '', $wpdb->last_error );
+		self::assertSame( 0, $hashes );
+	}
+
+	public function test_privacy_settings_sanitize_and_retention_cleanup_is_bounded(): void {
+		self::assertSame(
+			array(
+				'click_tracking'           => true,
+				'click_retention_days'     => 90,
+				'recipient_retention_days' => 365,
+			),
+			PrivacySettings::sanitize( array() )
+		);
+		self::assertSame(
+			array(
+				'click_tracking'           => false,
+				'click_retention_days'     => 1,
+				'recipient_retention_days' => 3650,
+			),
+			PrivacySettings::sanitize(
+				array(
+					'click_tracking'           => 'yes',
+					'click_retention_days'     => '0',
+					'recipient_retention_days' => '99999',
+				)
+			)
+		);
+
+		global $wpdb;
+		$tables = TableNames::from_database( $wpdb );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		foreach ( array( '2020-01-01 00:00:00', gmdate( 'Y-m-d H:i:s' ) ) as $at ) {
+			$wpdb->insert(
+				$tables->clicks(),
+				array(
+					'campaign_recipient_id' => 1,
+					'clicked_at_gmt'        => $at,
+					'destination_kind'      => 'post',
+				)
+			);
+		}
+		$job    = new RetentionCleanup( new DataCleanup(), new PrivacySettings() );
+		$result = $job->run();
+		$left   = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $tables->clicks() ) );
+		// phpcs:enable
+		self::assertSame( 1, $result['clicks'] );
+		self::assertSame( 1, $left );
+		RetentionCleanup::schedule();
+		self::assertNotFalse( wp_next_scheduled( RetentionCleanup::HOOK ) );
+		RetentionCleanup::unschedule();
+	}
+
+	/**
+	 * Regex capturing a click token from an HTML or text body.
+	 *
+	 * @return string
+	 */
+	private function click_pattern(): string {
+		return '/' . RecipientLinkFactory::CLICK_ACTION . '(?:&#038;|&amp;|&)token=([a-f0-9]{64})/';
+	}
+
 	public function test_message_builder_rejects_unfrozen_content(): void {
 		$builder = new RecipientMessageBuilder( $this->composer() );
 		$this->expectException( \InvalidArgumentException::class );
@@ -891,9 +1072,10 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 	/**
 	 * Worker with recording transport.
 	 *
+	 * @param PrivacySettings|null $privacy Optional tracking settings.
 	 * @return QueueWorker
 	 */
-	private function worker(): QueueWorker {
+	private function worker( ?PrivacySettings $privacy = null ): QueueWorker {
 		return new QueueWorker(
 			new QueueRepository(),
 			new CampaignRepository(),
@@ -908,7 +1090,9 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 			new RecipientMessageBuilder( $this->composer() ),
 			new RecipientLinkFactory(),
 			$this->transport,
-			new AuditService( new AuditRepository() )
+			new AuditService( new AuditRepository() ),
+			$privacy,
+			null === $privacy ? null : new CampaignContentSnapshotStore()
 		);
 	}
 
