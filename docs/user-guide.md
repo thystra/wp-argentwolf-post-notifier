@@ -89,12 +89,33 @@ Pending records are purged seven days after they expire.
   address, user agent, referrer or cookie is stored. Opens are never tracked.
   Turn it off for direct links. Counts are approximate, because security
   scanners click links.
+- Without per-recipient consent, a click only increments the campaign's total
+  and unique counters. No click event row and no per-recipient count is stored;
+  a first-click marker on the delivery record is kept only to de-duplicate the
+  unique total.
+- **Per-recipient click tracking** (off by default, **Post Notifier → Privacy**,
+  requires click counting): recipients can tick a separate, unticked consent
+  box on the subscription block, on their profile, or on the manage page. The
+  consent time and wording version are recorded. Only for consenting
+  recipients is each click stored with its time and a *likely scanner* flag
+  (clicks within N seconds of delivery, default 30). Withdrawal (manage page
+  or profile) stops attribution at once and deletes clicks already linked to
+  the person; totals stay. Attribution is cleared after its own retention
+  period (default 30 days); turning the feature off clears all of it on the
+  next daily run. Note: consent ticked on the public form is stored on the
+  pending row; resubmitting without the box clears it, and the address owner
+  can withdraw from any manage link.
+- **Post Notifier → Recipient clicks** (`view_post_notification_stats`) shows
+  attributed clicks and exports them as CSV. Each view and export is written
+  to the audit log (actor and campaign only).
 - Retention: click events default to 90 days. Per-recipient delivery records
   are anonymized 365 days after a campaign completes. A daily job processes
   bounded batches.
 - **Tools → Export/Erase Personal Data** include this plugin. Erasure deletes the
   subscriber, redacts delivery records and clicks, removes the account
-  preference and keeps only the suppression hash, which is reported as retained.
+  preference and click-tracking consent, and keeps only the suppression hash,
+  which is reported as retained. The export includes consent records and
+  attributed click times.
 - Suggested policy text appears under **Settings → Privacy → Policy guide**.
 - Deleting a WordPress user redacts their delivery records.
 
@@ -123,6 +144,7 @@ published. Later edits do not change the campaign.
 | `send_post_notifications` | Editor sidebar, audience estimate, contact lookup, sending on publish |
 | `manage_post_notification_subscribers` | Subscriber screen, suppression, CSV import and export |
 | `manage_post_notification_lists` | Named lists |
+| `view_post_notification_stats` | Per-recipient click view and CSV export (granted to administrators on activation, removed on uninstall) |
 | `manage_options` | Templates, Delivery screen, Privacy settings |
 
 Give `send_post_notifications` to editors without exposing subscriber data.

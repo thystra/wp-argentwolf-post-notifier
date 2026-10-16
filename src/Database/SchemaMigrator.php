@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Database;
 use ArgentWolf\PostNotifier\Database\Migrations\Schema1;
 use ArgentWolf\PostNotifier\Database\Migrations\Schema2;
 use ArgentWolf\PostNotifier\Database\Migrations\Schema3;
+use ArgentWolf\PostNotifier\Database\Migrations\Schema4;
 use ArgentWolf\PostNotifier\Version;
 use LogicException;
 use RuntimeException;
@@ -33,6 +34,7 @@ final class SchemaMigrator {
 		1 => Schema1::class,
 		2 => Schema2::class,
 		3 => Schema3::class,
+		4 => Schema4::class,
 	);
 
 	/**

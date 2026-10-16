@@ -8,6 +8,8 @@
 namespace ArgentWolf\PostNotifier\Subscriber;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use WP_Block;
 
 /**
@@ -149,6 +151,16 @@ final class SubscribeBlock implements Registerable {
 			esc_attr( PublicSignupController::CONSENT_FIELD ),
 			esc_html( $values['consent_text'] )
 		);
+		if ( ( new PrivacySettings() )->per_user_tracking_enabled() ) {
+			// Separate, optional and unticked: never bundled with the newsletter consent.
+			$html .= sprintf(
+				'<p><label for="%1$s"><input id="%1$s" name="%2$s" type="checkbox" value="1"> '
+					. '%3$s</label></p>',
+				esc_attr( $consent_id . '-clicks' ),
+				esc_attr( PublicSignupController::CLICK_CONSENT_FIELD ),
+				esc_html( ClickConsent::wording() )
+			);
+		}
 		$html .= '<div aria-hidden="true" '
 			. 'style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;">';
 		$html .= sprintf(

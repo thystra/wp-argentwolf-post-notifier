@@ -109,6 +109,37 @@ final class PrivacySettingsPage implements Registerable {
 			PrivacySettings::MIN_RECIPIENT_RETENTION_DAYS
 		);
 
+		echo '<tr><th scope="row">';
+		echo esc_html__( 'Per-recipient click tracking', 'argentwolf-post-notifier' );
+		echo '</th><td><label><input type="checkbox" name="per_user_tracking" value="1"';
+		checked( $values['per_user_tracking'] );
+		echo '> ' . esc_html__(
+			'Link clicks to individual recipients who give separate, explicit consent.',
+			'argentwolf-post-notifier'
+		) . '</label><p class="description">';
+		echo esc_html__(
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'Off by default. Requires click tracking. Recipients without consent are only counted in totals. Update your privacy policy before enabling.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p></td></tr>';
+		$this->number_row(
+			'attribution_retention_days',
+			__( 'Keep per-recipient click attribution (days)', 'argentwolf-post-notifier' ),
+			$values['attribution_retention_days'],
+			PrivacySettings::MIN_RETENTION_DAYS
+		);
+		$this->number_row(
+			'scanner_window_seconds',
+			__(
+				'Flag clicks within this many seconds of delivery as likely scanner',
+				'argentwolf-post-notifier'
+			),
+			$values['scanner_window_seconds'],
+			0,
+			PrivacySettings::MAX_SCANNER_WINDOW_SECONDS
+		);
+
 		echo '<tr><th scope="row">' . esc_html__( 'Uninstall', 'argentwolf-post-notifier' );
 		echo '</th><td><label><input type="checkbox" name="delete_data_on_uninstall" value="1"';
 		checked( $uninstall );
@@ -150,15 +181,24 @@ final class PrivacySettingsPage implements Registerable {
 	 * @return void
 	 */
 	public function save( array $input ): void {
-		$clicks     = $input['click_retention_days'] ?? null;
-		$recipients = $input['recipient_retention_days'] ?? null;
+		$clicks      = $input['click_retention_days'] ?? null;
+		$recipients  = $input['recipient_retention_days'] ?? null;
+		$attribution = $input['attribution_retention_days'] ?? null;
+		$window      = $input['scanner_window_seconds'] ?? null;
 		$this->settings->save(
 			array(
-				'click_tracking'           => isset( $input['click_tracking'] ) ? '1' : '0',
-				'click_retention_days'     => is_string( $clicks )
+				'per_user_tracking'          => isset( $input['per_user_tracking'] ) ? '1' : '0',
+				'attribution_retention_days' => is_string( $attribution )
+					? sanitize_text_field( $attribution )
+					: null,
+				'scanner_window_seconds'     => is_string( $window )
+					? sanitize_text_field( $window )
+					: null,
+				'click_tracking'             => isset( $input['click_tracking'] ) ? '1' : '0',
+				'click_retention_days'       => is_string( $clicks )
 					? sanitize_text_field( $clicks )
 					: null,
-				'recipient_retention_days' => is_string( $recipients )
+				'recipient_retention_days'   => is_string( $recipients )
 					? sanitize_text_field( $recipients )
 					: null,
 			)
@@ -177,13 +217,20 @@ final class PrivacySettingsPage implements Registerable {
 	 * @param string $label Label.
 	 * @param int    $value Current value.
 	 * @param int    $min   Minimum.
+	 * @param int    $max   Maximum.
 	 * @return void
 	 */
-	private function number_row( string $name, string $label, int $value, int $min ): void {
+	private function number_row(
+		string $name,
+		string $label,
+		int $value,
+		int $min,
+		int $max = PrivacySettings::MAX_RETENTION_DAYS
+	): void {
 		echo '<tr><th scope="row"><label for="' . esc_attr( $name ) . '">' . esc_html( $label );
 		echo '</label></th><td><input type="number" class="small-text" id="' . esc_attr( $name );
 		echo '" name="' . esc_attr( $name ) . '" min="' . esc_attr( (string) $min ) . '" max="';
-		echo esc_attr( (string) PrivacySettings::MAX_RETENTION_DAYS ) . '" value="';
+		echo esc_attr( (string) $max ) . '" value="';
 		echo esc_attr( (string) $value ) . '"></td></tr>';
 	}
 

@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier;
 
+use ArgentWolf\PostNotifier\Admin\ClickStatsPage;
 use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
 use ArgentWolf\PostNotifier\Admin\PrivacySettingsPage;
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
@@ -63,6 +64,7 @@ use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
 use ArgentWolf\PostNotifier\Privacy\PrivacyIntegration;
 use ArgentWolf\PostNotifier\Privacy\PrivacyRepository;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
 use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
@@ -89,6 +91,7 @@ use ArgentWolf\PostNotifier\Subscriber\WordPressRateLimitStore;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use ArgentWolf\PostNotifier\Tracking\ClickAttributionReport;
 use ArgentWolf\PostNotifier\Tracking\ClickController;
 use ArgentWolf\PostNotifier\Tracking\ClickRepository;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
@@ -395,7 +398,11 @@ final class Plugin {
 						);
 					}
 
-					return new UserNotificationPreferenceProfile( $preferences );
+					return new UserNotificationPreferenceProfile(
+						$preferences,
+						self::typed( $services, ClickConsent::class ),
+						self::typed( $services, PrivacySettings::class )
+					);
 				}
 			);
 			$container->set(
@@ -642,7 +649,9 @@ final class Plugin {
 
 					return new ManageSubscriptionController(
 						$subscriber_service,
-						$suppression
+						$suppression,
+						self::typed( $services, ClickConsent::class ),
+						self::typed( $services, PrivacySettings::class )
 					);
 				}
 			);
@@ -671,7 +680,9 @@ final class Plugin {
 						$subscriber_service,
 						$rate_limiter,
 						$links,
-						$mailer
+						$mailer,
+						self::typed( $services, ClickConsent::class ),
+						self::typed( $services, PrivacySettings::class )
 					);
 				}
 			);
@@ -938,10 +949,22 @@ final class Plugin {
 			static fn (): PrivacySettings => new PrivacySettings()
 		);
 		$container->set(
+			ClickConsent::class,
+			static fn (): ClickConsent => new ClickConsent()
+		);
+		$container->set(
 			ClickController::class,
 			static fn ( Container $services ): ClickController => new ClickController(
 				new ClickRepository(),
-				self::typed( $services, PrivacySettings::class )
+				self::typed( $services, PrivacySettings::class ),
+				self::typed( $services, ClickConsent::class )
+			)
+		);
+		$container->set(
+			ClickStatsPage::class,
+			static fn ( Container $services ): ClickStatsPage => new ClickStatsPage(
+				new ClickAttributionReport(),
+				self::typed( $services, AuditService::class )
 			)
 		);
 		$container->set(
@@ -1014,6 +1037,7 @@ final class Plugin {
 				SubscriberCsvImportPage::class,
 				DeliveryStatusPage::class,
 				PrivacySettingsPage::class,
+				ClickStatsPage::class,
 				ClickController::class,
 				PrivacyIntegration::class,
 				NamedListAdminPage::class,

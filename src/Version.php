@@ -23,7 +23,7 @@ final class Version {
 	 * while preserving frozen schema one as immutable upgrade history. Schema
 	 * three adds campaign-recipient queue lease ownership.
 	 */
-	public const SCHEMA = '3';
+	public const SCHEMA = '4';
 
 	/**
 	 * Prevent construction.

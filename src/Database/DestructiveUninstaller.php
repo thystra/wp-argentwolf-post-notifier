@@ -108,6 +108,8 @@ final class DestructiveUninstaller {
 		delete_option( EmailNamedTemplateLibrary::OPTION );
 		delete_option( PrivacySettings::OPTION );
 		delete_metadata( 'user', 0, RegisteredUserPreferenceRepository::META_KEY, '', true );
+		delete_metadata( 'user', 0, '_argentwolf_post_notifier_click_consent_at', '', true );
+		delete_metadata( 'user', 0, '_argentwolf_post_notifier_click_consent_version', '', true );
 		delete_option( self::DELETE_DATA_OPTION );
 	}
 }

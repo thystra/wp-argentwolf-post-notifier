@@ -179,13 +179,13 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 
 			( new SchemaMigrator( $wpdb ) )->migrate();
 
-			self::assertSame( '3', get_option( SchemaMigrator::SCHEMA_OPTION ) );
+			self::assertSame( '4', get_option( SchemaMigrator::SCHEMA_OPTION ) );
 			self::assertArrayHasKey( 'lease_token', $inspector->columns( $table ) );
 			self::assertContains( 'lease_token', $inspector->indexes( $table ) );
 
 			// Re-running the current migration is a harmless repair.
 			( new SchemaMigrator( $wpdb ) )->migrate();
-			self::assertSame( '3', get_option( SchemaMigrator::SCHEMA_OPTION ) );
+			self::assertSame( '4', get_option( SchemaMigrator::SCHEMA_OPTION ) );
 		} finally {
 			( new SchemaMigrator( $wpdb ) )->migrate();
 			self::commit_transaction();
@@ -334,7 +334,7 @@ final class DatabaseSchemaTest extends WP_UnitTestCase {
 	public function test_newer_database_schema_is_refused(): void {
 		global $wpdb;
 
-		update_option( SchemaMigrator::SCHEMA_OPTION, '4', false );
+		update_option( SchemaMigrator::SCHEMA_OPTION, '5', false );
 
 		try {
 			$this->expectException( \RuntimeException::class );

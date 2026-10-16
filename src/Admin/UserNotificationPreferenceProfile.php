@@ -8,6 +8,8 @@
 namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
 use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use WP_User;
@@ -40,9 +42,13 @@ final class UserNotificationPreferenceProfile implements Registerable {
 	 * Construct the profile integration.
 	 *
 	 * @param RegisteredUserPreferenceRepository $preferences Preference persistence.
+	 * @param ClickConsent|null                  $consent     Click-tracking consent store.
+	 * @param PrivacySettings|null               $privacy     Tracking settings.
 	 */
 	public function __construct(
-		private RegisteredUserPreferenceRepository $preferences
+		private RegisteredUserPreferenceRepository $preferences,
+		private ?ClickConsent $consent = null,
+		private ?PrivacySettings $privacy = null
 	) {
 	}
 
@@ -138,7 +144,50 @@ final class UserNotificationPreferenceProfile implements Registerable {
 					</p>
 				</td>
 			</tr>
+			<?php $this->render_consent_row( $user_id ); ?>
 		</table>
+		<?php
+	}
+
+	/**
+	 * Separate, unticked click-tracking consent checkbox.
+	 *
+	 * Shown while per-user tracking is enabled, and always while consent is on
+	 * record so it can be withdrawn as easily as it was given.
+	 *
+	 * @param int $user_id User ID.
+	 * @return void
+	 */
+	private function render_consent_row( int $user_id ): void {
+		if ( null === $this->consent ) {
+			return;
+		}
+		$consented = null !== $this->consent->user_record( $user_id );
+		if ( ! $consented && ! $this->per_user_enabled() ) {
+			return;
+		}
+		?>
+		<tr>
+			<th scope="row">
+				<?php esc_html_e( 'Click tracking', 'argentwolf-post-notifier' ); ?>
+			</th>
+			<td>
+				<input
+					type="hidden"
+					name="<?php echo esc_attr( ClickConsent::FIELD . '_shown' ); ?>"
+					value="1"
+				/>
+				<label>
+					<input
+						type="checkbox"
+						name="<?php echo esc_attr( ClickConsent::FIELD ); ?>"
+						value="1"
+						<?php checked( $consented ); ?>
+					/>
+					<?php echo esc_html( ClickConsent::wording() ); ?>
+				</label>
+			</td>
+		</tr>
 		<?php
 	}
 
@@ -173,6 +222,8 @@ final class UserNotificationPreferenceProfile implements Registerable {
 			return;
 		}
 
+		$this->save_consent( $user_id );
+
 		if ( ! isset( $_POST[ self::FIELD_NAME ] ) ) {
 			return;
 		}
@@ -186,6 +237,37 @@ final class UserNotificationPreferenceProfile implements Registerable {
 		}
 
 		$this->preferences->set( $user_id, $preference );
+	}
+
+	/**
+	 * Grant or withdraw the separate click-tracking consent.
+	 *
+	 * @param int $user_id WordPress user ID.
+	 * @return void
+	 */
+	private function save_consent( int $user_id ): void {
+		// The caller verified the profile nonce before this runs.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		if ( null === $this->consent || ! isset( $_POST[ ClickConsent::FIELD . '_shown' ] ) ) {
+			return;
+		}
+		$wanted = isset( $_POST[ ClickConsent::FIELD ] );
+		// phpcs:enable
+		$has = null !== $this->consent->user_record( $user_id );
+		if ( $wanted && ! $has && $this->per_user_enabled() ) {
+			$this->consent->grant_user( $user_id );
+		} elseif ( ! $wanted && $has ) {
+			$this->consent->withdraw_user( $user_id );
+		}
+	}
+
+	/**
+	 * Whether per-user click tracking is currently enabled.
+	 *
+	 * @return bool
+	 */
+	private function per_user_enabled(): bool {
+		return null !== $this->privacy && $this->privacy->per_user_tracking_enabled();
 	}
 
 	/**

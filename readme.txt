@@ -32,6 +32,7 @@ ArgentWolf Post Notifier emails a post to an audience you choose, but only after
 * Registered users: a notification preference in user meta.
 * Per-campaign delivery records: address, status and time. These are anonymized after a configurable period (default 365 days after the campaign completes).
 * Click events (if click counting is on): the delivery record and the time only. They are deleted after a configurable period (default 90 days). Click counts are approximate, because mail security scanners can follow links automatically.
+* Per-recipient click attribution (off by default; only for recipients who tick a separate, optional consent box): the time of each click linked to the delivery record, a likely-scanner flag, and the consent time and wording version. Legal basis: consent. Only users with the `view_post_notification_stats` capability (administrators) can view or export it, and each access is logged. Cleared after a configurable period (default 30 days); totals are kept. Withdraw any time from the manage link or profile.
 * Suppressions: a keyed hash of each unsubscribed address, so it is never mailed again.
 * Email addresses are hashed with a site-specific key for matching. Tokens are stored only as hashes. Logs never contain addresses or tokens.
 

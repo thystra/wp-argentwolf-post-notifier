@@ -22,6 +22,8 @@ enum AuditEventType: string {
 	case CampaignFailed     = 'campaign_failed';
 	case CampaignCompleted  = 'campaign_completed';
 	case RecipientFailed    = 'campaign_recipient_failed';
+	case ClickStatsViewed   = 'click_stats_viewed';
+	case ClickStatsExported = 'click_stats_exported';
 }
 
 // EOF: src/Audit/AuditEventType.php.

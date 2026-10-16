@@ -7,7 +7,11 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Admin\Capabilities;
+use ArgentWolf\PostNotifier\Admin\ClickStatsPage;
 use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
+use ArgentWolf\PostNotifier\Admin\UserNotificationPreferenceProfile;
+use ArgentWolf\PostNotifier\Audit\AuditEventType;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
@@ -35,6 +39,7 @@ use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
 use ArgentWolf\PostNotifier\Privacy\PrivacyIntegration;
 use ArgentWolf\PostNotifier\Privacy\PrivacyRepository;
 use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
@@ -50,6 +55,7 @@ use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
 use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use ArgentWolf\PostNotifier\Tracking\ClickAttributionReport;
 use ArgentWolf\PostNotifier\Tracking\ClickController;
 use ArgentWolf\PostNotifier\Tracking\ClickRepository;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
@@ -781,11 +787,12 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		// phpcs:enable
 		self::assertSame( '', $wpdb->last_error );
 		self::assertSame(
-			array( 'id', 'campaign_recipient_id', 'clicked_at_gmt', 'destination_kind' ),
+			array( 'id', 'campaign_recipient_id', 'clicked_at_gmt', 'destination_kind', 'likely_scanner' ),
 			$columns
 		);
-		self::assertSame( 3, $events );
-		self::assertSame( array( '1', '2' ), $counts );
+		// Without per-user consent only campaign totals move: no events, no per-row counts.
+		self::assertSame( 0, $events );
+		self::assertSame( array( '0', '0' ), $counts );
 
 		// Expired tokens and direct-link mode still redirect but record nothing.
 		$later = new DateTimeImmutable( '+2 years', new DateTimeZone( 'UTC' ) );
@@ -842,23 +849,32 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 	public function test_privacy_settings_sanitize_and_retention_cleanup_is_bounded(): void {
 		self::assertSame(
 			array(
-				'click_tracking'           => true,
-				'click_retention_days'     => 90,
-				'recipient_retention_days' => 365,
+				'click_tracking'             => true,
+				'click_retention_days'       => 90,
+				'recipient_retention_days'   => 365,
+				'per_user_tracking'          => false,
+				'attribution_retention_days' => 30,
+				'scanner_window_seconds'     => 30,
 			),
 			PrivacySettings::sanitize( array() )
 		);
 		self::assertSame(
 			array(
-				'click_tracking'           => false,
-				'click_retention_days'     => 1,
-				'recipient_retention_days' => 3650,
+				'click_tracking'             => false,
+				'click_retention_days'       => 1,
+				'recipient_retention_days'   => 3650,
+				'per_user_tracking'          => true,
+				'attribution_retention_days' => 1,
+				'scanner_window_seconds'     => 3600,
 			),
 			PrivacySettings::sanitize(
 				array(
-					'click_tracking'           => 'yes',
-					'click_retention_days'     => '0',
-					'recipient_retention_days' => '99999',
+					'click_tracking'             => 'yes',
+					'click_retention_days'       => '0',
+					'recipient_retention_days'   => '99999',
+					'per_user_tracking'          => '1',
+					'attribution_retention_days' => '0',
+					'scanner_window_seconds'     => '99999',
 				)
 			)
 		);
@@ -1015,6 +1031,210 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		self::assertSame( array( 'post_removed', 'user_deleted' ), $this->skip_reasons( $id ) );
 		self::assertSame( 0, $this->worker()->run( 2 )['claimed'] );
 		self::assertCount( 0, $this->transport->messages );
+	}
+
+	public function test_per_user_attribution_needs_the_setting_and_separate_consent(): void {
+		$yes     = $this->subscriber( 'consent-yes@example.com' );
+		$no      = $this->subscriber( 'consent-no@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $yes, $no ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$consent = new ClickConsent();
+		$consent->grant_subscriber( $yes );
+		$privacy = new PrivacySettings();
+		self::assertFalse( $privacy->per_user_tracking_enabled(), 'Per-user tracking is off by default.' );
+
+		self::assertSame( 2, $this->worker( $privacy )->run( 2 )['submitted'] );
+		$tokens = array();
+		foreach ( $this->transport->messages as $message ) {
+			preg_match( $this->click_pattern(), $message->body(), $match );
+			$tokens[ $message->recipient() ] = $match[1];
+		}
+		$controller = new ClickController( new ClickRepository(), $privacy, $consent );
+		$soon       = new DateTimeImmutable( '+5 seconds', new DateTimeZone( 'UTC' ) );
+		$later      = new DateTimeImmutable( '+1 hour', new DateTimeZone( 'UTC' ) );
+
+		// Setting off: consent alone attributes nothing.
+		$controller->resolve( $tokens['consent-yes@example.com'], $later );
+		self::assertSame( 0, $this->click_events() );
+
+		$privacy->save(
+			array(
+				'click_tracking'    => '1',
+				'per_user_tracking' => '1',
+			)
+		);
+		$controller->resolve( $tokens['consent-yes@example.com'], $soon );
+		$controller->resolve( $tokens['consent-yes@example.com'], $later );
+		$controller->resolve( $tokens['consent-no@example.com'], $later );
+
+		$report = new ClickAttributionReport();
+		$rows   = $report->rows( $id );
+		self::assertCount( 2, $rows );
+		self::assertSame(
+			array( 'consent-yes@example.com' ),
+			array_values( array_unique( array_column( $rows, 'email' ) ) )
+		);
+		self::assertSame( array( false, true ), array_column( $rows, 'likely_scanner' ) );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( 4, (int) $campaign['total_click_count'] );
+		self::assertSame( 2, (int) $campaign['unique_click_count'] );
+
+		// Admin view and export are audited.
+		$audit = new AuditService( new AuditRepository() );
+		$page  = new ClickStatsPage( $report, $audit );
+		self::assertCount( 2, $page->view_rows( $id ) );
+		$csv = $page->export_csv( $id );
+		self::assertStringContainsString( 'consent-yes@example.com', $csv );
+		self::assertStringNotContainsString( 'consent-no@example.com', $csv );
+		self::assertSame( 1, $this->audit_count( AuditEventType::ClickStatsViewed ) );
+		self::assertSame( 1, $this->audit_count( AuditEventType::ClickStatsExported ) );
+
+		// Withdrawal stops attribution immediately and deletes linked clicks; totals stay.
+		$consent->withdraw_subscriber( $yes );
+		self::assertSame( 0, $this->click_events() );
+		self::assertNull( $consent->subscriber_record( $yes ) );
+		$controller->resolve( $tokens['consent-yes@example.com'], $later );
+		self::assertSame( 0, $this->click_events() );
+		self::assertSame( 5, (int) ( new CampaignRepository() )->find( $id )['total_click_count'] );
+	}
+
+	public function test_attribution_retention_clears_old_and_unconsented_events_but_keeps_totals(): void {
+		$yes     = $this->subscriber( 'retain-yes@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $yes ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$consent = new ClickConsent();
+		$consent->grant_subscriber( $yes );
+		$privacy = new PrivacySettings();
+		$privacy->save(
+			array(
+				'click_tracking'    => '1',
+				'per_user_tracking' => '1',
+			)
+		);
+		$this->worker( $privacy )->run( 1 );
+		preg_match( $this->click_pattern(), $this->transport->messages[0]->body(), $match );
+		$controller = new ClickController( new ClickRepository(), $privacy, $consent );
+		$controller->resolve( $match[1], new DateTimeImmutable( '+1 hour', new DateTimeZone( 'UTC' ) ) );
+		self::assertSame( 1, $this->click_events() );
+
+		$job = new RetentionCleanup( new DataCleanup(), $privacy );
+		self::assertSame( 0, $job->run()['attribution'] );
+		self::assertSame( 1, $this->click_events() );
+
+		// After 31 days the attribution is cleared and the row counter recomputed.
+		$result = $job->run( new DateTimeImmutable( '+31 days', new DateTimeZone( 'UTC' ) ) );
+		self::assertSame( 1, $result['attribution'] );
+		self::assertSame( 0, $this->click_events() );
+		self::assertSame( 1, (int) ( new CampaignRepository() )->find( $id )['total_click_count'] );
+
+		// Turning per-user tracking off purges any remaining attribution.
+		$controller->resolve( $match[1], new DateTimeImmutable( '+2 hours', new DateTimeZone( 'UTC' ) ) );
+		self::assertSame( 1, $this->click_events() );
+		$privacy->save( array( 'click_tracking' => '1' ) );
+		self::assertSame( 1, $job->run()['attribution'] );
+		self::assertSame( 0, $this->click_events() );
+	}
+
+	public function test_registered_user_consent_profile_export_and_erase(): void {
+		$user_id = self::factory()->user->create( array( 'user_email' => 'consent-member@example.com' ) );
+		wp_set_current_user( $user_id );
+		$consent = new ClickConsent();
+		$privacy = new PrivacySettings();
+		$profile = new UserNotificationPreferenceProfile(
+			new RegisteredUserPreferenceRepository(),
+			$consent,
+			$privacy
+		);
+		$nonce   = wp_create_nonce( UserNotificationPreferenceProfile::NONCE_ACTION . ':' . $user_id );
+
+		// Not offered (and not recordable) while per-user tracking is off.
+		ob_start();
+		$profile->render( get_userdata( $user_id ) );
+		self::assertStringNotContainsString( ClickConsent::FIELD, (string) ob_get_clean() );
+
+		$privacy->save(
+			array(
+				'click_tracking'    => '1',
+				'per_user_tracking' => '1',
+			)
+		);
+		ob_start();
+		$profile->render( get_userdata( $user_id ) );
+		$html = (string) ob_get_clean();
+		self::assertStringContainsString( ClickConsent::FIELD, $html );
+		self::assertStringNotContainsString( 'checked', $html, 'The consent box is unticked by default.' );
+
+		$_POST = array(
+			UserNotificationPreferenceProfile::NONCE_FIELD => $nonce,
+			ClickConsent::FIELD . '_shown'                 => '1',
+			ClickConsent::FIELD                            => '1',
+		);
+		$profile->save( $user_id );
+		$record = $consent->user_record( $user_id );
+		self::assertNotNull( $record );
+		self::assertSame( ClickConsent::VERSION, $record['version'] );
+
+		$integration = new PrivacyIntegration( new PrivacyRepository(), new EmailIdentity() );
+		$export      = wp_json_encode( $integration->export( 'consent-member@example.com', 1 ) );
+		self::assertStringContainsString( 'Click-tracking consent given', (string) $export );
+		self::assertStringContainsString( $record['at'], (string) $export );
+
+		// Withdrawal is as easy: untick and save, even after the setting is turned off.
+		$privacy->save( array( 'click_tracking' => '1' ) );
+		ob_start();
+		$profile->render( get_userdata( $user_id ) );
+		self::assertStringContainsString( ClickConsent::FIELD, (string) ob_get_clean() );
+		$_POST = array(
+			UserNotificationPreferenceProfile::NONCE_FIELD => $nonce,
+			ClickConsent::FIELD . '_shown'                 => '1',
+		);
+		$profile->save( $user_id );
+		$_POST = array();
+		self::assertNull( $consent->user_record( $user_id ) );
+
+		$consent->grant_user( $user_id );
+		$integration->erase( 'consent-member@example.com', 1 );
+		self::assertNull( $consent->user_record( $user_id ) );
+		self::assertStringContainsString( 'legal basis is your consent', PrivacyIntegration::policy_text() );
+		self::assertContains( Capabilities::VIEW_STATS, Capabilities::all() );
+		self::assertTrue( get_role( 'administrator' )->has_cap( Capabilities::VIEW_STATS ) );
+	}
+
+	/**
+	 * Count stored click events.
+	 *
+	 * @return int
+	 */
+	private function click_events(): int {
+		global $wpdb;
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare( 'SELECT COUNT(*) FROM %i', TableNames::from_database( $wpdb )->clicks() )
+		);
+		// phpcs:enable
+	}
+
+	/**
+	 * Count audit rows of one type.
+	 *
+	 * @param AuditEventType $type Event type.
+	 * @return int
+	 */
+	private function audit_count( AuditEventType $type ): int {
+		global $wpdb;
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i WHERE event_type = %s',
+				TableNames::from_database( $wpdb )->audit_events(),
+				$type->value
+			)
+		);
+		// phpcs:enable
 	}
 
 	/**

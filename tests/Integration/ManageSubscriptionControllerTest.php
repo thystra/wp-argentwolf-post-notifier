@@ -10,6 +10,8 @@ namespace ArgentWolf\PostNotifier\Tests\Integration;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Subscriber\ManageSubscriptionController;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
@@ -272,6 +274,58 @@ final class ManageSubscriptionControllerTest extends WP_UnitTestCase {
 		self::assertStringContainsString( 'cannot be changed from this link', $html );
 		self::assertStringNotContainsString( 'Resume post notifications', $html );
 		self::assertTrue( $suppression->is_suppressed( 'person@example.com' ) );
+	}
+
+	public function test_click_consent_is_granted_and_withdrawn_from_the_manage_page(): void {
+		[ , $service, $suppression ] = $this->controller_services();
+		$consent                     = new ClickConsent();
+		$privacy                     = new PrivacySettings();
+		$controller                  = new ManageSubscriptionController( $service, $suppression, $consent, $privacy );
+		$manage_token                = $this->confirmed_manage_token( $service );
+		$subscriber_id               = (int) $service->managed_subscriber( $manage_token )['id'];
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_GET['token']             = $manage_token;
+		$html                      = $this->capture_wp_die( static fn () => $controller->handle_get() );
+		self::assertStringNotContainsString( ManageSubscriptionController::INTENT_CLICK_CONSENT, $html );
+
+		$privacy->save(
+			array(
+				'click_tracking'    => '1',
+				'per_user_tracking' => '1',
+			)
+		);
+		$html = $this->capture_wp_die( static fn () => $controller->handle_get() );
+		self::assertStringContainsString( ManageSubscriptionController::INTENT_CLICK_CONSENT, $html );
+		$nonce = $this->hidden_value( $html, 'argentwolf_post_notifier_manage_nonce' );
+
+		$_GET                      = array();
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$post                      = static function ( string $intent ) use ( $manage_token, $nonce ): void {
+			$_POST    = array(
+				'argentwolf_post_notifier_manage_token'  => $manage_token,
+				'argentwolf_post_notifier_manage_intent' => $intent,
+				'argentwolf_post_notifier_manage_nonce'  => $nonce,
+			);
+			$_REQUEST = $_POST;
+		};
+		$post( ManageSubscriptionController::INTENT_CLICK_CONSENT );
+		$html = $this->capture_wp_die( static fn () => $controller->handle_post() );
+		self::assertStringContainsString( ManageSubscriptionController::INTENT_CLICK_WITHDRAW, $html );
+		self::assertSame( ClickConsent::VERSION, $consent->subscriber_record( $subscriber_id )['version'] );
+
+		// Withdrawal remains available even after the site turns the feature off.
+		$privacy->save( array( 'click_tracking' => '1' ) );
+		$post( ManageSubscriptionController::INTENT_CLICK_WITHDRAW );
+		$html = $this->capture_wp_die( static fn () => $controller->handle_post() );
+		self::assertStringContainsString( 'no longer linked', $html );
+		self::assertNull( $consent->subscriber_record( $subscriber_id ) );
+		self::assertNotNull(
+			$service->managed_subscriber( $manage_token ),
+			'Consent changes do not rotate the bearer.'
+		);
+		$_POST    = array();
+		$_REQUEST = array();
 	}
 
 	/**

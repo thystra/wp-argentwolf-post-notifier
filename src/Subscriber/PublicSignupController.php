@@ -52,6 +52,8 @@ final class PublicSignupController implements Registerable {
 	/** Consent checkbox field. */
 	public const CONSENT_FIELD = 'argentwolf_post_notifier_consent';
 
+	public const CLICK_CONSENT_FIELD = 'argentwolf_post_notifier_click_consent';
+
 	/** Honeypot field. */
 	public const HONEYPOT_FIELD = 'argentwolf_post_notifier_website';
 
@@ -117,7 +119,8 @@ final class PublicSignupController implements Registerable {
 				'block',
 				$rendered['source_post_id'],
 				$honeypot,
-				$this->remote_address()
+				$this->remote_address(),
+				'1' === $this->request_value( $_POST, self::CLICK_CONSENT_FIELD )
 			)
 		);
 

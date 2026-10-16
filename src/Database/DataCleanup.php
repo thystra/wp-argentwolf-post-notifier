@@ -123,6 +123,98 @@ final class DataCleanup {
 	}
 
 	/**
+	 * Clear a bounded batch of per-user click attribution.
+	 *
+	 * Deletes attributed click events that are older than the attribution
+	 * cutoff, that belong to a recipient without current consent, or all of
+	 * them when per-user tracking is off. Per-recipient counters of the touched
+	 * rows are recomputed; campaign totals are never changed.
+	 *
+	 * @param DateTimeInterface $attributed_before Attribution cutoff.
+	 * @param bool              $tracking_enabled  Whether per-user tracking is on.
+	 * @param int               $limit             Maximum events per batch.
+	 * @return int Number of events deleted.
+	 * @throws InvalidArgumentException When the requested batch size is unsafe.
+	 * @throws RuntimeException When the database operation fails.
+	 */
+	public function clear_click_attribution(
+		DateTimeInterface $attributed_before,
+		bool $tracking_enabled,
+		int $limit = self::DEFAULT_BATCH_SIZE
+	): int {
+		$query = $this->database->prepare(
+			'SELECT c.id, c.campaign_recipient_id
+			FROM %i c
+			INNER JOIN %i r ON r.id = c.campaign_recipient_id
+			LEFT JOIN %i s ON s.id = r.subscriber_id AND s.click_consent_at_gmt IS NOT NULL
+			LEFT JOIN %i m ON m.user_id = r.user_id AND r.user_id > 0 AND m.meta_key = %s
+			WHERE %d = 0 OR c.clicked_at_gmt < %s OR ( s.id IS NULL AND m.umeta_id IS NULL )
+			ORDER BY c.id ASC
+			LIMIT %d',
+			$this->tables->clicks(),
+			$this->tables->campaign_recipients(),
+			$this->tables->subscribers(),
+			$this->database->usermeta,
+			'_argentwolf_post_notifier_click_consent_at',
+			$tracking_enabled ? 1 : 0,
+			UtcDateTime::format( $attributed_before ),
+			$this->validate_limit( $limit )
+		);
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $this->database->get_results( $query, ARRAY_A );
+		// phpcs:enable
+		if ( ! is_array( $rows ) || array() === $rows ) {
+			return 0;
+		}
+		$event_ids     = array_map( static fn ( array $row ): int => (int) $row['id'], $rows );
+		$recipient_ids = array_values(
+			array_unique(
+				array_map(
+					static fn ( array $row ): int => (int) $row['campaign_recipient_id'],
+					$rows
+				)
+			)
+		);
+		$deleted       = $this->execute_write(
+			$this->database->prepare(
+				'DELETE FROM %i WHERE id IN (' . $this->placeholders( count( $event_ids ) ) . ')',
+				$this->tables->clicks(),
+				...$event_ids
+			)
+		);
+		$this->execute_write(
+			$this->database->prepare(
+				'UPDATE %i r SET
+					r.click_count = (
+						SELECT COUNT(*) FROM %i c WHERE c.campaign_recipient_id = r.id
+					),
+					r.last_clicked_at_gmt = (
+						SELECT MAX(c.clicked_at_gmt) FROM %i c WHERE c.campaign_recipient_id = r.id
+					)
+				WHERE r.id IN (' . $this->placeholders( count( $recipient_ids ) ) . ')',
+				$this->tables->campaign_recipients(),
+				$this->tables->clicks(),
+				$this->tables->clicks(),
+				...$recipient_ids
+			)
+		);
+
+		return $deleted;
+	}
+
+	/**
+	 * Comma-separated %d placeholders.
+	 *
+	 * @param int $count Number of placeholders.
+	 * @return string
+	 */
+	private function placeholders( int $count ): string {
+		return implode( ',', array_fill( 0, $count, '%d' ) );
+	}
+
+	/**
 	 * Redact a bounded batch of recipient-level personal data for old completed campaigns.
 	 *
 	 * Aggregate status/counter rows remain available after identity fields are

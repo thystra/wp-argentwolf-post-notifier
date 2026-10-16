@@ -27,6 +27,11 @@ final class Capabilities {
 	public const SEND_NOTIFICATIONS = 'send_post_notifications';
 
 	/**
+	 * Capability for the per-recipient click view and its CSV export.
+	 */
+	public const VIEW_STATS = 'view_post_notification_stats';
+
+	/**
 	 * Stored capability-layout version.
 	 */
 	public const VERSION_OPTION = 'argentwolf_post_notifier_capability_version';
@@ -34,7 +39,7 @@ final class Capabilities {
 	/**
 	 * Current capability-layout version.
 	 */
-	public const VERSION = '2';
+	public const VERSION = '3';
 
 	/**
 	 * Install the current capability layout for the administrator role.
@@ -98,6 +103,7 @@ final class Capabilities {
 			self::MANAGE_SUBSCRIBERS,
 			self::MANAGE_LISTS,
 			self::SEND_NOTIFICATIONS,
+			self::VIEW_STATS,
 		);
 	}
 

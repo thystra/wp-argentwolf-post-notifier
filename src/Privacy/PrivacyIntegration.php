@@ -128,6 +128,7 @@ final class PrivacyIntegration implements Registerable {
 						__( 'Tracked clicks', 'argentwolf-post-notifier' ) => $row['click_count'],
 						__( 'First click (UTC)', 'argentwolf-post-notifier' ) => $row['first_clicked_at_gmt'],
 						__( 'Last click (UTC)', 'argentwolf-post-notifier' ) => $row['last_clicked_at_gmt'],
+						__( 'Attributed clicks (UTC)', 'argentwolf-post-notifier' ) => $row['attributed_clicks'] ?? '',
 					)
 				),
 			);
@@ -179,6 +180,8 @@ final class PrivacyIntegration implements Registerable {
 				$removed = $this->repository->delete_user_memberships( $user_id ) > 0 || $removed;
 				$meta    = RegisteredUserPreferenceRepository::META_KEY;
 				$removed = delete_user_meta( $user_id, $meta ) || $removed;
+				$removed = delete_user_meta( $user_id, ClickConsent::USER_AT_KEY ) || $removed;
+				delete_user_meta( $user_id, ClickConsent::USER_VERSION_KEY );
 			}
 			$this->repository->redact_suppression( $hash );
 			if ( null !== $this->repository->suppression( $hash ) ) {
@@ -235,6 +238,14 @@ final class PrivacyIntegration implements Registerable {
 				__( 'For each notification we keep a delivery record: your address, the delivery status and time.', 'argentwolf-post-notifier' ),
 				__( 'If click counting is enabled, the post link in the email passes through this site so the use of the link can be counted.', 'argentwolf-post-notifier' ),
 				__( 'Only the time of the click is stored, never your IP address, browser details or cookies. Email opens are never tracked.', 'argentwolf-post-notifier' ),
+				__( 'Unless you give separate consent, clicks are only added to anonymous totals per post and are not linked to you.', 'argentwolf-post-notifier' ),
+			),
+			array(
+				__( 'Per-person click tracking (only if the site owner enables it and you tick its separate, optional box): the time of each click on a notification link is stored linked to your delivery record, together with the time you consented and the version of the wording you agreed to.', 'argentwolf-post-notifier' ),
+				__( 'The legal basis is your consent. Clicks made within seconds of delivery are marked as likely made by a link scanner.', 'argentwolf-post-notifier' ),
+				__( 'Only site administrators with the post-notification statistics capability can see or export this data, and each view and export is logged.', 'argentwolf-post-notifier' ),
+				__( 'The link to you is deleted after the attribution retention period set by the site owner (30 days by default); anonymous totals are kept.', 'argentwolf-post-notifier' ),
+				__( 'You can withdraw consent at any time from the subscription settings link in each email or from your profile; this stops attribution immediately and deletes the clicks already linked to you.', 'argentwolf-post-notifier' ),
 			),
 			array(
 				__( 'Click events and per-recipient delivery records are deleted or anonymized after the retention periods set by the site owner.', 'argentwolf-post-notifier' ),
@@ -342,6 +353,8 @@ final class PrivacyIntegration implements Registerable {
 						__( 'Unsubscribed (UTC)', 'argentwolf-post-notifier' ) => $subscriber['unsubscribed_at_gmt'],
 						__( 'Signup source', 'argentwolf-post-notifier' ) => $subscriber['signup_source'],
 						__( 'Consent text', 'argentwolf-post-notifier' ) => $subscriber['consent_text_snapshot'],
+						__( 'Click-tracking consent given (UTC)', 'argentwolf-post-notifier' ) => $subscriber['click_consent_at_gmt'] ?? '',
+						__( 'Click-tracking consent wording version', 'argentwolf-post-notifier' ) => $subscriber['click_consent_version'] ?? '',
 					)
 				),
 			);
@@ -358,6 +371,19 @@ final class PrivacyIntegration implements Registerable {
 					),
 				);
 			}
+		}
+		if ( $user_id > 0 && '' !== (string) get_user_meta( $user_id, ClickConsent::USER_AT_KEY, true ) ) {
+			$items[] = array(
+				'group_id'    => 'argentwolf-post-notifier-subscription',
+				'group_label' => __( 'Post notification subscription', 'argentwolf-post-notifier' ),
+				'item_id'     => 'argentwolf-post-notifier-user-consent-' . $user_id,
+				'data'        => $this->pairs(
+					array(
+						__( 'Click-tracking consent given (UTC)', 'argentwolf-post-notifier' ) => get_user_meta( $user_id, ClickConsent::USER_AT_KEY, true ),
+						__( 'Click-tracking consent wording version', 'argentwolf-post-notifier' ) => get_user_meta( $user_id, ClickConsent::USER_VERSION_KEY, true ),
+					)
+				),
+			);
 		}
 		$suppression = $this->repository->suppression( $hash );
 		if ( null !== $suppression ) {

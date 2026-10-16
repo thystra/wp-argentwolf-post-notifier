@@ -45,5 +45,6 @@ click endpoint, and privacy export and erasure. Run with
 
 ## Known limitations
 
-- Mail security scanners may follow tracked links, which inflates click counts. Counts are labelled approximate.
+- Mail security scanners may follow tracked links, which inflates click counts. Counts are labelled approximate. Attributed clicks within the scanner window are flagged `likely_scanner`.
+- Per-recipient attribution is consent-gated, off by default, capability-gated (`view_post_notification_stats`) and audit-logged on view and export. Public-form consent is stored on the pending row created by whoever submitted the form; it only takes effect after the address owner confirms, and any manage link withdraws it.
 - Click and unsubscribe tokens are bearer tokens: anyone holding the email can use them until they expire.
