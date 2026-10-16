@@ -145,11 +145,16 @@ final class SubscriberCsvImporter {
 	 * rules and resend cooldown as CSV rows), and callers must report that
 	 * generically.
 	 *
-	 * @param string      $email Raw address.
-	 * @param string|null $name  Optional display name.
+	 * @param string      $email  Raw address.
+	 * @param string|null $name   Optional display name.
+	 * @param string      $source Signup source code recorded on the row.
 	 * @return array{outcome:string,subscriber_id:int}
 	 */
-	public function invite( string $email, ?string $name = null ): array {
+	public function invite(
+		string $email,
+		?string $name = null,
+		string $source = self::MANUAL_SOURCE
+	): array {
 		$email = $this->identity->normalize( $email );
 		if ( null === $email ) {
 			return array(
@@ -162,7 +167,7 @@ final class SubscriberCsvImporter {
 			$email,
 			$name,
 			$this->consent_text(),
-			self::MANUAL_SOURCE
+			$source
 		);
 		$token  = $result->confirmation_token();
 		if ( null === $token ) {

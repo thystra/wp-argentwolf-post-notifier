@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Tests\Integration;
 
+use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvImporter;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportMailer;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportPage;
@@ -17,6 +18,8 @@ use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreference;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
@@ -286,6 +289,93 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 			unset( $_SERVER['REQUEST_METHOD'] );
 		}
 		self::assertSame( 'denied', $denied );
+	}
+
+	public function test_existing_users_get_a_one_time_batched_double_opt_in_invitation(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		delete_option( ExistingUserInvitations::OPTION );
+		$transport   = new CsvImportRecordingMailTransport();
+		$lists       = new NamedListRepository();
+		$list_id     = $lists->create( 'Members', '' );
+		$preferences = new RegisteredUserPreferenceRepository();
+		$invites     = new ExistingUserInvitations( $this->importer( $transport ), $preferences, $lists );
+
+		$plain = array();
+		for ( $i = 0; $i < ExistingUserInvitations::BATCH_SIZE + 1; ++$i ) {
+			$plain[] = self::factory()->user->create( array( 'user_email' => "member{$i}@example.com" ) );
+		}
+		$subscribed = self::factory()->user->create( array( 'user_email' => 'already@example.com' ) );
+		$preferences->set( $subscribed, RegisteredUserPreference::Subscribed );
+		self::factory()->user->create( array( 'user_email' => 'suppressed-user@example.com' ) );
+		( new SuppressionService( new SuppressionRepository(), new EmailIdentity() ) )
+			->suppress( 'suppressed-user@example.com', 'unsubscribed', 'test' );
+		$existing = count( get_users( array( 'role__not_in' => array( 'administrator' ) ) ) );
+
+		// Activation offers once and never resets a finished run.
+		ExistingUserInvitations::offer();
+		self::assertSame( ExistingUserInvitations::STATUS_OFFERED, $invites->state()['status'] );
+		ob_start();
+		$invites->render_notice();
+		self::assertStringContainsString( ExistingUserInvitations::PAGE_SLUG, (string) ob_get_clean() );
+
+		self::assertTrue( $invites->start( $list_id ) );
+		self::assertFalse( $invites->start( $list_id ), 'The run cannot be started twice.' );
+		self::assertSame( $existing, $invites->state()['total'] );
+		self::assertNotFalse( wp_next_scheduled( ExistingUserInvitations::HOOK ) );
+		self::assertCount( 0, $transport->messages, 'Nothing is sent synchronously.' );
+
+		wp_clear_scheduled_hook( ExistingUserInvitations::HOOK );
+		$first = $invites->run_batch();
+		self::assertSame( ExistingUserInvitations::BATCH_SIZE, $first['processed'] );
+		self::assertSame( ExistingUserInvitations::STATUS_RUNNING, $first['status'] );
+		self::assertNotFalse( wp_next_scheduled( ExistingUserInvitations::HOOK ), 'The next batch is scheduled.' );
+		wp_clear_scheduled_hook( ExistingUserInvitations::HOOK );
+		while ( ExistingUserInvitations::STATUS_RUNNING === $invites->run_batch()['status'] ) {
+			wp_clear_scheduled_hook( ExistingUserInvitations::HOOK );
+		}
+
+		$state = $invites->state();
+		self::assertSame( ExistingUserInvitations::STATUS_DONE, $state['status'] );
+		self::assertSame( $existing, $state['processed'] );
+		self::assertSame( $existing - 2, $state['sent'] );
+		self::assertSame( 2, $state['skipped'] );
+		$recipients = array_map( static fn ( MailMessage $m ): string => $m->recipient(), $transport->messages );
+		self::assertNotContains( 'already@example.com', $recipients );
+		self::assertNotContains( 'suppressed-user@example.com', $recipients );
+		self::assertContains( 'member0@example.com', $recipients );
+		self::assertSame( SubscriberStatus::Pending->value, $this->subscriber( 'member0@example.com' )['status'] );
+		self::assertCount( $existing - 2, $lists->members( $list_id ) );
+
+		// Done: no notice, no restart, and activation does not re-offer.
+		ExistingUserInvitations::offer();
+		self::assertSame( ExistingUserInvitations::STATUS_DONE, $invites->state()['status'] );
+		self::assertFalse( $invites->start() );
+		ob_start();
+		$invites->render_notice();
+		self::assertSame( '', (string) ob_get_clean() );
+		unset( $plain );
+	}
+
+	public function test_existing_user_invitation_notice_is_dismissible(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		delete_option( ExistingUserInvitations::OPTION );
+		ExistingUserInvitations::offer();
+		$invites = new ExistingUserInvitations(
+			$this->importer( new CsvImportRecordingMailTransport() ),
+			new RegisteredUserPreferenceRepository()
+		);
+		$invites->dismiss();
+		ob_start();
+		$invites->render_notice();
+		self::assertSame( '', (string) ob_get_clean() );
+		self::assertSame( ExistingUserInvitations::STATUS_OFFERED, $invites->state()['status'] );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		delete_option( ExistingUserInvitations::OPTION );
+		ExistingUserInvitations::offer();
+		ob_start();
+		$invites->render_notice();
+		self::assertSame( '', (string) ob_get_clean(), 'Only subscriber managers see the offer.' );
 	}
 
 	private function importer( CsvImportRecordingMailTransport $transport ): SubscriberCsvImporter {

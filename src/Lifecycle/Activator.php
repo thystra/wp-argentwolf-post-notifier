@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
 use ArgentWolf\PostNotifier\Admin\Capabilities;
+use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
 use ArgentWolf\PostNotifier\Version;
@@ -25,6 +26,7 @@ final class Activator {
 		( new SchemaMigrator() )->migrate();
 		Capabilities::install( true );
 		PendingSubscriberCleanup::schedule();
+		ExistingUserInvitations::offer();
 
 		update_option(
 			'argentwolf_post_notifier_version',

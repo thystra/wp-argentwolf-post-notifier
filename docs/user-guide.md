@@ -66,6 +66,19 @@ captured at that moment. Republishing does not create a second initial
 campaign. If a post is unpublished, trashed or deleted while queued or sending,
 the remaining messages are cancelled (`post_removed`).
 
+## Inviting existing users
+
+Existing accounts are never subscribed automatically (GDPR). After activation
+an admin notice offers **Post Notifier → Invite users**. Sending there emails
+every non-administrator user the same double opt-in invitation as the CSV
+import. Nobody is subscribed until they confirm. Suppressed users and users
+whose profile preference is already *subscribed* are skipped. Invitations go
+out via WP-Cron in batches of 25, one batch per minute, with the usual
+per-address cooldown. An optional list can be chosen. The screen shows
+progress (processed, invited, skipped, failed). The run can happen only once,
+and reactivating the plugin does not offer it again. The notice can be
+dismissed and the screen stays available.
+
 ## Subscription block and double opt-in
 
 Add the **Post notification signup** block. A submission creates a pending

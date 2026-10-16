@@ -9,6 +9,7 @@ namespace ArgentWolf\PostNotifier;
 
 use ArgentWolf\PostNotifier\Admin\ClickStatsPage;
 use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
+use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Admin\PrivacySettingsPage;
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\NotificationTemplateSettingsPage;
@@ -480,8 +481,8 @@ final class Plugin {
 				}
 			);
 			$container->set(
-				SubscriberCsvImportPage::class,
-				static function ( Container $services ): SubscriberCsvImportPage {
+				SubscriberCsvImporter::class,
+				static function ( Container $services ): SubscriberCsvImporter {
 					$subscriber_service = $services->get( SubscriberService::class );
 					$identity           = $services->get( EmailIdentity::class );
 					$links              = $services->get( ConfirmationLinkFactory::class );
@@ -501,24 +502,36 @@ final class Plugin {
 						throw new LogicException( 'The mail transport is invalid.' );
 					}
 
-					return new SubscriberCsvImportPage(
-						new SubscriberCsvImporter(
-							$subscriber_service,
-							$identity,
-							$links,
-							new SubscriberCsvImportMailer(
-								$transport,
-								wp_specialchars_decode(
-									get_bloginfo( 'name' ),
-									ENT_QUOTES
-								)
+					return new SubscriberCsvImporter(
+						$subscriber_service,
+						$identity,
+						$links,
+						new SubscriberCsvImportMailer(
+							$transport,
+							wp_specialchars_decode(
+								get_bloginfo( 'name' ),
+								ENT_QUOTES
 							)
-						),
-						$services->get( NamedListRepository::class ) instanceof NamedListRepository
-							? $services->get( NamedListRepository::class )
-							: null
+						)
 					);
 				}
+			);
+			$container->set(
+				SubscriberCsvImportPage::class,
+				static fn ( Container $services ): SubscriberCsvImportPage =>
+					new SubscriberCsvImportPage(
+						self::typed( $services, SubscriberCsvImporter::class ),
+						self::typed( $services, NamedListRepository::class )
+					)
+			);
+			$container->set(
+				ExistingUserInvitations::class,
+				static fn ( Container $services ): ExistingUserInvitations =>
+					new ExistingUserInvitations(
+						self::typed( $services, SubscriberCsvImporter::class ),
+						self::typed( $services, RegisteredUserPreferenceRepository::class ),
+						self::typed( $services, NamedListRepository::class )
+					)
 			);
 			$container->set(
 				SubscriberRepository::class,
@@ -1038,6 +1051,7 @@ final class Plugin {
 				DeliveryStatusPage::class,
 				PrivacySettingsPage::class,
 				ClickStatsPage::class,
+				ExistingUserInvitations::class,
 				ClickController::class,
 				PrivacyIntegration::class,
 				NamedListAdminPage::class,
