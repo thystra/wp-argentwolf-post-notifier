@@ -819,52 +819,52 @@ Target: after operational `0.1.0` validation
 ### Naming and metadata
 
 - [ ] Confirm the requested `argentwolf-post-notifier` slug is available.
-- [ ] Use `ArgentWolf Post Notifier` in the main plugin header and
+- [x] Use `ArgentWolf Post Notifier` in the main plugin header and
       `readme.txt`.
-- [ ] Add a unique Plugin URI.
+- [x] Add a unique Plugin URI.
 - [ ] Set accurate `Requires at least`, `Tested up to`, and `Requires PHP`
       values from the tested matrix.
-- [ ] Keep the main plugin Version and `readme.txt` Stable Tag identical.
-- [ ] Declare GPL-2.0-or-later consistently in headers, `readme.txt`, and
+- [x] Keep the main plugin Version and `readme.txt` Stable Tag identical.
+- [x] Declare GPL-2.0-or-later consistently in headers, `readme.txt`, and
       `LICENSE`.
 - [ ] Confirm the author and contributor WordPress.org accounts and contact
       information are current.
 
 ### Directory package review
 
-- [ ] Create a concise WordPress.org-format `readme.txt`.
-- [ ] Keep `readme.txt` below the practical 10 KB limit.
-- [ ] Document subscriber data, click statistics, retention, uninstall behavior,
+- [x] Create a concise WordPress.org-format `readme.txt`.
+- [x] Keep `readme.txt` below the practical 10 KB limit. (5.7 KB.)
+- [x] Document subscriber data, click statistics, retention, uninstall behavior,
       and any external mail transport assumptions.
 - [ ] Add directory icon, banner, and screenshot assets after UI stabilization.
 - [ ] Ensure each screenshot entry matches an uploaded screenshot asset.
-- [ ] Remove any Forgejo/GitHub custom update checker from the directory build.
-- [ ] Verify no remote executable code, undisclosed telemetry, or unnecessary
+- [x] Remove any Forgejo/GitHub custom update checker from the directory build. (None exists.)
+- [x] Verify no remote executable code, undisclosed telemetry, or unnecessary
       external requests exist.
 - [ ] Use WordPress-provided libraries where available.
-- [ ] Audit every bundled dependency, image, and asset for GPL compatibility.
-- [ ] Include or link to human-readable source and reproducible build
-      instructions for generated assets.
-- [ ] Exclude tests, caches, backups, local environment files, full development
+- [x] Audit every bundled dependency, image, and asset for GPL compatibility. (No third-party code or images are bundled.)
+- [x] Include or link to human-readable source and reproducible build
+      instructions for generated assets. (No generated assets; runtime JS is source.)
+- [x] Exclude tests, caches, backups, local environment files, full development
       dependency trees, and unrelated documentation from the installable ZIP.
 - [ ] Retain source manifests such as `composer.json` when needed for
       open-source review.
 - [ ] Verify the exact submission ZIP installs through **Plugins → Add New →
       Upload Plugin**.
-- [ ] Verify the submission ZIP is below 10 MB.
+- [x] Verify the submission ZIP is below 10 MB.
 
 ### Automated and manual review
 
-- [ ] Test with `WP_DEBUG` enabled.
-- [ ] Run WordPress Plugin Check using the current WordPress.org review profile.
-- [ ] Resolve every error and review each warning.
+- [x] Test with `WP_DEBUG` enabled. (Local site; see `docs/wporg-readiness.md`.)
+- [x] Run WordPress Plugin Check using the current WordPress.org review profile. (2.1.0, new and update modes, clean, on rc.1.)
+- [x] Resolve every error and review each warning. (None reported.)
 - [ ] Run PHPCS, PHPUnit, JavaScript tests, editor end-to-end tests,
       accessibility checks, and `git diff --check`.
 - [ ] Review all capability checks, nonces, REST permission callbacks,
       sanitization, validation, escaping, SQL preparation, and direct-file
       access guards.
-- [ ] Produce a WordPress.org submission-readiness report tied to the exact ZIP
-      checksum.
+- [x] Produce a WordPress.org submission-readiness report tied to the exact ZIP
+      checksum. (`docs/wporg-readiness.md` for rc.1; regenerate for 0.1.0.)
 - [ ] Do not describe the plugin as directory-compliant until this gate passes.
 
 ### Submission and release
