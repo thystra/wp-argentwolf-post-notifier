@@ -506,7 +506,10 @@ final class Plugin {
 									ENT_QUOTES
 								)
 							)
-						)
+						),
+						$services->get( NamedListRepository::class ) instanceof NamedListRepository
+							? $services->get( NamedListRepository::class )
+							: null
 					);
 				}
 			);

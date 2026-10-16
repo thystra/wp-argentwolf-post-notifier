@@ -16,6 +16,7 @@ use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberService;
@@ -177,6 +178,114 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 			SubscriberStatus::Pending->value,
 			$this->subscriber( 'failed@example.com' )['status']
 		);
+	}
+
+	public function test_manual_add_sends_double_opt_in_invitation_and_joins_list(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$transport = new CsvImportRecordingMailTransport();
+		$lists     = new NamedListRepository();
+		$list_id   = $lists->create( 'Manual', '' );
+		$page      = new SubscriberCsvImportPage( $this->importer( $transport ), $lists );
+
+		self::assertSame(
+			array(
+				'arpn_add'    => SubscriberCsvImporter::INVITE_SENT,
+				'arpn_listed' => '1',
+			),
+			$page->add_subscriber( ' Manual@Example.com ', 'Manual Person', $list_id )
+		);
+		self::assertCount( 1, $transport->messages );
+		self::assertSame( 'manual@example.com', $transport->messages[0]->recipient() );
+		self::assertStringContainsString( 'https://example.test/confirm/', $transport->messages[0]->body() );
+		$row = $this->subscriber( 'manual@example.com' );
+		self::assertSame( SubscriberStatus::Pending->value, $row['status'] );
+		self::assertNull( $row['confirmed_at_gmt'] );
+		self::assertSame( SubscriberCsvImporter::MANUAL_SOURCE, $row['signup_source'] );
+		self::assertCount( 1, $lists->members( $list_id ) );
+
+		// Resend cooldown: an immediate repeat sends nothing and says so generically.
+		self::assertSame(
+			array( 'arpn_add' => SubscriberCsvImporter::INVITE_NOT_SENT ),
+			$page->add_subscriber( 'manual@example.com', '', 0 )
+		);
+		self::assertCount( 1, $transport->messages );
+	}
+
+	public function test_manual_add_rejects_invalid_and_suppressed_addresses_generically(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$transport = new CsvImportRecordingMailTransport();
+		$lists     = new NamedListRepository();
+		$list_id   = $lists->create( 'Blocked', '' );
+		$page      = new SubscriberCsvImportPage( $this->importer( $transport ), $lists );
+		global $wpdb;
+		( new SuppressionService( new SuppressionRepository( $wpdb ), new EmailIdentity() ) )
+			->suppress( 'blocked@example.com', 'unsubscribed', 'test' );
+
+		self::assertSame(
+			array( 'arpn_add' => SubscriberCsvImporter::INVITE_INVALID ),
+			$page->add_subscriber( 'not-an-email', '', $list_id )
+		);
+		self::assertSame(
+			array( 'arpn_add' => SubscriberCsvImporter::INVITE_NOT_SENT ),
+			$page->add_subscriber( 'blocked@example.com', '', $list_id )
+		);
+		self::assertSame( array(), $transport->messages );
+		self::assertNull( $this->subscriber( 'blocked@example.com' ) );
+		self::assertSame( array(), $lists->members( $list_id ) );
+
+		$failing = new SubscriberCsvImportPage(
+			$this->importer( new CsvImportRecordingMailTransport( false ) ),
+			$lists
+		);
+		self::assertSame(
+			array( 'arpn_add' => SubscriberCsvImporter::INVITE_MAIL_FAILED ),
+			$failing->add_subscriber( 'mailfail@example.com', '', 0 )
+		);
+		self::assertSame( SubscriberStatus::Pending->value, $this->subscriber( 'mailfail@example.com' )['status'] );
+	}
+
+	public function test_manual_add_is_registered_admin_only_and_list_requires_list_capability(): void {
+		$page = Plugin::instance()->container()->get( SubscriberCsvImportPage::class );
+		$hook = 'admin_post_' . SubscriberCsvImportPage::ADD_ACTION;
+		self::assertNotFalse( has_action( $hook, array( $page, 'handle_add' ) ) );
+		self::assertFalse( has_action( 'admin_post_nopriv_' . SubscriberCsvImportPage::ADD_ACTION ) );
+
+		$role = 'arpn_subscribers_only';
+		add_role(
+			$role,
+			'Subscribers only',
+			array(
+				'read'                                 => true,
+				'manage_post_notification_subscribers' => true,
+			)
+		);
+		wp_set_current_user( self::factory()->user->create( array( 'role' => $role ) ) );
+		$transport = new CsvImportRecordingMailTransport();
+		$lists     = new NamedListRepository();
+		$list_id   = $lists->create( 'Restricted', '' );
+		$result    = ( new SubscriberCsvImportPage( $this->importer( $transport ), $lists ) )
+			->add_subscriber( 'nolist@example.com', '', $list_id );
+		remove_role( $role );
+
+		self::assertSame( array( 'arpn_add' => SubscriberCsvImporter::INVITE_SENT ), $result );
+		self::assertSame( array(), $lists->members( $list_id ) );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+
+		$handler = static function (): void {
+			throw new \RuntimeException( 'denied' );
+		};
+		add_filter( 'wp_die_handler', static fn () => $handler );
+		$denied = '';
+		try {
+			$page->handle_add();
+		} catch ( \RuntimeException $exception ) {
+			$denied = $exception->getMessage();
+		} finally {
+			unset( $_SERVER['REQUEST_METHOD'] );
+		}
+		self::assertSame( 'denied', $denied );
 	}
 
 	private function importer( CsvImportRecordingMailTransport $transport ): SubscriberCsvImporter {
