@@ -13,6 +13,7 @@ use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportMailer;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvImportPage;
 use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
@@ -376,6 +377,123 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 		ob_start();
 		$invites->render_notice();
 		self::assertSame( '', (string) ob_get_clean(), 'Only subscriber managers see the offer.' );
+	}
+
+	public function test_upgraded_site_without_stored_offer_shows_the_start_form(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		// rc.1 -> rc.2 by file replacement: the activation hook never ran.
+		delete_option( ExistingUserInvitations::OPTION );
+		$invites = $this->invitations();
+
+		self::assertSame( ExistingUserInvitations::STATUS_OFFERED, $invites->state()['status'] );
+		ob_start();
+		$invites->render();
+		$html = (string) ob_get_clean();
+		self::assertStringContainsString( 'Send invitations', $html );
+		self::assertStringContainsString( 'would be invited', $html );
+		self::assertStringNotContainsString( 'Invitations are being sent', $html );
+
+		// The upgrade routine now records the offer as well.
+		delete_option( ExistingUserInvitations::OPTION );
+		update_option( 'argentwolf_post_notifier_version', '0.1.0-rc.1', false );
+		( new UpgradeManager() )->maybe_upgrade();
+		$stored = get_option( ExistingUserInvitations::OPTION );
+		self::assertSame( ExistingUserInvitations::STATUS_OFFERED, $stored['status'] );
+	}
+
+	public function test_stuck_states_self_heal_without_breaking_the_once_only_rule(): void {
+		$invites = $this->invitations();
+		wp_clear_scheduled_hook( ExistingUserInvitations::HOOK );
+		$stuck = array(
+			array( 'status' => 'running' ),
+			array(
+				'status' => 'running',
+				'total'  => 0,
+			),
+			array(
+				'status'    => 'running',
+				'total'     => 5,
+				'processed' => 2,
+				'skipped'   => 2,
+			),
+			array( 'status' => 'bogus' ),
+		);
+		foreach ( $stuck as $stored ) {
+			update_option( ExistingUserInvitations::OPTION, $stored, false );
+			self::assertSame(
+				ExistingUserInvitations::STATUS_OFFERED,
+				$invites->state()['status'],
+				(string) wp_json_encode( $stored )
+			);
+		}
+
+		// Invitations already went out: keep running and reschedule, never re-offer.
+		update_option(
+			ExistingUserInvitations::OPTION,
+			array(
+				'status'       => 'running',
+				'total'        => 5,
+				'processed'    => 3,
+				'sent'         => 3,
+				'last_user_id' => 9,
+			),
+			false
+		);
+		self::assertSame( ExistingUserInvitations::STATUS_RUNNING, $invites->state()['status'] );
+		self::assertNotFalse( wp_next_scheduled( ExistingUserInvitations::HOOK ) );
+		self::assertFalse( $invites->can_reset() );
+		self::assertFalse( $invites->reset() );
+		wp_clear_scheduled_hook( ExistingUserInvitations::HOOK );
+	}
+
+	public function test_zero_user_run_completes_immediately_and_can_be_reset(): void {
+		delete_option( ExistingUserInvitations::OPTION );
+		foreach ( get_users( array( 'fields' => 'ID' ) ) as $id ) {
+			( new \WP_User( (int) $id ) )->set_role( 'administrator' );
+		}
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$invites = $this->invitations();
+		self::assertSame( 0, $invites->audience_count() );
+
+		self::assertTrue( $invites->start() );
+		self::assertSame( ExistingUserInvitations::STATUS_DONE, $invites->state()['status'] );
+		self::assertFalse( wp_next_scheduled( ExistingUserInvitations::HOOK ) );
+		ob_start();
+		$invites->render();
+		$html = (string) ob_get_clean();
+		self::assertStringContainsString( 'no non-administrator users to invite', $html );
+		self::assertStringContainsString( ExistingUserInvitations::RESET_ACTION, $html );
+
+		self::assertTrue( $invites->reset() );
+		self::assertSame( ExistingUserInvitations::STATUS_OFFERED, $invites->state()['status'] );
+	}
+
+	public function test_audience_counts_custom_role_and_role_less_members_and_is_not_cached(): void {
+		$invites = $this->invitations();
+		$before  = $invites->audience_count();
+		add_role( 'awpn_member', 'Member', array( 'read' => true ) );
+		self::factory()->user->create( array( 'role' => 'awpn_member' ) );
+		$roleless = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		( new \WP_User( $roleless ) )->set_role( '' );
+		self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		// A persistent object cache must not serve a stale audience.
+		wp_cache_set( 'awpn_probe', 'primed', 'users' );
+		self::assertSame( $before + 2, $invites->audience_count() );
+		remove_role( 'awpn_member' );
+	}
+
+	/**
+	 * Invitation service with a recording transport.
+	 *
+	 * @return ExistingUserInvitations
+	 */
+	private function invitations(): ExistingUserInvitations {
+		return new ExistingUserInvitations(
+			$this->importer( new CsvImportRecordingMailTransport() ),
+			new RegisteredUserPreferenceRepository()
+		);
 	}
 
 	private function importer( CsvImportRecordingMailTransport $transport ): SubscriberCsvImporter {
