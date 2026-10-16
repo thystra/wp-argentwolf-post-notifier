@@ -22,6 +22,12 @@ use wpdb;
  * Persistence primitives for publication campaigns.
  */
 final class CampaignRepository {
+
+	/**
+	 * Attempts for one campaign write that hits a deadlock or lock-wait timeout.
+	 */
+	private const LOCK_RETRY_ATTEMPTS = 5;
+
 	/**
 	 * Initial post-notification campaign kind.
 	 */
@@ -273,9 +279,11 @@ final class CampaignRepository {
 	 * @param string|null            $time_column One of queued/started/completed_at_gmt.
 	 * @param string|null            $error_code  Optional fixed diagnostic code.
 	 * @param DateTimeInterface|null $now     Optional operation time.
-	 * @return bool True when this call performed the transition.
+	 * @return bool True when this call performed the transition; false when the
+	 *              campaign was not in an allowed status (for example another
+	 *              worker already moved it). A RuntimeException propagates from
+	 *              the write when it fails for a non-transient reason.
 	 * @throws InvalidArgumentException On an unsupported time column.
-	 * @throws RuntimeException When the database write fails.
 	 */
 	public function transition(
 		int $campaign_id,
@@ -319,16 +327,42 @@ final class CampaignRepository {
 		);
 		// phpcs:enable
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
-		$result = $this->database->query( $query );
-		// phpcs:enable
-		if ( false === $result ) {
-			throw new RuntimeException( 'Campaign status transition failed.' );
-		}
+		return 1 === $this->write_with_lock_retry( $query );
+	}
 
-		return 1 === $result;
+	/**
+	 * Execute one compare-and-set write, retrying transient InnoDB lock conflicts.
+	 *
+	 * Concurrent queue workers update the same campaign row (queued to sending,
+	 * counter refresh) while other workers' claims and refreshes hold recipient
+	 * locks, so MySQL 8 can pick this statement as a deadlock victim. InnoDB
+	 * rolls the victim statement back completely, and every caller's WHERE
+	 * clause is a compare-and-set on the current status, so re-running it is
+	 * safe: a worker that lost the race simply affects zero rows.
+	 *
+	 * @param string $query Prepared SQL.
+	 * @return int Affected rows.
+	 * @throws RuntimeException When the write fails for a non-transient reason or keeps
+	 *                          conflicting.
+	 */
+	private function write_with_lock_retry( string $query ): int {
+		for ( $attempt = 1; ; ++$attempt ) {
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+			$result = $this->database->query( $query );
+			// phpcs:enable
+			if ( false !== $result ) {
+				return (int) $result;
+			}
+			$error    = (string) $this->database->last_error;
+			$conflict = str_contains( $error, 'Deadlock found' )
+				|| str_contains( $error, 'Lock wait timeout exceeded' );
+			if ( ! $conflict || $attempt >= self::LOCK_RETRY_ATTEMPTS ) {
+				throw new RuntimeException( 'Campaign status transition failed.' );
+			}
+			usleep( wp_rand( 2000, 20000 ) * $attempt );
+		}
 	}
 
 	/**

@@ -97,6 +97,7 @@ final class QueueWorker {
 		);
 		$max     = $this->max_attempts();
 		$touched = array();
+		$started = array();
 
 		$batches = max( 1, $max_batches );
 		$size    = $this->batch_size();
@@ -118,14 +119,20 @@ final class QueueWorker {
 			foreach ( $rows as $row ) {
 				$campaign_id             = (int) $row['campaign_id'];
 				$touched[ $campaign_id ] = true;
-				$this->campaigns->transition(
-					$campaign_id,
-					array( CampaignRepository::STATUS_QUEUED ),
-					CampaignRepository::STATUS_SENDING,
-					'started_at_gmt',
-					null,
-					$clock
-				);
+				// Mark the campaign as sending once per run, not once per row:
+				// fewer writes to the shared campaign row means less contention.
+				// Losing this compare-and-set to another worker is success.
+				if ( ! isset( $started[ $campaign_id ] ) ) {
+					$this->campaigns->transition(
+						$campaign_id,
+						array( CampaignRepository::STATUS_QUEUED ),
+						CampaignRepository::STATUS_SENDING,
+						'started_at_gmt',
+						null,
+						$clock
+					);
+					$started[ $campaign_id ] = true;
+				}
 				$outcome = $this->process( $row, $lease, $max, $clock );
 				++$totals[ $outcome ];
 			}
