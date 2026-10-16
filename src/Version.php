@@ -14,7 +14,7 @@ final class Version {
 	/**
 	 * Plugin version.
 	 */
-	public const PLUGIN = '0.1.0-beta.3';
+	public const PLUGIN = '0.1.0-rc.1';
 
 	/**
 	 * Database schema version.

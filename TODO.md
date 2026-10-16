@@ -758,25 +758,25 @@ Evidence: `CampaignDeliveryTest::test_privacy_exporter_and_eraser_cover_subscrib
 
 Target: `0.1.0`
 
-- [ ] Complete installation and upgrade documentation.
-- [ ] Document companion verification requirements.
-- [ ] Document real system cron/WP-CLI worker option.
-- [ ] Document SMTP and `wp_mail()` delivery limitations.
-- [ ] Document scheduled-post behavior.
-- [ ] Document subscription block and double opt-in.
-- [ ] Document unsubscribe and privacy behavior.
-- [ ] Document template tokens and cutoff precedence.
-- [ ] Document capabilities and hooks.
+- [x] Complete installation and upgrade documentation. (`docs/user-guide.md`, `readme.txt`.)
+- [x] Document companion verification requirements.
+- [x] Document real system cron/WP-CLI worker option.
+- [x] Document SMTP and `wp_mail()` delivery limitations.
+- [x] Document scheduled-post behavior.
+- [x] Document subscription block and double opt-in.
+- [x] Document unsubscribe and privacy behavior.
+- [x] Document template tokens and cutoff precedence.
+- [x] Document capabilities and hooks.
 - [ ] Add screenshots after the UI stabilizes.
-- [ ] Complete changelog.
+- [x] Complete changelog. (0.1.0-rc.1 entry; the final 0.1.0 entry is written at release.)
 - [ ] Run full supported-version test matrix.
 - [ ] Run editor end-to-end tests.
 - [ ] Run accessibility review.
 - [ ] Run security review.
-- [ ] Build from a clean checkout.
-- [ ] Inspect archive manifest.
-- [ ] Verify package version.
-- [ ] Generate SHA256 checksum.
+- [x] Build from a clean checkout. (Built from a fresh clone with the patch applied.)
+- [x] Inspect archive manifest. (Build-script allowlist validation plus manual `unzip -l`.)
+- [x] Verify package version. (`0.1.0-rc.1` in the header, `Version::PLUGIN`, Stable tag and block.json.)
+- [x] Generate SHA256 checksum. (`dist/SHA256SUMS`.)
 - [ ] Install and test package on a staging WordPress site.
 - [ ] Commit release.
 - [ ] Push `main`.
@@ -796,6 +796,10 @@ Acceptance criteria:
 - [ ] Staging validates unsubscribe and click tracking.
 - [ ] Release publication is not confused with production installation or
       WordPress.org publication.
+
+Status (rc.1): documentation, changelog, version and package items are done locally and
+Forgejo CI is pending. Not done by design: screenshots, full version matrix, editor
+end-to-end tests, accessibility review, staging install, commit/push/tag/release.
 
 ## Milestone 15 — WordPress.org submission and directory release
 
