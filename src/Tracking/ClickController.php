@@ -11,7 +11,9 @@ use ArgentWolf\PostNotifier\Campaign\RecipientLinkFactory;
 use ArgentWolf\PostNotifier\Campaign\RecipientToken;
 use ArgentWolf\PostNotifier\Campaign\RecipientUnsubscribeController;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
 use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
@@ -29,12 +31,14 @@ final class ClickController implements Registerable {
 	/**
 	 * Construct the controller.
 	 *
-	 * @param ClickRepository $clicks  Click persistence.
-	 * @param PrivacySettings $privacy Tracking settings.
+	 * @param ClickRepository   $clicks  Click persistence.
+	 * @param PrivacySettings   $privacy Tracking settings.
+	 * @param ClickConsent|null $consent Per-user attribution consent.
 	 */
 	public function __construct(
 		private ClickRepository $clicks,
-		private PrivacySettings $privacy
+		private PrivacySettings $privacy,
+		private ?ClickConsent $consent = null
 	) {
 	}
 
@@ -98,7 +102,13 @@ final class ClickController implements Registerable {
 			&& $this->within_ttl( $row['submitted_at_gmt'], $now )
 		) {
 			try {
-				$this->clicks->record( $row['id'], $row['campaign_id'], $now );
+				$this->clicks->record(
+					$row['id'],
+					$row['campaign_id'],
+					$now,
+					$this->attributed( $row['user_id'], $row['subscriber_id'] ),
+					$this->likely_scanner( $row['submitted_at_gmt'], $now )
+				);
 			} catch ( Throwable ) {
 				// Counting is best effort; the reader still reaches the post.
 				return $this->destination( $row['post_id'], $home );
@@ -106,6 +116,39 @@ final class ClickController implements Registerable {
 		}
 
 		return $this->destination( $row['post_id'], $home );
+	}
+
+	/**
+	 * Whether this click may be attributed to the recipient.
+	 *
+	 * @param int $user_id       Registered user ID or 0.
+	 * @param int $subscriber_id Subscriber ID or 0.
+	 * @return bool
+	 */
+	private function attributed( int $user_id, int $subscriber_id ): bool {
+		return null !== $this->consent
+			&& $this->privacy->per_user_tracking_enabled()
+			&& $this->consent->has_consent( $user_id, $subscriber_id );
+	}
+
+	/**
+	 * Whether the click came so soon after delivery that a link scanner is likely.
+	 *
+	 * @param string            $submitted Submission time (UTC).
+	 * @param DateTimeImmutable $now       Click time.
+	 * @return bool
+	 */
+	private function likely_scanner( string $submitted, DateTimeImmutable $now ): bool {
+		if ( '' === $submitted ) {
+			return false;
+		}
+		try {
+			$elapsed = $now->getTimestamp() - UtcDateTime::parse( $submitted )->getTimestamp();
+		} catch ( Throwable ) {
+			return false;
+		}
+
+		return $elapsed <= $this->privacy->get()['scanner_window_seconds'];
 	}
 
 	/**

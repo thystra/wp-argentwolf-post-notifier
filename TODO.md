@@ -890,6 +890,25 @@ Acceptance criteria:
 - [ ] The directory package installs, activates, sends test notifications, and
       processes a scheduled publication on staging.
 
+## 0.1.0-rc.2 staging fixes and additions
+
+- [x] New list shows without a manual refresh (PRG to the index with a notice).
+      `NamedListAdminTest::test_create_redirects_to_index_that_shows_the_new_list`
+      passes locally. Forgejo CI pending.
+- [x] Manual "Add subscriber" double opt-in invitation form on the import screen.
+      `SubscriberCsvImportTest` manual-add tests pass locally. Forgejo CI pending.
+- [x] Consent-based per-recipient click tracking, off by default (Schema 4,
+      `view_post_notification_stats`, audited view and CSV export, scanner flag,
+      30-day attribution retention, exporter/eraser/policy). The
+      `CampaignDeliveryTest` attribution tests, the `ManageSubscriptionControllerTest`
+      consent test and the `PublicSignupProcessorTest` consent test pass locally.
+      Forgejo CI pending.
+- [x] One-time double opt-in invitation for existing users (no auto-enrolment).
+      `SubscriberCsvImportTest` existing-user tests pass locally. Forgejo CI pending.
+- [x] rc.3: tracking consent tied to owner confirmation (no public-form box).
+      `ConfirmationControllerTest` consent tests pass locally. Forgejo CI pending.
+- [ ] Staging validation of rc.3 by the site owner.
+
 ## Later candidates
 
 These are not part of the first stable release unless reprioritized.

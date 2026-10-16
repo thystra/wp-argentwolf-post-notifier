@@ -89,10 +89,26 @@ final class RetentionCleanup implements Registerable {
 			new DateInterval( 'P' . $settings['recipient_retention_days'] . 'D' )
 		);
 
-		$result = array(
-			'clicks'     => 0,
-			'recipients' => 0,
+		$result             = array(
+			'clicks'      => 0,
+			'attribution' => 0,
+			'recipients'  => 0,
 		);
+		$attribution_cutoff = $current->sub(
+			new DateInterval( 'P' . $settings['attribution_retention_days'] . 'D' )
+		);
+		$per_user_enabled   = $this->settings->per_user_tracking_enabled();
+		for ( $batch = 0; $batch < self::MAX_BATCHES; ++$batch ) {
+			$cleared                = $this->cleanup->clear_click_attribution(
+				$attribution_cutoff,
+				$per_user_enabled,
+				self::BATCH_SIZE
+			);
+			$result['attribution'] += $cleared;
+			if ( $cleared < self::BATCH_SIZE ) {
+				break;
+			}
+		}
 		for ( $batch = 0; $batch < self::MAX_BATCHES; ++$batch ) {
 			$deleted           = $this->cleanup->delete_click_events_before(
 				$click_cutoff,

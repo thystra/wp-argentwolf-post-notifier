@@ -1,7 +1,40 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-rc.1 — Release candidate (unreleased)
+## 0.1.0-rc.3 — Release candidate (unreleased)
+
+- Per-recipient tracking consent is now tied to confirmation. The public
+  signup form no longer has a tracking box, so a third party or a
+  resubmission can never grant consent. The confirmation page shows a
+  separate, unticked tracking choice (with the wording version) next to the
+  confirm button. The confirmation and invitation emails say this optional
+  choice is offered there and that confirming alone does not grant it.
+  Confirming without the box clears any consent already on the row,
+  including rc.2 form pre-ticks. Profile and manage-page consent are
+  unchanged. Policy text and docs are updated.
+
+## 0.1.0-rc.2 — Release candidate
+
+- Lists: a newly created list now shows immediately. Creation redirects to the
+  list index with a notice and highlights the new row. Failures after the
+  insert (for example audit logging) no longer end on an error page.
+- Import screen: manual "Add subscriber" form (single email, optional list)
+  that sends the same double opt-in invitation as the CSV import. It never
+  confirms directly, respects suppression and the resend cooldown, and shows
+  only generic messages.
+- Per-recipient click tracking (off by default). It needs separate, unticked,
+  versioned consent, given on the signup block, profile or manage page, and
+  withdrawal is immediate. Non-consenting recipients only move campaign
+  totals. Clicks soon after delivery are flagged as likely scanners.
+  Attribution retention defaults to 30 days. A Recipient clicks view and CSV
+  export require the new `view_post_notification_stats` capability, and each
+  view and export is audited. The exporter, eraser, policy text and docs are
+  updated. Schema 4.
+- Existing users are invited, never auto-enrolled (GDPR). A one-time
+  dismissible offer after activation sends double opt-in invitations to
+  non-administrator users in WP-Cron batches, with progress shown.
+
+## 0.1.0-rc.1 — Release candidate
 
 - Click tracking (Milestone 12): post links in messages go through an opaque,
   per-attempt click token that is stored only as a hash. The endpoint never

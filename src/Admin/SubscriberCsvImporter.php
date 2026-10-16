@@ -27,6 +27,16 @@ final class SubscriberCsvImporter {
 	public const SIGNUP_SOURCE = 'csv_import';
 
 	/**
+	 * Signup source recorded for the manual single-address form.
+	 */
+	public const MANUAL_SOURCE = 'admin_invite';
+
+	public const INVITE_SENT        = 'sent';
+	public const INVITE_NOT_SENT    = 'not_sent';
+	public const INVITE_INVALID     = 'invalid';
+	public const INVITE_MAIL_FAILED = 'mail_failed';
+
+	/**
 	 * Construct the importer.
 	 *
 	 * @param SubscriberService         $service  Standalone subscriber service.
@@ -124,6 +134,59 @@ final class SubscriberCsvImporter {
 			$counts['invalid'],
 			$counts['duplicates'],
 			$counts['mail_failures']
+		);
+	}
+
+	/**
+	 * Invite one manually entered address through the same double opt-in flow.
+	 *
+	 * The address is never confirmed directly. Suppressed, already subscribed,
+	 * unsubscribed or recently invited addresses get no invitation (the same
+	 * rules and resend cooldown as CSV rows), and callers must report that
+	 * generically.
+	 *
+	 * @param string      $email  Raw address.
+	 * @param string|null $name   Optional display name.
+	 * @param string      $source Signup source code recorded on the row.
+	 * @return array{outcome:string,subscriber_id:int}
+	 */
+	public function invite(
+		string $email,
+		?string $name = null,
+		string $source = self::MANUAL_SOURCE
+	): array {
+		$email = $this->identity->normalize( $email );
+		if ( null === $email ) {
+			return array(
+				'outcome'       => self::INVITE_INVALID,
+				'subscriber_id' => 0,
+			);
+		}
+		$name   = null === $name || '' === trim( $name ) ? null : trim( $name );
+		$result = $this->service->request_confirmation(
+			$email,
+			$name,
+			$this->consent_text(),
+			$source
+		);
+		$token  = $result->confirmation_token();
+		if ( null === $token ) {
+			return array(
+				'outcome'       => self::INVITE_NOT_SENT,
+				'subscriber_id' => $result->subscriber_id(),
+			);
+		}
+
+		$delivery = $this->mailer->send(
+			$result->normalized_email(),
+			$this->links->create( $token )
+		);
+
+		return array(
+			'outcome'       => $delivery->is_submitted()
+				? self::INVITE_SENT
+				: self::INVITE_MAIL_FAILED,
+			'subscriber_id' => $result->subscriber_id(),
 		);
 	}
 

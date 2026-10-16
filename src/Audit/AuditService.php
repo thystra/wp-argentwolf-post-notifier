@@ -159,6 +159,38 @@ final class AuditService {
 	}
 
 	/**
+	 * Record access to the per-recipient click view or its CSV export.
+	 *
+	 * @param AuditEventType         $event_type  ClickStatsViewed or ClickStatsExported.
+	 * @param int                    $campaign_id Campaign filter, or 0 for all campaigns.
+	 * @param DateTimeInterface|null $now         Optional testable current time.
+	 * @return void
+	 * @throws InvalidArgumentException When the event type is not a stats event.
+	 */
+	public function record_click_stats_access(
+		AuditEventType $event_type,
+		int $campaign_id = 0,
+		?DateTimeInterface $now = null
+	): void {
+		if ( ! str_starts_with( $event_type->value, 'click_stats_' ) ) {
+			throw new InvalidArgumentException( 'Audit event is not a click-statistics event.' );
+		}
+
+		$this->repository->record(
+			$event_type,
+			$this->actor_user_id(),
+			'click_stats',
+			$campaign_id > 0 ? $campaign_id : null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			$this->normalize_now( $now )
+		);
+	}
+
+	/**
 	 * Resolve the authenticated WordPress actor when one exists.
 	 *
 	 * @return int|null

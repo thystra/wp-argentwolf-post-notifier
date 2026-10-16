@@ -1,6 +1,6 @@
 # ArgentWolf Post Notifier: user and operator guide
 
-Applies to 0.1.0-rc.1.
+Applies to 0.1.0-rc.3.
 
 ## Install and upgrade
 
@@ -66,6 +66,19 @@ captured at that moment. Republishing does not create a second initial
 campaign. If a post is unpublished, trashed or deleted while queued or sending,
 the remaining messages are cancelled (`post_removed`).
 
+## Inviting existing users
+
+Existing accounts are never subscribed automatically (GDPR). After activation
+an admin notice offers **Post Notifier → Invite users**. Sending there emails
+every non-administrator user the same double opt-in invitation as the CSV
+import. Nobody is subscribed until they confirm. Suppressed users and users
+whose profile preference is already *subscribed* are skipped. Invitations go
+out via WP-Cron in batches of 25, one batch per minute, with the usual
+per-address cooldown. An optional list can be chosen. The screen shows
+progress (processed, invited, skipped, failed). The run can happen only once,
+and reactivating the plugin does not offer it again. The notice can be
+dismissed and the screen stays available.
+
 ## Subscription block and double opt-in
 
 Add the **Post notification signup** block. A submission creates a pending
@@ -89,12 +102,37 @@ Pending records are purged seven days after they expire.
   address, user agent, referrer or cookie is stored. Opens are never tracked.
   Turn it off for direct links. Counts are approximate, because security
   scanners click links.
+- Without per-recipient consent, a click only increments the campaign's total
+  and unique counters. No click event row and no per-recipient count is stored;
+  a first-click marker on the delivery record is kept only to de-duplicate the
+  unique total.
+- **Per-recipient click tracking** (off by default, **Post Notifier → Privacy**,
+  requires click counting): consent is a separate, unticked box. New
+  subscribers see it only on the confirmation page they reach from the
+  confirmation email, next to the "Confirm subscription" button. The email
+  says the page offers this optional choice and gives the wording version.
+  Confirming without ticking it does not grant consent. The public signup
+  form has no tracking box, so a third party or a resubmission can never grant
+  consent. Logged-in users can give or withdraw it on their profile, and
+  link holders on the manage page. The consent time and wording version are
+  recorded. Only for consenting
+  recipients is each click stored with its time and a *likely scanner* flag
+  (clicks within N seconds of delivery, default 30). Withdrawal (manage page
+  or profile) stops attribution at once and deletes clicks already linked to
+  the person; totals stay. Attribution is cleared after its own retention
+  period (default 30 days); turning the feature off clears all of it on the
+  next daily run.
+- **Post Notifier → Recipient clicks** (`view_post_notification_stats`) shows
+  attributed clicks and exports them as CSV. Each view and export is written
+  to the audit log (actor and campaign only).
 - Retention: click events default to 90 days. Per-recipient delivery records
   are anonymized 365 days after a campaign completes. A daily job processes
   bounded batches.
 - **Tools → Export/Erase Personal Data** include this plugin. Erasure deletes the
   subscriber, redacts delivery records and clicks, removes the account
-  preference and keeps only the suppression hash, which is reported as retained.
+  preference and click-tracking consent, and keeps only the suppression hash,
+  which is reported as retained. The export includes consent records and
+  attributed click times.
 - Suggested policy text appears under **Settings → Privacy → Policy guide**.
 - Deleting a WordPress user redacts their delivery records.
 
@@ -123,6 +161,7 @@ published. Later edits do not change the campaign.
 | `send_post_notifications` | Editor sidebar, audience estimate, contact lookup, sending on publish |
 | `manage_post_notification_subscribers` | Subscriber screen, suppression, CSV import and export |
 | `manage_post_notification_lists` | Named lists |
+| `view_post_notification_stats` | Per-recipient click view and CSV export (granted to administrators on activation, removed on uninstall) |
 | `manage_options` | Templates, Delivery screen, Privacy settings |
 
 Give `send_post_notifications` to editors without exposing subscriber data.

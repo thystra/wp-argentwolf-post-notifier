@@ -8,6 +8,9 @@
 namespace ArgentWolf\PostNotifier\Subscriber;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use RuntimeException;
 
 /**
  * Public double-opt-in confirmation route.
@@ -49,10 +52,14 @@ final class ConfirmationController implements Registerable {
 	 *
 	 * @param SubscriberService                  $service      Subscriber domain service.
 	 * @param ManageSubscriptionLinkFactory|null $manage_links Management links.
+	 * @param ClickConsent|null                  $consent      Click-tracking consent store.
+	 * @param PrivacySettings|null               $privacy      Tracking settings.
 	 */
 	public function __construct(
 		private SubscriberService $service,
-		?ManageSubscriptionLinkFactory $manage_links = null
+		?ManageSubscriptionLinkFactory $manage_links = null,
+		private ?ClickConsent $consent = null,
+		private ?PrivacySettings $privacy = null
 	) {
 		$this->manage_links = $manage_links ?? new WordPressManageSubscriptionLinkFactory();
 	}
@@ -124,6 +131,21 @@ final class ConfirmationController implements Registerable {
 			esc_attr( self::NONCE_FIELD ),
 			esc_attr( $nonce )
 		);
+		if ( $this->tracking_offered() ) {
+			$html .= '<p><label><input type="checkbox" name="' . esc_attr( ClickConsent::FIELD );
+			$html .= '" value="1"> ' . esc_html( ClickConsent::wording() ) . '</label></p>';
+			$html .= '<p>' . esc_html(
+				sprintf(
+					/* translators: %s: consent wording version. */
+					__(
+						// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+						'This choice is separate and optional (consent wording version %s). Leave it unticked to confirm the subscription without per-recipient click tracking.',
+						'argentwolf-post-notifier'
+					),
+					ClickConsent::VERSION
+				)
+			) . '</p>';
+		}
 		$html .= '<p><button type="submit">';
 		$html .= esc_html__( 'Confirm subscription', 'argentwolf-post-notifier' );
 		$html .= '</button></p>';
@@ -158,7 +180,53 @@ final class ConfirmationController implements Registerable {
 		}
 
 		$manage_token = $this->service->confirm_with_management( $token );
+		if ( null !== $manage_token ) {
+			$this->apply_click_consent( $manage_token, isset( $_POST[ ClickConsent::FIELD ] ) );
+		}
 		$this->render_result_page( $manage_token, 200 );
+	}
+
+	/**
+	 * Whether the separate tracking choice is offered on this page.
+	 *
+	 * @return bool
+	 */
+	private function tracking_offered(): bool {
+		return null !== $this->consent
+			&& null !== $this->privacy
+			&& $this->privacy->per_user_tracking_enabled();
+	}
+
+	/**
+	 * Set click consent from the owner's own choice on the confirmation page.
+	 *
+	 * Only the inbox owner reaches this POST, so this is the only place public
+	 * signups can grant consent. Leaving the box unticked clears any consent
+	 * already on the row (for example a pre-tick stored by 0.1.0-rc.2).
+	 *
+	 * @param string $manage_token Fresh management token of the confirmed row.
+	 * @param bool   $ticked       Whether the tracking box was ticked.
+	 * @return void
+	 */
+	private function apply_click_consent( string $manage_token, bool $ticked ): void {
+		if ( null === $this->consent ) {
+			return;
+		}
+		$row = $this->service->managed_subscriber( $manage_token );
+		$id  = is_array( $row ) ? (int) ( $row['id'] ?? 0 ) : 0;
+		if ( $id < 1 ) {
+			return;
+		}
+		try {
+			if ( $ticked && $this->tracking_offered() ) {
+				$this->consent->grant_subscriber( $id );
+			} elseif ( null !== $this->consent->subscriber_record( $id ) ) {
+				$this->consent->withdraw_subscriber( $id );
+			}
+		} catch ( RuntimeException ) {
+			// Consent is optional; the subscription itself is already confirmed.
+			return;
+		}
 	}
 
 	/**
@@ -277,6 +345,7 @@ final class ConfirmationController implements Registerable {
 		return array(
 			'h1'     => array(),
 			'p'      => array(),
+			'label'  => array(),
 			'a'      => array(
 				'href' => true,
 			),

@@ -8,6 +8,9 @@
 namespace ArgentWolf\PostNotifier\Admin;
 
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use Throwable;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -24,6 +27,11 @@ final class SubscriberCsvImportPage implements Registerable {
 	 * Authenticated admin-post action for CSV intake.
 	 */
 	public const IMPORT_ACTION = 'argentwolf_post_notifier_import_subscribers';
+
+	/**
+	 * Manual single-address invitation action.
+	 */
+	public const ADD_ACTION = 'argentwolf_post_notifier_add_subscriber';
 
 	/**
 	 * CSV upload field name.
@@ -43,9 +51,13 @@ final class SubscriberCsvImportPage implements Registerable {
 	/**
 	 * Construct the CSV intake administration page.
 	 *
-	 * @param SubscriberCsvImporter $importer Bounded double-opt-in importer.
+	 * @param SubscriberCsvImporter    $importer Bounded double-opt-in importer.
+	 * @param NamedListRepository|null $lists    Optional named lists for the manual form.
 	 */
-	public function __construct( private SubscriberCsvImporter $importer ) {
+	public function __construct(
+		private SubscriberCsvImporter $importer,
+		private ?NamedListRepository $lists = null
+	) {
 	}
 
 	/**
@@ -58,6 +70,10 @@ final class SubscriberCsvImportPage implements Registerable {
 		add_action(
 			'admin_post_' . self::IMPORT_ACTION,
 			array( $this, 'handle_import' )
+		);
+		add_action(
+			'admin_post_' . self::ADD_ACTION,
+			array( $this, 'handle_add' )
 		);
 	}
 
@@ -90,6 +106,7 @@ final class SubscriberCsvImportPage implements Registerable {
 		echo esc_html__( 'Import subscriber invitations', 'argentwolf-post-notifier' );
 		echo '</h1>';
 		$this->render_notice();
+		$this->render_add_notice();
 		echo '<p>';
 		echo esc_html__(
 			'CSV intake sends confirmation invitations; it never directly subscribes a contact.',
@@ -115,6 +132,9 @@ final class SubscriberCsvImportPage implements Registerable {
 		);
 		echo '</p>';
 
+		$this->render_add_form();
+
+		echo '<h2>' . esc_html__( 'Import a CSV file', 'argentwolf-post-notifier' ) . '</h2>';
 		echo '<form method="post" enctype="multipart/form-data" action="';
 		echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="';
@@ -140,6 +160,187 @@ final class SubscriberCsvImportPage implements Registerable {
 		echo '</p>';
 		submit_button( __( 'Send confirmation invitations', 'argentwolf-post-notifier' ) );
 		echo '</form></div>';
+	}
+
+	/**
+	 * Render the manual single-address invitation form.
+	 *
+	 * @return void
+	 */
+	private function render_add_form(): void {
+		echo '<h2>' . esc_html__( 'Add subscriber', 'argentwolf-post-notifier' ) . '</h2>';
+		echo '<p>';
+		echo esc_html__(
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'Sends the same confirmation invitation as CSV import. The address is subscribed only after its owner confirms.',
+			'argentwolf-post-notifier'
+		);
+		echo '</p>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::ADD_ACTION ) . '">';
+		wp_nonce_field( self::ADD_ACTION );
+		echo '<table class="form-table" role="presentation"><tbody>';
+		echo '<tr><th scope="row"><label for="arpn-add-email">';
+		echo esc_html__( 'Email address', 'argentwolf-post-notifier' );
+		echo '</label></th><td><input id="arpn-add-email" class="regular-text" type="email"';
+		echo ' name="email" maxlength="320" required autocomplete="off"></td></tr>';
+		echo '<tr><th scope="row"><label for="arpn-add-name">';
+		echo esc_html__( 'Name (optional)', 'argentwolf-post-notifier' );
+		echo '</label></th><td><input id="arpn-add-name" class="regular-text" type="text"';
+		echo ' name="display_name" maxlength="191"></td></tr>';
+		$lists = $this->list_choices();
+		if ( array() !== $lists ) {
+			echo '<tr><th scope="row"><label for="arpn-add-list">';
+			echo esc_html__( 'Add to list (optional)', 'argentwolf-post-notifier' );
+			echo '</label></th><td><select id="arpn-add-list" name="list_id">';
+			echo '<option value="0">';
+			echo esc_html__( 'None', 'argentwolf-post-notifier' ) . '</option>';
+			foreach ( $lists as $id => $name ) {
+				echo '<option value="' . esc_attr( (string) $id ) . '">';
+				echo esc_html( $name ) . '</option>';
+			}
+			echo '</select><p class="description">';
+			echo esc_html__(
+				'List membership is organizational and does not subscribe the address.',
+				'argentwolf-post-notifier'
+			);
+			echo '</p></td></tr>';
+		}
+		echo '</tbody></table>';
+		submit_button( __( 'Send confirmation invitation', 'argentwolf-post-notifier' ) );
+		echo '</form>';
+	}
+
+	/**
+	 * Handle the manual add form.
+	 *
+	 * @return never
+	 */
+	public function handle_add(): never {
+		$this->require_capability();
+		if ( 'POST' !== $this->request_method() ) {
+			$this->redirect( array( 'arpn_add' => 'error' ) );
+		}
+		check_admin_referer( self::ADD_ACTION );
+
+		$email = isset( $_POST['email'] ) && is_string( $_POST['email'] )
+			? sanitize_email( wp_unslash( $_POST['email'] ) )
+			: '';
+		$this->redirect(
+			$this->add_subscriber(
+				$email,
+				$this->request_text( $_POST, 'display_name' ),
+				absint( $this->request_text( $_POST, 'list_id' ) )
+			)
+		);
+	}
+
+	/**
+	 * Invite one address for an already-authorized request.
+	 *
+	 * @param string $email   Sanitized address.
+	 * @param string $name    Optional display name.
+	 * @param int    $list_id Optional named list ID, 0 for none.
+	 * @return array<string,string> Generic redirect query arguments.
+	 */
+	public function add_subscriber( string $email, string $name, int $list_id ): array {
+		try {
+			$result = $this->importer->invite( $email, $name );
+		} catch ( Throwable ) {
+			return array( 'arpn_add' => 'error' );
+		}
+		$args = array( 'arpn_add' => $result['outcome'] );
+		if (
+			$list_id > 0
+			&& $result['subscriber_id'] > 0
+			&& null !== $this->lists
+			&& current_user_can( NamedListAdminPage::CAPABILITY )
+		) {
+			try {
+				$this->lists->add_member(
+					$list_id,
+					NamedListMemberType::Subscriber,
+					$result['subscriber_id']
+				);
+				$args['arpn_listed'] = '1';
+			} catch ( Throwable ) {
+				$args['arpn_listed'] = '0';
+			}
+		}
+
+		return $args;
+	}
+
+	/**
+	 * Lists the current user may assign, keyed by ID.
+	 *
+	 * @return array<int,string>
+	 */
+	private function list_choices(): array {
+		if ( null === $this->lists || ! current_user_can( NamedListAdminPage::CAPABILITY ) ) {
+			return array();
+		}
+		$choices = array();
+		foreach ( $this->lists->all() as $list ) {
+			$choices[ (int) $list['id'] ] = (string) $list['name'];
+		}
+
+		return $choices;
+	}
+
+	/**
+	 * Render the manual-add result notice.
+	 *
+	 * @return void
+	 */
+	private function render_add_notice(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only notice keys.
+		$notice = $this->request_text( $_GET, 'arpn_add' );
+		$listed = $this->request_text( $_GET, 'arpn_listed' );
+		// phpcs:enable
+		// phpcs:disable Generic.Files.LineLength -- Preserve gettext source text.
+		$messages = array(
+			SubscriberCsvImporter::INVITE_SENT        => __(
+				'A confirmation invitation was sent. The address will be subscribed only after its owner confirms.',
+				'argentwolf-post-notifier'
+			),
+			SubscriberCsvImporter::INVITE_NOT_SENT    => __(
+				'No invitation was sent. The address may already be subscribed, recently invited, or unable to receive notifications.',
+				'argentwolf-post-notifier'
+			),
+			SubscriberCsvImporter::INVITE_INVALID     => __( 'Enter a valid email address.', 'argentwolf-post-notifier' ),
+			SubscriberCsvImporter::INVITE_MAIL_FAILED => __(
+				'The invitation could not be handed to the mail system. Check your mail setup and try again.',
+				'argentwolf-post-notifier'
+			),
+			'error'                                   => __(
+				'The request could not be processed. Please try again.',
+				'argentwolf-post-notifier'
+			),
+		);
+		// phpcs:enable Generic.Files.LineLength
+		if ( ! isset( $messages[ $notice ] ) ) {
+			return;
+		}
+		$class = SubscriberCsvImporter::INVITE_SENT === $notice
+			? 'notice-success'
+			: 'notice-warning';
+		echo '<div class="notice ' . esc_attr( $class ) . ' is-dismissible"><p>';
+		echo esc_html( $messages[ $notice ] );
+		if ( '1' === $listed ) {
+			echo ' ';
+			echo esc_html__(
+				'The address was added to the selected list.',
+				'argentwolf-post-notifier'
+			);
+		} elseif ( '0' === $listed ) {
+			echo ' ';
+			echo esc_html__(
+				'The address could not be added to the selected list.',
+				'argentwolf-post-notifier'
+			);
+		}
+		echo '</p></div>';
 	}
 
 	/**

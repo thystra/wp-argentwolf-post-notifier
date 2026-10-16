@@ -72,7 +72,8 @@ final class PrivacyRepository {
 		$row = $this->row(
 			$this->database->prepare(
 				'SELECT id, email, display_name, status, created_at_gmt, confirmed_at_gmt,
-					unsubscribed_at_gmt, consent_text_snapshot, signup_source
+					unsubscribed_at_gmt, consent_text_snapshot, signup_source,
+					click_consent_at_gmt, click_consent_version
 				FROM %i WHERE email_hash = %s LIMIT 1',
 				$this->tables->subscribers(),
 				$email_hash
@@ -111,11 +112,14 @@ final class PrivacyRepository {
 		$query = $this->database->prepare(
 			'SELECT r.id, r.campaign_id, c.post_id, r.email_snapshot, r.display_name_snapshot,
 				r.status, r.skip_reason, r.submitted_at_gmt, r.click_count,
-				r.first_clicked_at_gmt, r.last_clicked_at_gmt
+				r.first_clicked_at_gmt, r.last_clicked_at_gmt,
+				( SELECT GROUP_CONCAT( k.clicked_at_gmt ORDER BY k.id )
+					FROM %i k WHERE k.campaign_recipient_id = r.id ) AS attributed_clicks
 			FROM %i r INNER JOIN %i c ON c.id = r.campaign_id
 			WHERE r.personal_data_erased_at_gmt IS NULL
 			AND (r.email_hash = %s OR (%d > 0 AND r.user_id = %d))
 			ORDER BY r.id ASC LIMIT %d OFFSET %d',
+			$this->tables->clicks(),
 			$this->tables->campaign_recipients(),
 			$this->tables->campaigns(),
 			$email_hash,

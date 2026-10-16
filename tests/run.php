@@ -284,7 +284,7 @@ foreach ( $subscriber_files as $subscriber_file ) {
 	);
 }
 $table_names = new TableNames( 'wp_' );
-$assert( '3' === Version::SCHEMA, 'Beta.3 queue leases require schema three.' );
+$assert( '4' === Version::SCHEMA, 'Click-attribution consent requires schema four.' );
 $assert( 8 === count( $table_names->all() ), 'Current schema must own exactly eight tables.' );
 $assert(
 	7 === substr_count( (string) $schema_one_source, 'CREATE TABLE ' ),
@@ -536,7 +536,11 @@ $assert(
 			$capabilities_source,
 			"SEND_NOTIFICATIONS = 'send_post_notifications'"
 		)
-		&& str_contains( $capabilities_source, "VERSION = '2'" )
+		&& str_contains( $capabilities_source, "VERSION = '3'" )
+		&& str_contains(
+			$capabilities_source,
+			"VIEW_STATS = 'view_post_notification_stats'"
+		)
 		&& str_contains( (string) $activator_source, 'Capabilities::install( true );' )
 		&& str_contains( (string) $uninstall_source, 'Capabilities::uninstall();' )
 		&& str_contains(

@@ -70,7 +70,8 @@ final class ClickRepository {
 			return null;
 		}
 		$query = $this->database->prepare(
-			'SELECT r.id, r.campaign_id, c.post_id, r.status, r.submitted_at_gmt
+			'SELECT r.id, r.campaign_id, c.post_id, r.status, r.submitted_at_gmt,
+				r.user_id, r.subscriber_id
 			FROM %i r INNER JOIN %i c ON c.id = r.campaign_id
 			WHERE r.click_token_hash = %s
 			AND r.personal_data_erased_at_gmt IS NULL
@@ -94,30 +95,46 @@ final class ClickRepository {
 			'post_id'          => (int) $row['post_id'],
 			'status'           => (string) $row['status'],
 			'submitted_at_gmt' => (string) ( $row['submitted_at_gmt'] ?? '' ),
+			'user_id'          => (int) ( $row['user_id'] ?? 0 ),
+			'subscriber_id'    => (int) ( $row['subscriber_id'] ?? 0 ),
 		);
 	}
 
 	/**
 	 * Record one click for a submitted recipient row.
 	 *
-	 * @param int               $recipient_id Campaign recipient row ID.
-	 * @param int               $campaign_id  Campaign ID.
-	 * @param DateTimeInterface $now          Click time.
+	 * @param int               $recipient_id   Campaign recipient row ID.
+	 * @param int               $campaign_id    Campaign ID.
+	 * @param DateTimeInterface $now            Click time.
+	 * @param bool              $attributed     Store a per-recipient event (consented).
+	 * @param bool              $likely_scanner Flag the event as a likely link scanner.
 	 * @return bool Whether this was the recipient's first tracked click.
 	 * @throws RuntimeException When a write fails.
 	 */
-	public function record( int $recipient_id, int $campaign_id, DateTimeInterface $now ): bool {
+	public function record(
+		int $recipient_id,
+		int $campaign_id,
+		DateTimeInterface $now,
+		bool $attributed = false,
+		bool $likely_scanner = false
+	): bool {
 		$stamp = UtcDateTime::format( $now );
-		$this->write(
-			$this->database->prepare(
-				'INSERT INTO %i (campaign_recipient_id, clicked_at_gmt, destination_kind)
-				VALUES (%d, %s, %s)',
-				$this->tables->clicks(),
-				$recipient_id,
-				$stamp,
-				self::DESTINATION_POST
-			)
-		);
+		if ( $attributed ) {
+			$this->write(
+				$this->database->prepare(
+					'INSERT INTO %i
+						(campaign_recipient_id, clicked_at_gmt, destination_kind, likely_scanner)
+					VALUES (%d, %s, %s, %d)',
+					$this->tables->clicks(),
+					$recipient_id,
+					$stamp,
+					self::DESTINATION_POST,
+					$likely_scanner ? 1 : 0
+				)
+			);
+		}
+		// The first-click marker is kept for every recipient purely to de-duplicate
+		// the campaign's unique-click total; it is not shown per recipient.
 		$first = 1 === $this->write(
 			$this->database->prepare(
 				'UPDATE %i SET first_clicked_at_gmt = %s
@@ -127,15 +144,17 @@ final class ClickRepository {
 				$recipient_id
 			)
 		);
-		$this->write(
-			$this->database->prepare(
-				'UPDATE %i SET click_count = click_count + 1, last_clicked_at_gmt = %s
-				WHERE id = %d',
-				$this->tables->campaign_recipients(),
-				$stamp,
-				$recipient_id
-			)
-		);
+		if ( $attributed ) {
+			$this->write(
+				$this->database->prepare(
+					'UPDATE %i SET click_count = click_count + 1, last_clicked_at_gmt = %s
+					WHERE id = %d',
+					$this->tables->campaign_recipients(),
+					$stamp,
+					$recipient_id
+				)
+			);
+		}
 		$this->write(
 			$this->database->prepare(
 				'UPDATE %i SET total_click_count = total_click_count + 1,

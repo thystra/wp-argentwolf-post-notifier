@@ -12,8 +12,8 @@ use PHPUnit\Framework\TestCase;
 
 final class VersionTest extends TestCase {
 	public function test_versions(): void {
-		self::assertSame( '0.1.0-rc.1', Version::PLUGIN );
-		self::assertSame( '3', Version::SCHEMA );
+		self::assertSame( '0.1.0-rc.3', Version::PLUGIN );
+		self::assertSame( '4', Version::SCHEMA );
 	}
 }
 

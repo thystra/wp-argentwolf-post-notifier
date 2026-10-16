@@ -7,6 +7,7 @@
 
 namespace ArgentWolf\PostNotifier\Lifecycle;
 
+use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Delivery\DeliveryScheduler;
 use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
 use ArgentWolf\PostNotifier\Subscriber\PendingSubscriberCleanup;
@@ -26,6 +27,7 @@ final class Deactivator {
 	public static function deactivate(): void {
 		PendingSubscriberCleanup::unschedule();
 		RetentionCleanup::unschedule();
+		ExistingUserInvitations::unschedule();
 		DeliveryScheduler::unschedule_all();
 
 		/**

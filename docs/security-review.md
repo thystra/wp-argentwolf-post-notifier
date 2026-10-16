@@ -45,5 +45,6 @@ click endpoint, and privacy export and erasure. Run with
 
 ## Known limitations
 
-- Mail security scanners may follow tracked links, which inflates click counts. Counts are labelled approximate.
+- Mail security scanners may follow tracked links, which inflates click counts. Counts are labelled approximate. Attributed clicks within the scanner window are flagged `likely_scanner`.
+- Per-recipient attribution is consent-gated, off by default, capability-gated (`view_post_notification_stats`) and audit-logged on view and export. The public signup form never carries consent. New subscribers can only give it on the nonce-protected confirmation POST, which is reachable only with the emailed confirmation token, so only the inbox owner can grant it. Confirming without the box clears any earlier consent on the row, including rc.2 pre-ticks. Profile consent (authenticated, nonce) and manage-page consent (management token, nonce) are direct.
 - Click and unsubscribe tokens are bearer tokens: anyone holding the email can use them until they expire.
