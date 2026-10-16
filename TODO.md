@@ -696,78 +696,87 @@ Acceptance criteria:
 
 Target: `0.1.0-rc.3`
 
-- [ ] Generate opaque recipient click tokens.
-- [ ] Map tokens only to server-generated allowed destinations.
-- [ ] Record total and unique clicks.
-- [ ] Redirect safely to canonical post permalink.
-- [ ] Add campaign dashboard.
-- [ ] Show queued, claimed, submitted, failed, and skipped counts.
-- [ ] Show skip reasons.
-- [ ] Show unique clickers and total clicks.
-- [ ] Label click-through as tracked/approximate.
-- [ ] Add tracking-disabled direct-link mode.
-- [ ] Add configurable click-event retention.
-- [ ] Do not implement open tracking in the initial release.
+- [x] Generate opaque recipient click tokens. (Per-attempt 256-bit token; only its SHA-256 is stored in `click_token_hash` while the lease is held.)
+- [x] Map tokens only to server-generated allowed destinations. (The request carries only the token; the destination is the campaign post.)
+- [x] Record total and unique clicks.
+- [x] Redirect safely to canonical post permalink. (`wp_safe_redirect` to the current permalink, or home when the token is unknown or the post is not public.)
+- [x] Add campaign dashboard. (Recent campaigns table on the Delivery screen.)
+- [x] Show queued, claimed, submitted, failed, and skipped counts. (Per campaign: recipients/submitted/failed/skipped. Queued/claimed are shown as site-wide recipient-row totals.)
+- [x] Show skip reasons.
+- [x] Show unique clickers and total clicks.
+- [x] Label click-through as tracked/approximate.
+- [x] Add tracking-disabled direct-link mode. (Plugin > Privacy; decided per message at send time.)
+- [x] Add configurable click-event retention. (Default 90 days, daily bounded job.)
+- [x] Do not implement open tracking in the initial release.
 
 Acceptance criteria:
 
-- [ ] Public requests cannot create open redirects.
-- [ ] Unique and total click calculations are correct.
-- [ ] Security scanner clicks are documented as a limitation.
-- [ ] No raw IP or user-agent retention occurs by default.
+- [x] Public requests cannot create open redirects.
+- [x] Unique and total click calculations are correct.
+- [x] Security scanner clicks are documented as a limitation. (Dashboard text and readme.)
+- [x] No raw IP or user-agent retention occurs by default. (No IP, user-agent, referrer or cookie in any mode.)
+
+Evidence: `CampaignDeliveryTest::test_tracked_links_count_clicks_and_redirect_only_to_the_post`,
+`test_direct_link_mode_issues_no_click_token` and
+`test_privacy_settings_sanitize_and_retention_cleanup_is_bounded` pass locally. Forgejo CI pending.
 
 ## Milestone 13 — Privacy, security, and administration
 
 Target: `0.1.0-rc.4`
 
-- [ ] Add privacy-policy helper text.
-- [ ] Add personal-data exporter.
-- [ ] Add personal-data eraser.
-- [ ] Add campaign-recipient retention.
-- [ ] Add click-event retention.
-- [ ] Add expired pending-subscriber cleanup.
-- [ ] Add deleted-user handling.
-- [ ] Add deleted-post handling.
-- [ ] Add uninstall settings and uninstall routine.
-- [ ] Add administrator capability mapping.
-- [ ] Add editor send capability without automatically exposing subscriber
-      management.
-- [ ] Add security review of every REST/admin/public endpoint.
-- [ ] Add CSRF, authorization, enumeration, token, rate-limit, and redirect
-      tests.
-- [ ] Add Site Health diagnostics.
-- [ ] Add structured, privacy-safe logs.
+- [x] Add privacy-policy helper text.
+- [x] Add personal-data exporter.
+- [x] Add personal-data eraser. (Suppression hash retained, readable copy removed; reported as retained.)
+- [x] Add campaign-recipient retention. (Configurable, default 365 days after completion.)
+- [x] Add click-event retention.
+- [x] Add expired pending-subscriber cleanup. (`PendingSubscriberCleanup`, earlier milestone.)
+- [x] Add deleted-user handling. (Recipient rows redacted, queued rows skipped `user_deleted`, list memberships removed.)
+- [x] Add deleted-post handling. (Unpublish, trash or delete stops queued/sending campaigns with `post_removed`; building campaigns fail at the gate.)
+- [x] Add uninstall settings and uninstall routine. (Opt-in checkbox on the Privacy screen; also removes the privacy option and user preference meta.)
+- [x] Add administrator capability mapping. (`Capabilities`, earlier milestone.)
+- [x] Add editor send capability without automatically exposing subscriber
+      management. (`send_post_notifications`.)
+- [x] Add security review of every REST/admin/public endpoint. (`docs/security-review.md`.)
+- [x] Add CSRF, authorization, enumeration, token, rate-limit, and redirect
+      tests. (Existing suites plus click open-redirect tests.)
+- [x] Add Site Health diagnostics. (`PublicationSiteHealth`, earlier milestone.)
+- [x] Add structured, privacy-safe logs. (`CampaignDiagnostics` and the audit ledger log no emails or tokens.)
 
 Acceptance criteria:
 
-- [ ] Export and erasure tests cover users and standalone subscribers.
-- [ ] Retention jobs are bounded and resumable.
-- [ ] Plugin removal behavior is explicit and tested.
-- [ ] No external telemetry or external verification API is active by default.
+- [x] Export and erasure tests cover users and standalone subscribers.
+- [x] Retention jobs are bounded and resumable.
+- [x] Plugin removal behavior is explicit and tested.
+- [x] No external telemetry or external verification API is active by default.
+
+Evidence: `CampaignDeliveryTest::test_privacy_exporter_and_eraser_cover_subscriber_deliveries_and_suppression`,
+`test_privacy_exporter_and_eraser_cover_registered_user_preference`,
+`test_post_removal_stops_delivery_and_deleted_user_rows_are_redacted` and
+`DestructiveUninstallerTest` pass locally. Forgejo CI pending.
 
 ## Milestone 14 — Documentation, packaging, and first stable release
 
 Target: `0.1.0`
 
-- [ ] Complete installation and upgrade documentation.
-- [ ] Document companion verification requirements.
-- [ ] Document real system cron/WP-CLI worker option.
-- [ ] Document SMTP and `wp_mail()` delivery limitations.
-- [ ] Document scheduled-post behavior.
-- [ ] Document subscription block and double opt-in.
-- [ ] Document unsubscribe and privacy behavior.
-- [ ] Document template tokens and cutoff precedence.
-- [ ] Document capabilities and hooks.
+- [x] Complete installation and upgrade documentation. (`docs/user-guide.md`, `readme.txt`.)
+- [x] Document companion verification requirements.
+- [x] Document real system cron/WP-CLI worker option.
+- [x] Document SMTP and `wp_mail()` delivery limitations.
+- [x] Document scheduled-post behavior.
+- [x] Document subscription block and double opt-in.
+- [x] Document unsubscribe and privacy behavior.
+- [x] Document template tokens and cutoff precedence.
+- [x] Document capabilities and hooks.
 - [ ] Add screenshots after the UI stabilizes.
-- [ ] Complete changelog.
+- [x] Complete changelog. (0.1.0-rc.1 entry; the final 0.1.0 entry is written at release.)
 - [ ] Run full supported-version test matrix.
 - [ ] Run editor end-to-end tests.
 - [ ] Run accessibility review.
 - [ ] Run security review.
-- [ ] Build from a clean checkout.
-- [ ] Inspect archive manifest.
-- [ ] Verify package version.
-- [ ] Generate SHA256 checksum.
+- [x] Build from a clean checkout. (Built from a fresh clone with the patch applied.)
+- [x] Inspect archive manifest. (Build-script allowlist validation plus manual `unzip -l`.)
+- [x] Verify package version. (`0.1.0-rc.1` in the header, `Version::PLUGIN`, Stable tag and block.json.)
+- [x] Generate SHA256 checksum. (`dist/SHA256SUMS`.)
 - [ ] Install and test package on a staging WordPress site.
 - [ ] Commit release.
 - [ ] Push `main`.
@@ -788,6 +797,10 @@ Acceptance criteria:
 - [ ] Release publication is not confused with production installation or
       WordPress.org publication.
 
+Status (rc.1): documentation, changelog, version and package items are done locally and
+Forgejo CI is pending. Not done by design: screenshots, full version matrix, editor
+end-to-end tests, accessibility review, staging install, commit/push/tag/release.
+
 ## Milestone 15 — WordPress.org submission and directory release
 
 Target: after operational `0.1.0` validation
@@ -806,52 +819,52 @@ Target: after operational `0.1.0` validation
 ### Naming and metadata
 
 - [ ] Confirm the requested `argentwolf-post-notifier` slug is available.
-- [ ] Use `ArgentWolf Post Notifier` in the main plugin header and
+- [x] Use `ArgentWolf Post Notifier` in the main plugin header and
       `readme.txt`.
-- [ ] Add a unique Plugin URI.
+- [x] Add a unique Plugin URI.
 - [ ] Set accurate `Requires at least`, `Tested up to`, and `Requires PHP`
       values from the tested matrix.
-- [ ] Keep the main plugin Version and `readme.txt` Stable Tag identical.
-- [ ] Declare GPL-2.0-or-later consistently in headers, `readme.txt`, and
+- [x] Keep the main plugin Version and `readme.txt` Stable Tag identical.
+- [x] Declare GPL-2.0-or-later consistently in headers, `readme.txt`, and
       `LICENSE`.
 - [ ] Confirm the author and contributor WordPress.org accounts and contact
       information are current.
 
 ### Directory package review
 
-- [ ] Create a concise WordPress.org-format `readme.txt`.
-- [ ] Keep `readme.txt` below the practical 10 KB limit.
-- [ ] Document subscriber data, click statistics, retention, uninstall behavior,
+- [x] Create a concise WordPress.org-format `readme.txt`.
+- [x] Keep `readme.txt` below the practical 10 KB limit. (5.7 KB.)
+- [x] Document subscriber data, click statistics, retention, uninstall behavior,
       and any external mail transport assumptions.
 - [ ] Add directory icon, banner, and screenshot assets after UI stabilization.
 - [ ] Ensure each screenshot entry matches an uploaded screenshot asset.
-- [ ] Remove any Forgejo/GitHub custom update checker from the directory build.
-- [ ] Verify no remote executable code, undisclosed telemetry, or unnecessary
+- [x] Remove any Forgejo/GitHub custom update checker from the directory build. (None exists.)
+- [x] Verify no remote executable code, undisclosed telemetry, or unnecessary
       external requests exist.
 - [ ] Use WordPress-provided libraries where available.
-- [ ] Audit every bundled dependency, image, and asset for GPL compatibility.
-- [ ] Include or link to human-readable source and reproducible build
-      instructions for generated assets.
-- [ ] Exclude tests, caches, backups, local environment files, full development
+- [x] Audit every bundled dependency, image, and asset for GPL compatibility. (No third-party code or images are bundled.)
+- [x] Include or link to human-readable source and reproducible build
+      instructions for generated assets. (No generated assets; runtime JS is source.)
+- [x] Exclude tests, caches, backups, local environment files, full development
       dependency trees, and unrelated documentation from the installable ZIP.
 - [ ] Retain source manifests such as `composer.json` when needed for
       open-source review.
 - [ ] Verify the exact submission ZIP installs through **Plugins → Add New →
       Upload Plugin**.
-- [ ] Verify the submission ZIP is below 10 MB.
+- [x] Verify the submission ZIP is below 10 MB.
 
 ### Automated and manual review
 
-- [ ] Test with `WP_DEBUG` enabled.
-- [ ] Run WordPress Plugin Check using the current WordPress.org review profile.
-- [ ] Resolve every error and review each warning.
+- [x] Test with `WP_DEBUG` enabled. (Local site; see `docs/wporg-readiness.md`.)
+- [x] Run WordPress Plugin Check using the current WordPress.org review profile. (2.1.0, new and update modes, clean, on rc.1.)
+- [x] Resolve every error and review each warning. (None reported.)
 - [ ] Run PHPCS, PHPUnit, JavaScript tests, editor end-to-end tests,
       accessibility checks, and `git diff --check`.
 - [ ] Review all capability checks, nonces, REST permission callbacks,
       sanitization, validation, escaping, SQL preparation, and direct-file
       access guards.
-- [ ] Produce a WordPress.org submission-readiness report tied to the exact ZIP
-      checksum.
+- [x] Produce a WordPress.org submission-readiness report tied to the exact ZIP
+      checksum. (`docs/wporg-readiness.md` for rc.1; regenerate for 0.1.0.)
 - [ ] Do not describe the plugin as directory-compliant until this gate passes.
 
 ### Submission and release

@@ -1,7 +1,31 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-beta.3 — In development
+## 0.1.0-rc.1 — Release candidate (unreleased)
+
+- Click tracking (Milestone 12): post links in messages go through an opaque,
+  per-attempt click token that is stored only as a hash. The endpoint never
+  takes a destination from the request; it redirects to the post's current
+  permalink, or home. Only the time is recorded: no IP address, user agent,
+  referrer or cookie. Unique and total counts. No open tracking.
+- Direct-link mode, click-event retention (default 90 days) and per-recipient
+  record retention (default 365 days) under Post Notifier → Privacy, with a
+  daily bounded retention job.
+- Recent-campaigns dashboard on the Delivery screen, with click figures
+  labelled as tracked and approximate.
+- WordPress privacy integration (Milestone 13): personal-data exporter and
+  eraser, and suggested privacy-policy text. The suppression hash is kept and
+  reported as retained.
+- Deleted users have their delivery records redacted. Unpublishing, trashing or
+  deleting a post cancels its unsent campaign messages (`post_removed`).
+- The opt-in uninstall data deletion is now settable in the admin. It also
+  removes the privacy option and user preference meta.
+- Release-candidate packaging (Milestones 14–15 prep): new plugin
+  description, a WordPress.org-format `readme.txt` under 10 KB,
+  `docs/user-guide.md`, `docs/security-review.md` and
+  `docs/wporg-readiness.md`.
+
+## 0.1.0-beta.3
 
 - Fix a crash under concurrent queue workers. A claim could deadlock with
   another worker's status update, and the failed write crashed the worker

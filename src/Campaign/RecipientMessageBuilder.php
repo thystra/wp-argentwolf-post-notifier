@@ -31,7 +31,11 @@ final class RecipientMessageBuilder {
 	/**
 	 * Build one message.
 	 *
-	 * Links are array{unsubscribe:string,manage:string,one_click:string}.
+	 * Links are array{unsubscribe:string,manage:string,one_click:string} plus an
+	 * optional click URL. When the click URL is present, every link to the frozen
+	 * post URL (campaign key post_url) is replaced by the opaque click endpoint.
+	 * Other links in the content are never rewritten, so the click endpoint can
+	 * only ever lead to the server-chosen post destination.
 	 *
 	 * @param array<string,mixed>  $campaign       Campaign row with frozen bodies.
 	 * @param string               $email          Snapshot recipient address.
@@ -65,6 +69,15 @@ final class RecipientMessageBuilder {
 			throw new InvalidArgumentException( 'Recipient address is invalid.' );
 		}
 
+		if ( isset( $links['click'] ) ) {
+			list( $html, $text ) = $this->track_post_links(
+				$html,
+				$text,
+				(string) ( $campaign['post_url'] ?? '' ),
+				$links['click']
+			);
+		}
+
 		$footer = $this->composer->recipient_footer( $links['unsubscribe'], $links['manage'] );
 		if ( ! $this->is_local_https_or_http( $links['one_click'] ) ) {
 			throw new InvalidArgumentException( 'One-click unsubscribe URL must be local.' );
@@ -83,6 +96,43 @@ final class RecipientMessageBuilder {
 			),
 			$text . $footer['text']
 		);
+	}
+
+	/**
+	 * Replace frozen post-URL links with the click endpoint.
+	 *
+	 * @param string $html     Frozen HTML body.
+	 * @param string $text     Frozen text body.
+	 * @param string $post_url Frozen post URL captured with the campaign.
+	 * @param string $click    Local click endpoint URL.
+	 * @return array{0:string,1:string}
+	 * @throws InvalidArgumentException When the click URL is not local.
+	 */
+	private function track_post_links(
+		string $html,
+		string $text,
+		string $post_url,
+		string $click
+	): array {
+		if ( ! $this->is_local_https_or_http( $click ) ) {
+			throw new InvalidArgumentException( 'Click URL must be local.' );
+		}
+		if ( '' === $post_url || ! $this->is_local_https_or_http( $post_url ) ) {
+			return array( $html, $text );
+		}
+
+		$html = str_replace(
+			'href="' . esc_url( $post_url ) . '"',
+			'href="' . esc_url( $click ) . '"',
+			$html
+		);
+		$text = (string) preg_replace(
+			'/(?<=\A|\s)' . preg_quote( $post_url, '/' ) . '(?=\s|\z)/u',
+			str_replace( array( '\\', '$' ), array( '\\\\', '\\$' ), esc_url_raw( $click ) ),
+			$text
+		);
+
+		return array( $html, $text );
 	}
 
 	/**

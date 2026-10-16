@@ -10,11 +10,13 @@ namespace ArgentWolf\PostNotifier\Delivery;
 use ArgentWolf\PostNotifier\Audit\AuditEventType;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
+use ArgentWolf\PostNotifier\Campaign\CampaignContentSnapshotStore;
 use ArgentWolf\PostNotifier\Campaign\CampaignRepository;
 use ArgentWolf\PostNotifier\Campaign\RecipientLinkFactory;
 use ArgentWolf\PostNotifier\Campaign\RecipientMessageBuilder;
 use ArgentWolf\PostNotifier\Campaign\RecipientToken;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
 use DateInterval;
 use DateTimeImmutable;
@@ -50,14 +52,18 @@ final class QueueWorker {
 	/**
 	 * Construct the worker.
 	 *
-	 * @param QueueRepository             $queue     Lease-based queue persistence.
-	 * @param CampaignRepository          $campaigns Campaign persistence.
-	 * @param CampaignAudienceSnapshot    $audience  Frozen audience snapshot reader.
-	 * @param RecipientEligibilityRecheck $recheck   Pre-send hard-eligibility policy.
-	 * @param RecipientMessageBuilder     $messages  Per-recipient message builder.
-	 * @param RecipientLinkFactory        $links     Recipient link factory.
-	 * @param MailTransport               $transport Transport.
-	 * @param AuditService|null           $audit     Optional campaign audit ledger.
+	 * @param QueueRepository                   $queue     Lease-based queue persistence.
+	 * @param CampaignRepository                $campaigns Campaign persistence.
+	 * @param CampaignAudienceSnapshot          $audience  Frozen audience snapshot reader.
+	 * @param RecipientEligibilityRecheck       $recheck   Pre-send hard-eligibility policy.
+	 * @param RecipientMessageBuilder           $messages  Per-recipient message builder.
+	 * @param RecipientLinkFactory              $links     Recipient link factory.
+	 * @param MailTransport                     $transport Transport.
+	 * @param AuditService|null                 $audit     Optional campaign audit ledger.
+	 * @param PrivacySettings|null              $privacy   Click-tracking settings; null means
+	 *                                                     direct-link mode.
+	 * @param CampaignContentSnapshotStore|null $snapshots Frozen input reader that
+	 *                                               supplies the tracked post URL.
 	 */
 	public function __construct(
 		private QueueRepository $queue,
@@ -67,7 +73,9 @@ final class QueueWorker {
 		private RecipientMessageBuilder $messages,
 		private RecipientLinkFactory $links,
 		private MailTransport $transport,
-		private ?AuditService $audit = null
+		private ?AuditService $audit = null,
+		private ?PrivacySettings $privacy = null,
+		private ?CampaignContentSnapshotStore $snapshots = null
 	) {
 	}
 
@@ -172,15 +180,19 @@ final class QueueWorker {
 		$campaign = $this->campaign( $campaign_id );
 		$type     = NamedListMemberType::tryFrom( (string) $row['recipient_type'] );
 		$token    = RecipientToken::generate();
+		$click    = null;
 		try {
 			if ( null === $campaign || null === $type ) {
 				throw new InvalidArgumentException( 'Campaign or recipient unavailable.' );
+			}
+			if ( '' !== (string) ( $campaign['post_url'] ?? '' ) ) {
+				$click = RecipientToken::generate();
 			}
 			$message = $this->messages->build(
 				$campaign,
 				(string) $row['email_snapshot'],
 				$uuid,
-				$this->links->create( $type, $token->plaintext() )
+				$this->links->create( $type, $token->plaintext(), $click?->plaintext() )
 			);
 		} catch ( Throwable ) {
 			$done = $this->queue->mark_failed( $row_id, $lease, 'message_build_failed', $now );
@@ -189,7 +201,7 @@ final class QueueWorker {
 			return $this->report( $campaign_id, $uuid, $done ? 'failed' : 'lost', $code );
 		}
 
-		if ( ! $this->queue->set_token_hash( $row_id, $lease, $token->hash() ) ) {
+		if ( ! $this->queue->set_token_hash( $row_id, $lease, $token->hash(), $click?->hash() ) ) {
 			return $this->report( $campaign_id, $uuid, 'lost', 'lease_lost' );
 		}
 
@@ -301,10 +313,39 @@ final class QueueWorker {
 	 */
 	private function campaign( int $campaign_id ): ?array {
 		if ( ! array_key_exists( $campaign_id, $this->campaign_cache ) ) {
-			$this->campaign_cache[ $campaign_id ] = $this->campaigns->find( $campaign_id );
+			$campaign = $this->campaigns->find( $campaign_id );
+			if ( null !== $campaign ) {
+				$campaign['post_url'] = $this->tracked_post_url( $campaign_id );
+			}
+			$this->campaign_cache[ $campaign_id ] = $campaign;
 		}
 
 		return $this->campaign_cache[ $campaign_id ];
+	}
+
+	/**
+	 * Frozen post URL to track, or an empty string in direct-link mode.
+	 *
+	 * Tracking is decided per message at send time, so switching to direct-link
+	 * mode takes effect for every message not yet handed to the transport.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return string
+	 */
+	private function tracked_post_url( int $campaign_id ): string {
+		if ( null === $this->privacy || null === $this->snapshots ) {
+			return '';
+		}
+		if ( ! $this->privacy->click_tracking_enabled() ) {
+			return '';
+		}
+		try {
+			$input = $this->snapshots->read( $campaign_id );
+		} catch ( Throwable ) {
+			return '';
+		}
+
+		return is_array( $input ) ? (string) ( $input['post_url'] ?? '' ) : '';
 	}
 
 	/**

@@ -12,6 +12,8 @@ use ArgentWolf\PostNotifier\Content\EmailLayoutSettings;
 use ArgentWolf\PostNotifier\Content\EmailMoreSettings;
 use ArgentWolf\PostNotifier\Content\EmailNamedTemplateLibrary;
 use ArgentWolf\PostNotifier\Content\EmailTemplateSettings;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use LogicException;
 use RuntimeException;
 use wpdb;
@@ -104,6 +106,8 @@ final class DestructiveUninstaller {
 		delete_option( EmailMoreSettings::OPTION );
 		delete_option( EmailLayoutSettings::OPTION );
 		delete_option( EmailNamedTemplateLibrary::OPTION );
+		delete_option( PrivacySettings::OPTION );
+		delete_metadata( 'user', 0, RegisteredUserPreferenceRepository::META_KEY, '', true );
 		delete_option( self::DELETE_DATA_OPTION );
 	}
 }

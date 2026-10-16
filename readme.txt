@@ -1,197 +1,98 @@
 === ArgentWolf Post Notifier ===
 Contributors: thystra
-Tags: email, notifications, posts, subscribers
+Tags: email, notifications, newsletter, subscribers, double opt-in
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.4
-Stable tag: 0.1.0-beta.3
+Stable tag: 0.1.0-rc.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Development foundation for verified, unsubscribe-capable post notification campaigns created after publication.
+Email new posts to verified users and double opt-in subscribers, sent from your own site after publication. One-click unsubscribe included.
 
 == Description ==
 
-ArgentWolf Post Notifier is currently a beta development build.
-Beta.3 adds an editor-visible Email Cutoff marker that emits no public output;
-inert HTML/plain-text composition and text-only administrator customization are
-available, but preview and post-notification delivery are not yet enabled.
+ArgentWolf Post Notifier emails a post to an audience you choose, but only after WordPress has actually published it. Scheduling a post never sends anything early.
 
-The plugin establishes its bootstrap, service container, lifecycle handlers,
-verification-provider contract, development tooling, tests, continuous
-integration, deterministic packaging, and frozen initial database schema.
-Registered-user verification requires ArgentWolf Email Verification 1.0.2 or later
-and fails closed when no authoritative provider is healthy. Alpha.4 begins the
-standalone-subscriber workflow with secure pending records, hashed confirmation
-tokens, expiry, resend cooldown, generic signup responses, keyed local rate limits,
-and confirmation-message submission through a transport abstraction. Confirmation
-links now open a display-only page and require a separate nonce-protected POST to
-promote a pending subscriber. Alpha.4 also includes the dynamic public subscribe block,
-configurable consent/presentation text, and a no-JavaScript post-redirect-get form with
-generic status messages.
-It also adds an administrator-only subscriber screen with search/status filters,
-one-way manual suppression, and filtered CSV export. Alpha.5 begins registered-user
-preference handling with `site_default`, `subscribed`, and `unsubscribed` states plus
-a self-service WordPress profile control. Alpha.5 also adds canonical global
-suppression and secure standalone subscription management. Successful confirmation
-issues a random management bearer while only its SHA-256 hash is stored; management
-GET requests are display-only and state changes require nonce-protected POST.
-Self-service resubscription can remove only a suppression created by the same source,
-so administrator suppression remains authoritative.
-Alpha.5 also adds administrator-managed named lists with typed WordPress-user and
-standalone-subscriber memberships. List membership never changes subscription or
-suppression state. Administrator CSV intake is bounded to 250 nonblank rows, requires
-explicit approval, ignores imported status, and sends a distinct double-opt-in
-invitation without directly subscribing the address. Alpha.5 also records
-structured list and suppression audit events without storing raw email addresses or
-bearer tokens. Alpha.5 uses dedicated subscriber and list management capabilities
-instead of `manage_options`; administrators receive both by default and sites may
-delegate either capability independently. Beta.1 adds a capability-gated post-editor
-sidebar for notification intent, content mode, CTA override, role and named-list
-selection, and typed individual include/exclude contacts. Individual contacts require
-exact-email lookup through an authenticated POST request; responses use masked
-addresses and do not provide a browsable subscriber directory. The editor can explicitly
-resolve the current unsaved audience configuration to aggregate eligible and skip counts
-without returning recipient identities; registered users with the neutral `site_default`
-preference remain fail-closed until a site policy defines that default. The sidebar warns
-when registered-user verification is unavailable or unhealthy and when an explicit estimate
-resolves to zero eligible recipients. The editor also exposes the saved template ID through
-a bounded catalog, preserves unavailable custom selections, and warns when the selected
-template is no longer available. A native pre-publish panel summarizes the current
-notification metadata and warning state without resolving recipients, rendering email, or
-creating campaign state. Beta.1 qualification verifies that the complete notification
-configuration survives save/reload, scheduling, scheduled-post edits, revisions, and
-autosaves without creating campaign state. The Beta.1 notification workflow is block-editor
-only; the Classic Editor has no AWPN notification-configuration UI. Beta.2 reserves a
-single non-deliverable `building` campaign after actual publication and includes
-privacy-safe diagnostics plus read-only Site Health checks. Template rendering,
-recipient freezing, queue processing, notification delivery, previews, and test
-sends remain later milestones.
+* **Verified, opted-in audiences.** Registered users are included only if they have opted in on their profile and their email address is verified by the required ArgentWolf Email Verification plugin. Visitors subscribe with a block and confirm by double opt-in.
+* **Per-post control.** In the block editor sidebar you choose whether to notify, who receives it (roles, named lists, individual contacts), the content mode (excerpt, full, or up to an Email Cutoff block) and the template.
+* **Reliable delivery.** Each campaign is frozen at publication and sent through `wp_mail()` by a lease-based queue with retries. It runs from WP-Cron or a WP-CLI worker.
+* **Unsubscribe that works.** Every message has a personal unsubscribe link and RFC 8058 one-click `List-Unsubscribe` headers. Unsubscribing suppresses the address globally.
+* **Privacy first.** Opens are never tracked. Click counting is optional and stores no IP address, browser data or cookies. Integrates with the WordPress personal-data export and erasure tools. No telemetry.
 
-The intended design creates an explicit immutable campaign only after WordPress
-actually publishes a post. Scheduling a post must not create a campaign or send
-email.
+= Requirements =
 
-Registered-user verification remains implemented by the separately developed
-ArgentWolf Email Verification plugin. That companion is published on WordPress.org
-under the `argentwolf-email-verification` slug, and this plugin declares it through
-the formal `Requires Plugins` header. Runtime health checks remain fail-closed.
+* WordPress 7.0 or later and PHP 8.4 or later.
+* [ArgentWolf Email Verification](https://wordpress.org/plugins/argentwolf-email-verification/) 1.0.2 or later (declared with `Requires Plugins`). If the provider is missing or unhealthy, registered users are skipped (fail closed).
+* A working `wp_mail()` setup. On most hosts an SMTP plugin is strongly recommended.
 
-Development source and architecture documentation are available at the Plugin
-URI.
+= Data stored and privacy =
+
+* Standalone subscribers: email address, optional name, status, signup time and source, and the consent text shown.
+* Registered users: a notification preference in user meta.
+* Per-campaign delivery records: address, status and time. These are anonymized after a configurable period (default 365 days after the campaign completes).
+* Click events (if click counting is on): the delivery record and the time only. They are deleted after a configurable period (default 90 days). Click counts are approximate, because mail security scanners can follow links automatically.
+* Suppressions: a keyed hash of each unsubscribed address, so it is never mailed again.
+* Email addresses are hashed with a site-specific key for matching. Tokens are stored only as hashes. Logs never contain addresses or tokens.
+
+Turn click counting off under **Post Notifier → Privacy** (direct-link mode). Suggested privacy-policy text is added to **Settings → Privacy**.
+
+= Uninstall =
+
+Deleting the plugin keeps your data unless you tick the **Uninstall** option under **Post Notifier → Privacy**. With that option on, uninstall removes the plugin tables, options and user preferences.
 
 == Installation ==
 
-This beta is intended for development and controlled testing.
+1. Install and activate **ArgentWolf Email Verification**.
+2. Upload and activate **ArgentWolf Post Notifier**.
+3. Make sure your site can send mail. Use **Settings → Post Notifier Templates → Send test email to my account** to check.
+4. Optionally add the **Post notification signup** block to a page or widget area for visitor signups.
+5. When writing a post, open the **Post Notifications** sidebar, choose to send and pick an audience, then publish.
 
-1. Upload the `argentwolf-post-notifier` directory to `/wp-content/plugins/`.
-2. Activate ArgentWolf Post Notifier through the Plugins screen.
-3. Confirm that activation completes without warnings.
+For reliable timing on busy or low-traffic sites, disable WP-Cron's page-load trigger and run the worker from system cron:
 
-This beta reserves a non-deliverable `building` campaign shell when an explicitly
-opted-in post actually publishes. It does not select notification recipients,
-render notification content, queue messages, or deliver post-notification email.
+`*/5 * * * * wp argentwolf-post-notifier queue run --path=/path/to/site`
 
 == Frequently Asked Questions ==
 
-= Does this beta send post-notification email? =
+= Does scheduling a post send email? =
 
-This development build reserves one `building` campaign shell after an eligible
-post is actually published; it does not yet send post-notification email. The
-standalone-subscriber confirmation and CSV invitation flows can separately send
-transactional messages through WordPress mail.
+No. A campaign is created only when WordPress actually publishes the post. Scheduled posts are sent once they go live.
 
-= Does scheduling a post send anything? =
+= What happens if I unpublish or trash a post while it is sending? =
 
-No. The project invariant is that campaign creation occurs only after actual
-publication, never merely because a future publication time was selected.
+Remaining unsent messages are cancelled. Readers who follow an old link to a post that is not public are sent to your home page.
 
-= Is ArgentWolf Email Verification required? =
+= Why do registered users get skipped? =
 
-Yes. It is the authoritative provider for registered-user verification and is
-available from WordPress.org. This plugin requires version 1.0.2 or later, declares
-the dependency, and still checks provider health and API compatibility at runtime.
+They have not opted in on their profile (the default is not subscribed), their email is not verified, they are suppressed, or the verification provider is unavailable. The Delivery screen shows skip reasons.
+
+= Are opens tracked? =
+
+No. There are no tracking pixels. Click counting can be turned off entirely.
+
+= Can I run the queue from WP-CLI? =
+
+Yes: `wp argentwolf-post-notifier queue run`, `queue status` and `queue prepare <campaign-id>`.
+
+= Which hooks are available? =
+
+See `docs/user-guide.md` in the source repository for filters such as `argentwolf_post_notifier_queue_batch_size`, `argentwolf_post_notifier_recipient_eligible` and `argentwolf_post_notifier_delivery_result`.
 
 == Changelog ==
 
+= 0.1.0-rc.1 =
+* Optional, privacy-minimal click counting with direct-link mode, and a campaign dashboard.
+* Personal-data exporter and eraser, privacy-policy text, retention jobs, and deleted user and post handling.
+* Uninstall data-deletion setting in the admin.
+* Release-candidate packaging and documentation.
+
 = 0.1.0-beta.3 =
-* Begin scheduled and immediate publication lifecycle development after completing the Beta.1 editor-workflow milestone.
-* Reserve one idempotent building campaign only after an eligible post is actually published.
-* Keep scheduling, recipients, rendering, queueing, and mail delivery outside the initial campaign-reservation path.
-* Qualify concurrent reservation and WP-CLI scheduled, immediate, and republish paths.
-* Add privacy-safe campaign reservation diagnostics with optional ID-only success logging.
-* Add read-only Site Health checks for overdue opted-in posts and pre-queue status.
+* Campaign rendering, per-recipient queue and delivery, unsubscribe, resubscribe, and the delivery screen.
 
-= 0.1.0-beta.1 =
-* Begin revision-aware REST post metadata for the editor workflow.
-* Add independently delegable `send_post_notifications` authorization.
-* Guard autosave and revision metadata with send authorization and preserve it on core autosave revisions.
-* Add the first capability-gated block-editor sidebar for send intent, content mode, CTA override, and saved-audience configuration.
-* Add WordPress-role and named-list audience selectors without exposing list membership or subscriber records.
-* Add typed individual include/exclude contacts through exact-email POST lookup with masked response addresses.
-* Limit saved-ID hydration to contacts already selected on the target post.
-* Add an aggregate-only resolved audience estimate for the current unsaved editor configuration.
-* Reuse the existing audience policy and return only eligible and aggregate skip counts.
-* Warn send-authorized editors when registered-user verification is unavailable or unhealthy.
-* Warn when an explicit resolved audience estimate contains zero eligible recipients.
-* Defer provider-dependent editor resolution until use so later-loading provider filters apply.
-* Add a bounded template selector with Site default as ID `0`.
-* Preserve and warn on unavailable saved custom template IDs instead of silently replacing them.
-* Add a native pre-publish notification summary that does not create campaign state.
-* Qualify save/reload, scheduling, scheduled-post edits, revisions, and autosaves without creating campaign state.
-* Explicitly limit the Beta.1 notification workflow to the block editor; Classic Editor has no AWPN configuration UI.
-* Defer preview and test-send actions to the Milestone 8 canonical rendering and message-composition path.
-* Ship the human-readable post-editor runtime asset in the deterministic plugin package.
+Earlier development releases are listed in CHANGELOG.md in the source repository.
 
-= 0.1.0-alpha.5 =
-* Begin registered-user preference handling for the alpha.5 audience-management milestone.
-* Add canonical `site_default`, `subscribed`, and `unsubscribed` user-meta preferences.
-* Add a self-service WordPress profile control without allowing administrator override of another user's preference.
-* Keep verification and global suppression authoritative over registered-user preference.
-* Add global email suppression using the frozen schema-1 suppression table.
-* Add hashed standalone management bearers and a display-only self-service management page.
-* Require nonce-protected POST for unsubscribe and verified resubscribe.
-* Keep administrator suppression authoritative over all self-service resubscribe paths.
-* Block suppressed addresses from public standalone signup and confirmation.
-* Add administrator-managed named lists with typed user and standalone-subscriber membership.
-* Keep list membership from changing subscription, resubscription, or suppression state.
-* Add explicitly approved, 250-row-bounded CSV double-opt-in intake.
-* Ignore imported status and keep new CSV contacts pending until recipient confirmation.
-* Never reactivate subscribed, unsubscribed, or suppressed contacts through CSV intake.
-* Add schema 2 structured audit events for named-list and suppression changes.
-* Keep audit rows free of raw email addresses and bearer tokens.
-* Require ArgentWolf Email Verification 1.0.2 or later for registered-user verification.
+== Upgrade Notice ==
 
-= 0.1.0-alpha.4 =
-* Add the dynamic public subscribe block with configurable consent text and a no-JavaScript form.
-* Require an explicit nonce-protected POST after opening a confirmation link.
-* Add generic standalone-signup coordination, local keyed rate limits, and confirmation mail transport.
-* Begin the standalone-subscriber lifecycle and persistence foundation.
-* Add secure hashed confirmation tokens with 24-hour expiry and a 15-minute resend cooldown.
-* Keep subscribed, unsubscribed, and suppressed records from silently returning to pending through public signup.
-* Add explicit pending-to-subscribed confirmation primitives and qualified public POST routing.
-* Add daily limited cleanup for pending subscribers after a seven-day post-expiry grace period.
-* Add administrator-only subscriber search/filter, manual suppression, and CSV export controls.
-
-= 0.1.0-alpha.3 =
-* Begin versioned schema migrations and create the initial plugin-owned tables.
-* Add canonical normalized email identity with a persistent keyed SHA-256 hash.
-* Add migration locking and preserve-by-default uninstall handling for the new data foundation.
-* Add UTC persistence helpers, bounded cleanup primitives, same-schema repair, and qualified destructive uninstall handling.
-* Freeze schema 1 as immutable upgrade history and qualify upgrades from both tagged schema-zero releases.
-* Add exact-package Forgejo CI qualification with pinned Plugin Check static/runtime gates and WP_DEBUG review.
-
-= 0.1.0-alpha.2 =
-* Add the registered-user verification-provider contract and typed statuses.
-* Integrate with the ArgentWolf Email Verification 0.3.4 development public API.
-* Add provider health/version reporting, fail-closed eligibility, and an alternate-provider filter.
-* Add an administrator warning and companion-backed integration tests.
-
-= 0.1.0-alpha.1 =
-
-* Add the initial plugin bootstrap and namespaced service container.
-* Add activation, deactivation, upgrade, and uninstall skeletons.
-* Select WordPress 7.0 and PHP 8.4 as the initial minimum versions.
-* Add Composer, PHPUnit, WordPress Coding Standards, and JavaScript tooling.
-* Add continuous integration and deterministic package-manifest validation.
-* Preserve the rule that scheduled posts never create campaigns before actual publication.
+= 0.1.0-rc.1 =
+Release candidate. Adds click statistics (can be disabled) and WordPress privacy tools integration.

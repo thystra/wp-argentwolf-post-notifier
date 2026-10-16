@@ -1362,6 +1362,25 @@ tracked click-through rate
 Click statistics are approximate because security systems may inspect links.
 Open tracking is out of scope for the initial release.
 
+Implementation (0.1.0-rc.1):
+
+- The token is generated per delivery attempt, beside the unsubscribe token.
+  Only its SHA-256 is stored in `campaign_recipients.click_token_hash`, written
+  under the lease.
+- `RecipientMessageBuilder` rewrites only links equal to the frozen
+  `post_url` (HTML `href` and the text CTA) to
+  `admin-post.php?action=argentwolf_post_notifier_click&token=…`.
+- `ClickController` redirects with `wp_safe_redirect` to the post's
+  *current* permalink if the post is published, otherwise to the home URL.
+- It records a click only when tracking is enabled, the row is `submitted`
+  and the token is within the recipient-token TTL. The event row has no IP,
+  user-agent, referrer or cookie columns.
+- Direct-link mode is the `click_tracking` flag of
+  `argentwolf_post_notifier_privacy`, evaluated per message at send time.
+- The dashboard is the "Recent campaigns" table on the Delivery screen.
+  Delivery and stats remain under `manage_options`; the suggested
+  `view_post_notification_stats` capability is not introduced yet.
+
 ## 13. Capabilities
 
 Suggested capabilities:
@@ -1414,6 +1433,19 @@ The plugin supplies:
 
 Aggregate campaign counts may remain after recipient-level data is erased if
 they can no longer identify a person.
+
+Implementation (0.1.0-rc.1):
+
+- `PrivacyIntegration` registers the exporter, the eraser and the policy text.
+- The eraser keeps only the suppression's keyed hash, removing its readable
+  copy, and reports `items_retained`.
+- `RetentionCleanup` runs daily: click events (default 90 days) and
+  completed-campaign recipient redaction (default 365 days), at most 10 × 500
+  rows per kind per run.
+- `deleted_user` redacts the user's recipient rows.
+- When a post leaves `publish` or is deleted, `queued`/`sending` campaigns
+  become `failed` with `post_removed`. Campaigns still `building` are left to
+  the queue gate.
 
 ## 15. Security controls
 

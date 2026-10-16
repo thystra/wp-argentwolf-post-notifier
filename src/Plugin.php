@@ -8,6 +8,7 @@
 namespace ArgentWolf\PostNotifier;
 
 use ArgentWolf\PostNotifier\Admin\DeliveryStatusPage;
+use ArgentWolf\PostNotifier\Admin\PrivacySettingsPage;
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\NotificationTemplateSettingsPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
@@ -21,6 +22,7 @@ use ArgentWolf\PostNotifier\Admin\VerificationProviderNotice;
 use ArgentWolf\PostNotifier\Audit\AuditRepository;
 use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Campaign\CampaignAudienceSnapshot;
+use ArgentWolf\PostNotifier\Campaign\CampaignContentSnapshotStore;
 use ArgentWolf\PostNotifier\Campaign\CampaignPreparation;
 use ArgentWolf\PostNotifier\Campaign\CampaignQueueGate;
 use ArgentWolf\PostNotifier\Campaign\CampaignRecipientRepository;
@@ -59,6 +61,10 @@ use ArgentWolf\PostNotifier\Health\PublicationSiteHealth;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Privacy\PrivacyIntegration;
+use ArgentWolf\PostNotifier\Privacy\PrivacyRepository;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
@@ -83,6 +89,8 @@ use ArgentWolf\PostNotifier\Subscriber\WordPressRateLimitStore;
 use ArgentWolf\PostNotifier\Support\Container;
 use ArgentWolf\PostNotifier\Suppression\SuppressionRepository;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use ArgentWolf\PostNotifier\Tracking\ClickController;
+use ArgentWolf\PostNotifier\Tracking\ClickRepository;
 use ArgentWolf\PostNotifier\Verification\ArgentWolfEmailVerificationProvider;
 use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
 use ArgentWolf\PostNotifier\Verification\VerificationProvider;
@@ -883,7 +891,9 @@ final class Plugin {
 				),
 				self::typed( $services, RecipientLinkFactory::class ),
 				self::typed( $services, MailTransport::class ),
-				self::typed( $services, AuditService::class )
+				self::typed( $services, AuditService::class ),
+				self::typed( $services, PrivacySettings::class ),
+				new CampaignContentSnapshotStore()
 			)
 		);
 		$container->set(
@@ -919,6 +929,37 @@ final class Plugin {
 					self::typed( $services, SubscriberService::class ),
 					new WordPressManageSubscriptionLinkFactory()
 				)
+		);
+		$container->set(
+			PrivacySettings::class,
+			static fn (): PrivacySettings => new PrivacySettings()
+		);
+		$container->set(
+			ClickController::class,
+			static fn ( Container $services ): ClickController => new ClickController(
+				new ClickRepository(),
+				self::typed( $services, PrivacySettings::class )
+			)
+		);
+		$container->set(
+			PrivacySettingsPage::class,
+			static fn ( Container $services ): PrivacySettingsPage => new PrivacySettingsPage(
+				self::typed( $services, PrivacySettings::class )
+			)
+		);
+		$container->set(
+			RetentionCleanup::class,
+			static fn ( Container $services ): RetentionCleanup => new RetentionCleanup(
+				self::typed( $services, DataCleanup::class ),
+				self::typed( $services, PrivacySettings::class )
+			)
+		);
+		$container->set(
+			PrivacyIntegration::class,
+			static fn ( Container $services ): PrivacyIntegration => new PrivacyIntegration(
+				new PrivacyRepository(),
+				self::typed( $services, EmailIdentity::class )
+			)
 		);
 	}
 
@@ -969,6 +1010,9 @@ final class Plugin {
 				NotificationTemplateSettingsPage::class,
 				SubscriberCsvImportPage::class,
 				DeliveryStatusPage::class,
+				PrivacySettingsPage::class,
+				ClickController::class,
+				PrivacyIntegration::class,
 				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,
@@ -981,6 +1025,7 @@ final class Plugin {
 				$this->register_services(
 					array(
 						PendingSubscriberCleanup::class,
+						RetentionCleanup::class,
 						PublicSignupController::class,
 						SubscribeBlock::class,
 						EmailCutoffBlock::class,
