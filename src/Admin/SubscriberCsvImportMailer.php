@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Admin;
 use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
 
 /**
  * Compose confirmation invitations for administrator CSV intake.
@@ -51,16 +52,20 @@ final class SubscriberCsvImportMailer {
 			),
 			$site_name
 		);
-		$body .= "\n\n";
-		$body .= __(
+		$body  .= "\n\n";
+		$body  .= __(
 			'You are not subscribed unless you choose to confirm at this link:',
 			'argentwolf-post-notifier'
 		);
-		$body .= "\n" . $confirmation_url . "\n\n";
-		$body .= __(
+		$body  .= "\n" . $confirmation_url . "\n\n";
+		$body  .= __(
 			'If you do not want these notifications, ignore this message.',
 			'argentwolf-post-notifier'
 		);
+		$notice = ClickConsent::confirmation_email_notice();
+		if ( '' !== $notice ) {
+			$body .= "\n\n" . $notice;
+		}
 
 		return $this->transport->send(
 			new MailMessage(

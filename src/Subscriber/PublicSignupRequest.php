@@ -21,7 +21,6 @@ final class PublicSignupRequest {
 	 * @param int|null    $source_post_id Optional source post ID.
 	 * @param string      $honeypot       Hidden anti-bot field.
 	 * @param string|null $remote_address Request network address, used only transiently.
-	 * @param bool        $click_consent  Whether the optional click-tracking box was ticked.
 	 */
 	public function __construct(
 		private string $email,
@@ -30,8 +29,7 @@ final class PublicSignupRequest {
 		private string $signup_source,
 		private ?int $source_post_id,
 		private string $honeypot,
-		private ?string $remote_address,
-		private bool $click_consent = false
+		private ?string $remote_address
 	) {
 	}
 
@@ -96,15 +94,6 @@ final class PublicSignupRequest {
 	 */
 	public function remote_address(): ?string {
 		return $this->remote_address;
-	}
-
-	/**
-	 * Whether the separate, optional click-tracking box was ticked.
-	 *
-	 * @return bool
-	 */
-	public function click_consent(): bool {
-		return $this->click_consent;
 	}
 }
 

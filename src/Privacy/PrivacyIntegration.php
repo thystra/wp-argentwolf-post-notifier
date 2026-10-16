@@ -242,6 +242,7 @@ final class PrivacyIntegration implements Registerable {
 			),
 			array(
 				__( 'Per-person click tracking (only if the site owner enables it and you tick its separate, optional box): the time of each click on a notification link is stored linked to your delivery record, together with the time you consented and the version of the wording you agreed to.', 'argentwolf-post-notifier' ),
+				__( 'New subscribers are offered this box only on the confirmation page reached from the confirmation email; confirming the subscription without ticking it does not grant consent. Account holders can use their profile, and subscribers the manage page.', 'argentwolf-post-notifier' ),
 				__( 'The legal basis is your consent. Clicks made within seconds of delivery are marked as likely made by a link scanner.', 'argentwolf-post-notifier' ),
 				__( 'Only site administrators with the post-notification statistics capability can see or export this data, and each view and export is logged.', 'argentwolf-post-notifier' ),
 				__( 'The link to you is deleted after the attribution retention period set by the site owner (30 days by default); anonymous totals are kept.', 'argentwolf-post-notifier' ),

@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Subscriber;
 use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
+use ArgentWolf\PostNotifier\Privacy\ClickConsent;
 
 /**
  * Composes and submits standalone-subscriber confirmation messages.
@@ -57,6 +58,10 @@ If you did not request this, you can ignore this message.',
 			$site_name,
 			$confirmation_url
 		);
+		$notice = ClickConsent::confirmation_email_notice();
+		if ( '' !== $notice ) {
+			$body .= "\n\n" . $notice;
+		}
 
 		return $this->transport->send(
 			new MailMessage(

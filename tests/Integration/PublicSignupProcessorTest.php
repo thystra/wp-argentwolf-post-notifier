@@ -13,8 +13,6 @@ use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
-use ArgentWolf\PostNotifier\Privacy\ClickConsent;
-use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationLinkFactory;
 use ArgentWolf\PostNotifier\Subscriber\ConfirmationMailer;
 use ArgentWolf\PostNotifier\Subscriber\PublicSignupProcessor;
@@ -131,45 +129,6 @@ final class PublicSignupProcessorTest extends WP_UnitTestCase {
 		self::assertSame( 1, $this->subscriber_count( 'failed@example.com' ) );
 	}
 
-	public function test_click_consent_is_separate_optional_and_recorded_only_with_a_confirmation(): void {
-		global $wpdb;
-
-		$transport = new RecordingMailTransport();
-		$processor = $this->processor( $transport, true );
-		$consent   = new ClickConsent();
-		$id_for    = static function ( string $email ) use ( $wpdb ): int {
-			$hash = ( new EmailIdentity() )->hash( $email );
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-			return (int) $wpdb->get_var(
-				$wpdb->prepare(
-					'SELECT id FROM %i WHERE email_hash = %s',
-					TableNames::from_database( $wpdb )->subscribers(),
-					$hash
-				)
-			);
-			// phpcs:enable
-		};
-
-		// Ticked while the feature is off: nothing is recorded.
-		$processor->process( $this->request( 'clicks-off@example.com', true ) );
-		self::assertNull( $consent->subscriber_record( $id_for( 'clicks-off@example.com' ) ) );
-
-		( new PrivacySettings() )->save(
-			array(
-				'click_tracking'    => '1',
-				'per_user_tracking' => '1',
-			)
-		);
-		$processor->process( $this->request( 'clicks-none@example.com' ) );
-		self::assertNull( $consent->subscriber_record( $id_for( 'clicks-none@example.com' ) ) );
-
-		$processor->process( $this->request( 'clicks-yes@example.com', true ) );
-		$record = $consent->subscriber_record( $id_for( 'clicks-yes@example.com' ) );
-		self::assertNotNull( $record );
-		self::assertSame( ClickConsent::VERSION, $record['version'] );
-	}
-
 	private function processor(
 		RecordingMailTransport $transport,
 		bool $rate_allowed
@@ -196,13 +155,11 @@ final class PublicSignupProcessorTest extends WP_UnitTestCase {
 			new SubscriberService( new SubscriberRepository( $wpdb ), $identity ),
 			new SignupRateLimiter( $store, $identity, str_repeat( 's', 32 ) ),
 			new StaticConfirmationLinkFactory(),
-			new ConfirmationMailer( $transport, 'Example Site' ),
-			new ClickConsent(),
-			new PrivacySettings()
+			new ConfirmationMailer( $transport, 'Example Site' )
 		);
 	}
 
-	private function request( string $email, bool $click_consent = false ): PublicSignupRequest {
+	private function request( string $email ): PublicSignupRequest {
 		return new PublicSignupRequest(
 			$email,
 			'Example Person',
@@ -210,8 +167,7 @@ final class PublicSignupProcessorTest extends WP_UnitTestCase {
 			'block',
 			42,
 			'',
-			'192.0.2.44',
-			$click_consent
+			'192.0.2.44'
 		);
 	}
 

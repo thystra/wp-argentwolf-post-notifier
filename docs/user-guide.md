@@ -107,17 +107,21 @@ Pending records are purged seven days after they expire.
   a first-click marker on the delivery record is kept only to de-duplicate the
   unique total.
 - **Per-recipient click tracking** (off by default, **Post Notifier → Privacy**,
-  requires click counting): recipients can tick a separate, unticked consent
-  box on the subscription block, on their profile, or on the manage page. The
-  consent time and wording version are recorded. Only for consenting
+  requires click counting): consent is a separate, unticked box. New
+  subscribers see it only on the confirmation page they reach from the
+  confirmation email, next to the "Confirm subscription" button. The email
+  says the page offers this optional choice and gives the wording version.
+  Confirming without ticking it does not grant consent. The public signup
+  form has no tracking box, so a third party or a resubmission can never grant
+  consent. Logged-in users can give or withdraw it on their profile, and
+  link holders on the manage page. The consent time and wording version are
+  recorded. Only for consenting
   recipients is each click stored with its time and a *likely scanner* flag
   (clicks within N seconds of delivery, default 30). Withdrawal (manage page
   or profile) stops attribution at once and deletes clicks already linked to
   the person; totals stay. Attribution is cleared after its own retention
   period (default 30 days); turning the feature off clears all of it on the
-  next daily run. Note: consent ticked on the public form is stored on the
-  pending row; resubmitting without the box clears it, and the address owner
-  can withdraw from any manage link.
+  next daily run.
 - **Post Notifier → Recipient clicks** (`view_post_notification_stats`) shows
   attributed clicks and exports them as CSV. Each view and export is written
   to the audit log (actor and campaign only).

@@ -79,6 +79,31 @@ final class ClickConsent {
 	}
 
 	/**
+	 * Confirmation-email paragraph, or '' while per-user tracking is off.
+	 *
+	 * Consent is never taken from the public form: it can only be given on the
+	 * confirmation page reached from this email (proving inbox ownership), as a
+	 * separate unticked choice.
+	 *
+	 * @return string
+	 */
+	public static function confirmation_email_notice(): string {
+		if ( ! ( new PrivacySettings() )->per_user_tracking_enabled() ) {
+			return '';
+		}
+
+		return sprintf(
+			/* translators: %s: consent wording version. */
+			__(
+				// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+				'Optional: the confirmation page also offers a separate, unticked choice to allow per-recipient click tracking (consent wording version %s). Confirming the subscription alone does not grant it.',
+				'argentwolf-post-notifier'
+			),
+			self::VERSION
+		);
+	}
+
+	/**
 	 * Whether a delivery recipient currently consents.
 	 *
 	 * @param int $user_id       Registered user ID or 0.

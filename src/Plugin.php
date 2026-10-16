@@ -642,7 +642,9 @@ final class Plugin {
 
 					return new ConfirmationController(
 						$subscriber_service,
-						$manage_links
+						$manage_links,
+						self::typed( $services, ClickConsent::class ),
+						self::typed( $services, PrivacySettings::class )
 					);
 				}
 			);
@@ -693,9 +695,7 @@ final class Plugin {
 						$subscriber_service,
 						$rate_limiter,
 						$links,
-						$mailer,
-						self::typed( $services, ClickConsent::class ),
-						self::typed( $services, PrivacySettings::class )
+						$mailer
 					);
 				}
 			);
