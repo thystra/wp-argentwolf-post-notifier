@@ -3,7 +3,7 @@
  * Plugin Name: ArgentWolf Post Notifier
  * Plugin URI: https://forgejo.argentwolf.org/alan/wp-plugin-argentwolf-post-notifier
  * Description: Email new posts to verified users and double opt-in subscribers after publication.
- * Version: 0.1.0-rc.1
+ * Version: 0.1.0-rc.2
  * Requires at least: 7.0
  * Requires PHP: 8.4
  * Requires Plugins: argentwolf-email-verification

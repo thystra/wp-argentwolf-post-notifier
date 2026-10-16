@@ -1,6 +1,6 @@
 # ArgentWolf Post Notifier: user and operator guide
 
-Applies to 0.1.0-rc.1.
+Applies to 0.1.0-rc.2.
 
 ## Install and upgrade
 

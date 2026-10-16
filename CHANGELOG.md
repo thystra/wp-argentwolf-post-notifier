@@ -1,7 +1,28 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
-## 0.1.0-rc.1 — Release candidate (unreleased)
+## 0.1.0-rc.2 — Release candidate (unreleased)
+
+- Lists: a newly created list now shows immediately. Creation redirects to the
+  list index with a notice and highlights the new row. Failures after the
+  insert (for example audit logging) no longer end on an error page.
+- Import screen: manual "Add subscriber" form (single email, optional list)
+  that sends the same double opt-in invitation as the CSV import. It never
+  confirms directly, respects suppression and the resend cooldown, and shows
+  only generic messages.
+- Per-recipient click tracking (off by default). It needs separate, unticked,
+  versioned consent, given on the signup block, profile or manage page, and
+  withdrawal is immediate. Non-consenting recipients only move campaign
+  totals. Clicks soon after delivery are flagged as likely scanners.
+  Attribution retention defaults to 30 days. A Recipient clicks view and CSV
+  export require the new `view_post_notification_stats` capability, and each
+  view and export is audited. The exporter, eraser, policy text and docs are
+  updated. Schema 4.
+- Existing users are invited, never auto-enrolled (GDPR). A one-time
+  dismissible offer after activation sends double opt-in invitations to
+  non-administrator users in WP-Cron batches, with progress shown.
+
+## 0.1.0-rc.1 — Release candidate
 
 - Click tracking (Milestone 12): post links in messages go through an opaque,
   per-attempt click token that is stored only as a hash. The endpoint never
