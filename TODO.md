@@ -724,30 +724,35 @@ Evidence: `CampaignDeliveryTest::test_tracked_links_count_clicks_and_redirect_on
 
 Target: `0.1.0-rc.4`
 
-- [ ] Add privacy-policy helper text.
-- [ ] Add personal-data exporter.
-- [ ] Add personal-data eraser.
-- [ ] Add campaign-recipient retention.
-- [ ] Add click-event retention.
-- [ ] Add expired pending-subscriber cleanup.
-- [ ] Add deleted-user handling.
-- [ ] Add deleted-post handling.
-- [ ] Add uninstall settings and uninstall routine.
-- [ ] Add administrator capability mapping.
-- [ ] Add editor send capability without automatically exposing subscriber
-      management.
-- [ ] Add security review of every REST/admin/public endpoint.
-- [ ] Add CSRF, authorization, enumeration, token, rate-limit, and redirect
-      tests.
-- [ ] Add Site Health diagnostics.
-- [ ] Add structured, privacy-safe logs.
+- [x] Add privacy-policy helper text.
+- [x] Add personal-data exporter.
+- [x] Add personal-data eraser. (Suppression hash retained, readable copy removed; reported as retained.)
+- [x] Add campaign-recipient retention. (Configurable, default 365 days after completion.)
+- [x] Add click-event retention.
+- [x] Add expired pending-subscriber cleanup. (`PendingSubscriberCleanup`, earlier milestone.)
+- [x] Add deleted-user handling. (Recipient rows redacted, queued rows skipped `user_deleted`, list memberships removed.)
+- [x] Add deleted-post handling. (Unpublish, trash or delete stops queued/sending campaigns with `post_removed`; building campaigns fail at the gate.)
+- [x] Add uninstall settings and uninstall routine. (Opt-in checkbox on the Privacy screen; also removes the privacy option and user preference meta.)
+- [x] Add administrator capability mapping. (`Capabilities`, earlier milestone.)
+- [x] Add editor send capability without automatically exposing subscriber
+      management. (`send_post_notifications`.)
+- [x] Add security review of every REST/admin/public endpoint. (`docs/security-review.md`.)
+- [x] Add CSRF, authorization, enumeration, token, rate-limit, and redirect
+      tests. (Existing suites plus click open-redirect tests.)
+- [x] Add Site Health diagnostics. (`PublicationSiteHealth`, earlier milestone.)
+- [x] Add structured, privacy-safe logs. (`CampaignDiagnostics` and the audit ledger log no emails or tokens.)
 
 Acceptance criteria:
 
-- [ ] Export and erasure tests cover users and standalone subscribers.
-- [ ] Retention jobs are bounded and resumable.
-- [ ] Plugin removal behavior is explicit and tested.
-- [ ] No external telemetry or external verification API is active by default.
+- [x] Export and erasure tests cover users and standalone subscribers.
+- [x] Retention jobs are bounded and resumable.
+- [x] Plugin removal behavior is explicit and tested.
+- [x] No external telemetry or external verification API is active by default.
+
+Evidence: `CampaignDeliveryTest::test_privacy_exporter_and_eraser_cover_subscriber_deliveries_and_suppression`,
+`test_privacy_exporter_and_eraser_cover_registered_user_preference`,
+`test_post_removal_stops_delivery_and_deleted_user_rows_are_redacted` and
+`DestructiveUninstallerTest` pass locally. Forgejo CI pending.
 
 ## Milestone 14 — Documentation, packaging, and first stable release
 

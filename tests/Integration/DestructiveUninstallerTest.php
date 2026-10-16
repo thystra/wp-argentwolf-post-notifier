@@ -13,6 +13,8 @@ use ArgentWolf\PostNotifier\Database\EmailIdentity;
 use ArgentWolf\PostNotifier\Database\SchemaInspector;
 use ArgentWolf\PostNotifier\Database\SchemaMigrator;
 use ArgentWolf\PostNotifier\Database\TableNames;
+use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
+use ArgentWolf\PostNotifier\Recipient\RegisteredUserPreferenceRepository;
 use ArgentWolf\PostNotifier\Version;
 use WP_UnitTestCase;
 
@@ -53,6 +55,9 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 		update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
 		EmailIdentity::ensure_hash_key();
 		update_option( EmailNamedTemplateLibrary::OPTION, array( 'invalid' ), false );
+		update_option( PrivacySettings::OPTION, array( 'click_tracking' => false ), false );
+		$user_id = self::factory()->user->create();
+		update_user_meta( $user_id, RegisteredUserPreferenceRepository::META_KEY, 'subscribed' );
 
 		try {
 			$uninstaller->run();
@@ -67,12 +72,19 @@ final class DestructiveUninstallerTest extends WP_UnitTestCase {
 			self::assertFalse( get_option( SchemaMigrator::SCHEMA_OPTION, false ) );
 			self::assertFalse( get_option( EmailIdentity::HASH_KEY_OPTION, false ) );
 			self::assertFalse( get_option( EmailNamedTemplateLibrary::OPTION, false ) );
+			self::assertFalse( get_option( PrivacySettings::OPTION, false ) );
+			self::assertSame(
+				'',
+				get_user_meta( $user_id, RegisteredUserPreferenceRepository::META_KEY, true )
+			);
 			self::assertFalse(
 				get_option( DestructiveUninstaller::DELETE_DATA_OPTION, false )
 			);
 		} finally {
 			try {
 				( new SchemaMigrator( $wpdb ) )->migrate();
+				require_once ABSPATH . 'wp-admin/includes/user.php';
+				wp_delete_user( $user_id );
 				update_option( 'argentwolf_post_notifier_version', Version::PLUGIN, false );
 				self::commit_transaction();
 			} finally {

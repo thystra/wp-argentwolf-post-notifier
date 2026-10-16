@@ -35,6 +35,8 @@ use ArgentWolf\PostNotifier\Mail\DeliveryResult;
 use ArgentWolf\PostNotifier\Mail\MailMessage;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Plugin;
+use ArgentWolf\PostNotifier\Privacy\PrivacyIntegration;
+use ArgentWolf\PostNotifier\Privacy\PrivacyRepository;
 use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
 use ArgentWolf\PostNotifier\Database\DataCleanup;
@@ -884,6 +886,135 @@ final class CampaignDeliveryTest extends WP_UnitTestCase {
 		RetentionCleanup::schedule();
 		self::assertNotFalse( wp_next_scheduled( RetentionCleanup::HOOK ) );
 		RetentionCleanup::unschedule();
+	}
+
+	public function test_privacy_exporter_and_eraser_cover_subscriber_deliveries_and_suppression(): void {
+		$email      = 'privacy@example.com';
+		$subscriber = $this->subscriber( $email );
+		$post_id    = $this->publish( array( 'included_subscriber_ids' => array( $subscriber ) ) );
+		$id         = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+		$privacy = new PrivacySettings();
+		$this->worker( $privacy )->run( 1 );
+		preg_match( $this->click_pattern(), $this->transport->messages[0]->body(), $match );
+		( new ClickController( new ClickRepository(), $privacy ) )->resolve( $match[1] );
+		$this->suppression()->suppress( $email, 'unsubscribed', 'test' );
+
+		$integration = Plugin::instance()->container()->get( PrivacyIntegration::class );
+		self::assertInstanceOf( PrivacyIntegration::class, $integration );
+		self::assertArrayHasKey(
+			PrivacyIntegration::EXPORTER_ID,
+			apply_filters( 'wp_privacy_personal_data_exporters', array() )
+		);
+		self::assertArrayHasKey(
+			PrivacyIntegration::ERASER_ID,
+			apply_filters( 'wp_privacy_personal_data_erasers', array() )
+		);
+
+		$export = $integration->export( $email, 1 );
+		self::assertTrue( $export['done'] );
+		$groups = array_column( $export['data'], 'group_id' );
+		self::assertContains( 'argentwolf-post-notifier-subscription', $groups );
+		self::assertContains( 'argentwolf-post-notifier-deliveries', $groups );
+		self::assertContains( 'argentwolf-post-notifier-suppression', $groups );
+		self::assertStringContainsString( $email, wp_json_encode( $export ) );
+		self::assertSame( array(), $integration->export( 'nobody@example.com', 1 )['data'] );
+
+		$erase = $integration->erase( $email, 1 );
+		self::assertTrue( $erase['done'] );
+		self::assertTrue( $erase['items_removed'] );
+		self::assertTrue( $erase['items_retained'] );
+		self::assertNotEmpty( $erase['messages'] );
+
+		$after = $integration->export( $email, 1 );
+		self::assertStringNotContainsString( $email, wp_json_encode( $after ) );
+		self::assertSame( array( 'argentwolf-post-notifier-suppression' ), array_column( $after['data'], 'group_id' ) );
+		self::assertTrue( $this->suppression()->is_suppressed( $email ) );
+
+		global $wpdb;
+		$tables = TableNames::from_database( $wpdb );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row    = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT email_snapshot, email_hash, click_token_hash, personal_data_erased_at_gmt
+				FROM %i WHERE campaign_id = %d',
+				$tables->campaign_recipients(),
+				$id
+			),
+			ARRAY_A
+		);
+		$clicks = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $tables->clicks() ) );
+		// phpcs:enable
+		self::assertNull( $row['email_snapshot'] );
+		self::assertNull( $row['email_hash'] );
+		self::assertNull( $row['click_token_hash'] );
+		self::assertNotNull( $row['personal_data_erased_at_gmt'] );
+		self::assertSame( 0, $clicks );
+		self::assertSame( 1, (int) ( new CampaignRepository() )->find( $id )['unique_click_count'] );
+		self::assertNull( ( new SubscriberRepository() )->find_for_audience( $subscriber ) );
+		self::assertStringContainsString( 'IP address', PrivacyIntegration::policy_text() );
+	}
+
+	public function test_privacy_exporter_and_eraser_cover_registered_user_preference(): void {
+		$user_id = self::factory()->user->create( array( 'user_email' => 'member@example.com' ) );
+		update_user_meta( $user_id, RegisteredUserPreferenceRepository::META_KEY, 'subscribed' );
+		$integration = new PrivacyIntegration( new PrivacyRepository(), new EmailIdentity() );
+
+		$export = $integration->export( 'member@example.com', 1 );
+		self::assertContains( 'argentwolf-post-notifier-user-' . $user_id, array_column( $export['data'], 'item_id' ) );
+
+		$erase = $integration->erase( 'member@example.com', 1 );
+		self::assertTrue( $erase['items_removed'] );
+		self::assertFalse( $erase['items_retained'] );
+		self::assertSame( '', get_user_meta( $user_id, RegisteredUserPreferenceRepository::META_KEY, true ) );
+		self::assertSame( array(), $integration->export( 'member@example.com', 1 )['data'] );
+	}
+
+	public function test_post_removal_stops_delivery_and_deleted_user_rows_are_redacted(): void {
+		$one     = $this->subscriber( 'removed-one@example.com' );
+		$two     = $this->subscriber( 'removed-two@example.com' );
+		$post_id = $this->publish( array( 'included_subscriber_ids' => array( $one, $two ) ) );
+		$id      = (int) $this->campaign_for( $post_id )['id'];
+		$this->preparation()->prepare( $id );
+
+		global $wpdb;
+		$tables  = TableNames::from_database( $wpdb );
+		$user_id = self::factory()->user->create();
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET user_id = %d WHERE campaign_id = %d ORDER BY id LIMIT 1',
+				$tables->campaign_recipients(),
+				$user_id,
+				$id
+			)
+		);
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $user_id );
+		$redacted = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT status, skip_reason, email_snapshot, user_id FROM %i
+				WHERE campaign_id = %d AND personal_data_erased_at_gmt IS NOT NULL',
+				$tables->campaign_recipients(),
+				$id
+			),
+			ARRAY_A
+		);
+		// phpcs:enable
+		self::assertSame( 'skipped', $redacted['status'] );
+		self::assertSame( PrivacyRepository::SKIP_USER_DELETED, $redacted['skip_reason'] );
+		self::assertNull( $redacted['email_snapshot'] );
+		self::assertNull( $redacted['user_id'] );
+
+		wp_trash_post( $post_id );
+		$campaign = ( new CampaignRepository() )->find( $id );
+		self::assertSame( CampaignRepository::STATUS_FAILED, $campaign['status'] );
+		self::assertSame( PrivacyRepository::SKIP_POST_REMOVED, $campaign['last_error_code'] );
+		self::assertSame( array( 'post_removed', 'user_deleted' ), $this->skip_reasons( $id ) );
+		self::assertSame( 0, $this->worker()->run( 2 )['claimed'] );
+		self::assertCount( 0, $this->transport->messages );
 	}
 
 	/**

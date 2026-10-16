@@ -61,6 +61,8 @@ use ArgentWolf\PostNotifier\Health\PublicationSiteHealth;
 use ArgentWolf\PostNotifier\Lifecycle\UpgradeManager;
 use ArgentWolf\PostNotifier\Mail\MailTransport;
 use ArgentWolf\PostNotifier\Mail\WpMailTransport;
+use ArgentWolf\PostNotifier\Privacy\PrivacyIntegration;
+use ArgentWolf\PostNotifier\Privacy\PrivacyRepository;
 use ArgentWolf\PostNotifier\Privacy\PrivacySettings;
 use ArgentWolf\PostNotifier\Privacy\RetentionCleanup;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
@@ -952,6 +954,13 @@ final class Plugin {
 				self::typed( $services, PrivacySettings::class )
 			)
 		);
+		$container->set(
+			PrivacyIntegration::class,
+			static fn ( Container $services ): PrivacyIntegration => new PrivacyIntegration(
+				new PrivacyRepository(),
+				self::typed( $services, EmailIdentity::class )
+			)
+		);
 	}
 
 	/**
@@ -1003,6 +1012,7 @@ final class Plugin {
 				DeliveryStatusPage::class,
 				PrivacySettingsPage::class,
 				ClickController::class,
+				PrivacyIntegration::class,
 				NamedListAdminPage::class,
 				UserNotificationPreferenceProfile::class,
 				VerificationProviderNotice::class,
