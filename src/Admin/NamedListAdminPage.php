@@ -16,6 +16,7 @@ use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Capability-gated named-list and typed-membership management.
@@ -170,18 +171,52 @@ final class NamedListAdminPage implements Registerable {
 		$this->require_post();
 		check_admin_referer( self::CREATE_ACTION );
 
-		try {
-			$list_id = $this->repository->create(
+		wp_safe_redirect(
+			$this->create_from_request(
 				$this->request_text( $_POST, 'name' ),
-				$this->request_text( $_POST, 'description' ),
-				get_current_user_id()
-			);
+				$this->request_text( $_POST, 'description' )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Create a list for an already-authorized request and return the PRG target.
+	 *
+	 * The target is always the list index, which re-reads all lists, so the new
+	 * list is visible immediately. Creation failures and audit failures can
+	 * never leave the browser on a blank admin-post.php response.
+	 *
+	 * @param string $name        Raw list name.
+	 * @param string $description Raw description.
+	 * @return string Local redirect URL.
+	 */
+	public function create_from_request( string $name, string $description ): string {
+		try {
+			$list_id = $this->repository->create( $name, $description, get_current_user_id() );
 		} catch ( InvalidArgumentException ) {
-			$this->redirect_index( 'invalid_list' );
+			return add_query_arg( 'arpn_notice', 'invalid_list', $this->index_url() );
+		} catch ( Throwable ) {
+			return add_query_arg( 'arpn_notice', 'create_failed', $this->index_url() );
 		}
 
-		$this->audit->record_list_event( AuditEventType::ListCreated, $list_id );
-		$this->redirect_editor( $list_id, 'created' );
+		$notice = 'created';
+		if ( $list_id > 0 ) {
+			try {
+				$this->audit->record_list_event( AuditEventType::ListCreated, $list_id );
+			} catch ( Throwable ) {
+				// The list exists; a ledger failure must not hide it from the operator.
+				$notice = 'created';
+			}
+		}
+
+		return add_query_arg(
+			array(
+				'arpn_notice' => $notice,
+				'arpn_new'    => max( 0, $list_id ),
+			),
+			$this->index_url()
+		);
 	}
 
 	/**
@@ -350,6 +385,8 @@ final class NamedListAdminPage implements Registerable {
 		echo '<th>' . esc_html__( 'Description', 'argentwolf-post-notifier' ) . '</th>';
 		echo '<th>' . esc_html__( 'Members', 'argentwolf-post-notifier' ) . '</th>';
 		echo '</tr></thead><tbody>';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only highlight.
+		$new_id = absint( $this->request_text( $_GET, 'arpn_new' ) );
 		foreach ( $lists as $list ) {
 			$url = add_query_arg(
 				array(
@@ -358,7 +395,10 @@ final class NamedListAdminPage implements Registerable {
 				),
 				admin_url( 'admin.php' )
 			);
-			echo '<tr><td><a href="' . esc_url( $url ) . '">';
+			echo (int) $list['id'] === $new_id && $new_id > 0
+				? '<tr class="arpn-new-list" style="font-weight:600"><td><a href="'
+				: '<tr><td><a href="';
+			echo esc_url( $url ) . '">';
 			echo esc_html( (string) $list['name'] );
 			echo '</a></td><td>' . esc_html( (string) ( $list['description'] ?? '' ) ) . '</td>';
 			echo '<td>' . esc_html( (string) (int) $list['member_count'] ) . '</td></tr>';
@@ -553,6 +593,10 @@ final class NamedListAdminPage implements Registerable {
 			'updated'          => __( 'Notification list updated.', 'argentwolf-post-notifier' ),
 			'deleted'          => __( 'Notification list deleted.', 'argentwolf-post-notifier' ),
 			'invalid_list'     => __( 'Enter a valid list name.', 'argentwolf-post-notifier' ),
+			'create_failed'    => __(
+				'The list could not be created. Please try again.',
+				'argentwolf-post-notifier'
+			),
 			'member_added'     => __( 'List member added.', 'argentwolf-post-notifier' ),
 			'member_exists'    => __(
 				'That member is already on this list.',
@@ -573,7 +617,8 @@ final class NamedListAdminPage implements Registerable {
 			return;
 		}
 
-		$class = str_starts_with( $notice, 'invalid_' ) || 'member_not_found' === $notice
+		$class = str_starts_with( $notice, 'invalid_' )
+			|| in_array( $notice, array( 'member_not_found', 'create_failed' ), true )
 			? 'notice notice-error'
 			: 'notice notice-success is-dismissible';
 		echo '<div class="' . esc_attr( $class ) . '"><p>';

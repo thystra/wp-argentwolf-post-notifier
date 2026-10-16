@@ -45,6 +45,33 @@ final class NamedListAdminTest extends WP_UnitTestCase {
 		}
 	}
 
+	public function test_create_redirects_to_index_that_shows_the_new_list(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$page = Plugin::instance()->container()->get( NamedListAdminPage::class );
+		self::assertInstanceOf( NamedListAdminPage::class, $page );
+
+		$target = $page->create_from_request( 'Fresh staging list', 'New' );
+		$parts  = wp_parse_url( $target );
+		parse_str( $parts['query'] ?? '', $query );
+		self::assertSame( NamedListAdminPage::PAGE_SLUG, $query['page'] );
+		self::assertSame( 'created', $query['arpn_notice'] );
+		self::assertArrayNotHasKey( 'list_id', $query );
+		self::assertGreaterThan( 0, (int) $query['arpn_new'] );
+
+		// Render the PRG target exactly as the browser would load it.
+		$_GET = $query;
+		ob_start();
+		$page->render();
+		$html = (string) ob_get_clean();
+		$_GET = array();
+		self::assertStringContainsString( 'Notification list created.', $html );
+		self::assertStringContainsString( 'Fresh staging list', $html );
+		self::assertStringContainsString( 'arpn-new-list', $html );
+
+		$invalid = $page->create_from_request( '   ', '' );
+		self::assertStringContainsString( 'arpn_notice=invalid_list', $invalid );
+	}
+
 	public function test_repository_manages_typed_members_without_duplicate_rows(): void {
 		$repository = $this->repository();
 		$now        = $this->utc( '2026-09-26 14:00:00' );
