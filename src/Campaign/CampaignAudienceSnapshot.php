@@ -11,7 +11,9 @@ use ArgentWolf\PostNotifier\Database\TableNames;
 use ArgentWolf\PostNotifier\Database\UtcDateTime;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
+use ArgentWolf\PostNotifier\Settings\NotificationDefaults;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -106,10 +108,17 @@ final class CampaignAudienceSnapshot {
 		$config = PostNotificationMeta::sanitize_audience_config(
 			get_post_meta( $post_id, PostNotificationMeta::AUDIENCE_CONFIG_KEY, true )
 		);
-		$json   = $this->encode(
+		$config = ( new NotificationDefaults() )->resolve_audience(
+			$config,
+			new NamedListRepository( $this->database )
+		);
+		$all    = true === $config['include_all_subscribers'];
+		unset( $config['include_all_subscribers'] );
+		$json = $this->encode(
 			array(
-				'version' => self::VERSION,
-				'config'  => $config,
+				'version'                 => self::VERSION,
+				'config'                  => $config,
+				'include_all_subscribers' => $all,
 			)
 		);
 
@@ -147,7 +156,12 @@ final class CampaignAudienceSnapshot {
 			return null;
 		}
 
-		return PostNotificationMeta::sanitize_audience_config( $document['config'] );
+		$config = PostNotificationMeta::sanitize_audience_config( $document['config'] );
+
+		$config['include_all_subscribers'] = true === (
+			$document['include_all_subscribers'] ?? false
+		);
+		return $config;
 	}
 
 	/**
@@ -210,10 +224,13 @@ final class CampaignAudienceSnapshot {
 
 		$json = $this->encode(
 			array(
-				'version'      => self::VERSION,
-				'config'       => $config,
-				'skip_counts'  => $skips,
-				'resolved_gmt' => UtcDateTime::format( $current ),
+				'version'                 => self::VERSION,
+				'config'                  => $config,
+				'include_all_subscribers' => true === (
+					$config['include_all_subscribers'] ?? false
+				),
+				'skip_counts'             => $skips,
+				'resolved_gmt'            => UtcDateTime::format( $current ),
 			)
 		);
 

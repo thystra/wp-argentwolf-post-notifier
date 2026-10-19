@@ -29,6 +29,30 @@ unhealthy:
 - the editor sidebar and an admin notice warn;
 - standalone double opt-in subscribers are not affected.
 
+## Site-wide notification defaults
+
+**Post Notifier → Settings** controls new-post notifications. Existing sites
+upgrade with the send default **Off**; enabling it affects only future
+publication events, never posts already published. The default audience is
+**All Subscribers**: a dynamic view of opted-in standalone subscribers and
+verified, opted-in WordPress accounts. It requires no list membership and never
+creates a second consent record. Admins can instead select one named list as
+the site default. If that list has been deleted, preparation fails closed
+rather than broadening to All Subscribers.
+
+An explicit per-post **Send notification** or **Do not send** overrides the
+site-wide send switch. When a post has no positive audience targets, the
+site-wide audience applies (individual exclusions still narrow it). Explicit
+roles, lists, and individual inclusions on a post replace the default audience.
+Campaigns freeze this effective audience on actual publication. Membership
+never bypasses consent, verification, or suppression; matching identities
+are deduplicated by normalized email before delivery.
+
+The native Post sidebar, improved publish-time prompts, list duplication,
+bulk selection, and CSV pending-membership enrollment are planned as separate
+qualified changes. The existing editor plugin sidebar remains in place in
+this tranche.
+
 ## Cron and the WP-CLI worker
 
 Publishing a post creates a `building` campaign. A cron event prepares it

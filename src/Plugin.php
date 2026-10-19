@@ -13,6 +13,8 @@ use ArgentWolf\PostNotifier\Admin\ExistingUserInvitations;
 use ArgentWolf\PostNotifier\Admin\PrivacySettingsPage;
 use ArgentWolf\PostNotifier\Admin\NamedListAdminPage;
 use ArgentWolf\PostNotifier\Admin\NotificationTemplateSettingsPage;
+use ArgentWolf\PostNotifier\Admin\NotificationDefaultsPage;
+use ArgentWolf\PostNotifier\Settings\NotificationDefaults;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminPage;
 use ArgentWolf\PostNotifier\Admin\SubscriberAdminRepository;
 use ArgentWolf\PostNotifier\Admin\SubscriberCsvExporter;
@@ -269,6 +271,19 @@ final class Plugin {
 			$container->set(
 				CampaignDiagnostics::class,
 				static fn (): CampaignDiagnostics => new CampaignDiagnostics()
+			);
+			$container->set(
+				NotificationDefaults::class,
+				static fn (): NotificationDefaults => new NotificationDefaults()
+			);
+			$container->set(
+				NotificationDefaultsPage::class,
+				static function ( Container $services ): NotificationDefaultsPage {
+					return new NotificationDefaultsPage(
+						self::typed( $services, NotificationDefaults::class ),
+						self::typed( $services, NamedListRepository::class )
+					);
+				}
 			);
 			$container->set(
 				PublicationObserver::class,
@@ -1047,6 +1062,7 @@ final class Plugin {
 				DeliveryScheduler::class,
 				SubscriberAdminPage::class,
 				NotificationTemplateSettingsPage::class,
+				NotificationDefaultsPage::class,
 				SubscriberCsvImportPage::class,
 				DeliveryStatusPage::class,
 				PrivacySettingsPage::class,

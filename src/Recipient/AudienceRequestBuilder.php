@@ -37,7 +37,12 @@ final class AudienceRequestBuilder {
 			excluded_subscriber_ids: $this->positive_ids(
 				$config['excluded_subscriber_ids'] ?? array()
 			),
-			site_default_user_subscribed: $site_default_user_subscribed
+			site_default_user_subscribed: $site_default_user_subscribed,
+			include_all_subscribers: in_array(
+				$config['include_all_subscribers'] ?? null,
+				array( true ),
+				true
+			)
 		);
 	}
 
