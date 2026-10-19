@@ -36,6 +36,8 @@ main() {
 		'argentwolf-post-notifier/readme.txt' \
 		'argentwolf-post-notifier/uninstall.php' \
 		'argentwolf-post-notifier/src/Plugin.php' \
+		'argentwolf-post-notifier/src/Settings/NotificationDefaults.php' \
+		'argentwolf-post-notifier/src/Admin/NotificationDefaultsPage.php' \
 		'argentwolf-post-notifier/src/Version.php' \
 		'argentwolf-post-notifier/src/Campaign/CampaignContentSnapshotStore.php' \
 		'argentwolf-post-notifier/src/Content/EmailContentRenderer.php' \

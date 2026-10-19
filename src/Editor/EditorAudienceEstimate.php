@@ -11,6 +11,9 @@ use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Recipient\AudienceRequestBuilder;
 use ArgentWolf\PostNotifier\Recipient\AudienceResolver;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Settings\NotificationDefaults;
+use RuntimeException;
 use Closure;
 use LogicException;
 use WP_Error;
@@ -165,8 +168,20 @@ final class EditorAudienceEstimate implements Registerable {
 			throw new LogicException( 'The audience resolver is invalid.' );
 		}
 
-		$submitted  = $request->get_param( 'audience' );
-		$config     = PostNotificationMeta::sanitize_audience_config( $submitted );
+		$submitted = $request->get_param( 'audience' );
+		$config    = PostNotificationMeta::sanitize_audience_config( $submitted );
+		try {
+			$config = ( new NotificationDefaults() )->resolve_audience(
+				$config,
+				new NamedListRepository()
+			);
+		} catch ( RuntimeException ) {
+			return new WP_Error(
+				'argentwolf_post_notifier_default_list_unavailable',
+				__( 'The default notification list is unavailable.', 'argentwolf-post-notifier' ),
+				array( 'status' => 409 )
+			);
+		}
 		$resolution = $resolver->resolve(
 			$this->requests->from_config( $config, false )
 		);

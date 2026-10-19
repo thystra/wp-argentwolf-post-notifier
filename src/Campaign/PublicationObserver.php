@@ -12,6 +12,7 @@ use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Editor\ContentMode;
 use ArgentWolf\PostNotifier\Editor\PostNotificationMeta;
 use ArgentWolf\PostNotifier\Editor\SendIntent;
+use ArgentWolf\PostNotifier\Settings\NotificationDefaults;
 use InvalidArgumentException;
 use LogicException;
 use RuntimeException;
@@ -102,11 +103,14 @@ final class PublicationObserver implements Registerable {
 			)
 		);
 
-		/*
-		 * Site-default send policy does not exist yet. Fail closed until a later
-		 * site policy explicitly resolves that neutral state to Send.
-		 */
-		if ( SendIntent::Send->value !== $send_intent ) {
+		// An absent policy is Off on upgraded sites. Explicit author intent wins.
+		if (
+			SendIntent::DoNotSend->value === $send_intent
+			|| (
+				SendIntent::SiteDefault->value === $send_intent
+				&& ! ( new NotificationDefaults() )->get()['send']
+			)
+		) {
 			return;
 		}
 

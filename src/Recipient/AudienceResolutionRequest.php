@@ -64,6 +64,13 @@ final class AudienceResolutionRequest {
 	private readonly bool $site_default_user_subscribed;
 
 	/**
+	 * Include the site's opted-in population as an audience source.
+	 *
+	 * @var bool
+	 */
+	private readonly bool $include_all_subscribers;
+
+	/**
 	 * Construct one request.
 	 *
 	 * @param array<int,int> $role_user_ids                Users contributed by roles.
@@ -73,6 +80,7 @@ final class AudienceResolutionRequest {
 	 * @param array<int,int> $excluded_user_ids            Explicitly excluded users.
 	 * @param array<int,int> $excluded_subscriber_ids      Explicitly excluded subscribers.
 	 * @param bool           $site_default_user_subscribed Whether site_default users opt in.
+	 * @param bool           $include_all_subscribers      Include all opted-in identities.
 	 */
 	public function __construct(
 		array $role_user_ids = array(),
@@ -81,7 +89,8 @@ final class AudienceResolutionRequest {
 		array $included_subscriber_ids = array(),
 		array $excluded_user_ids = array(),
 		array $excluded_subscriber_ids = array(),
-		bool $site_default_user_subscribed = false
+		bool $site_default_user_subscribed = false,
+		bool $include_all_subscribers = false
 	) {
 		$this->role_user_ids                = self::normalize_ids( $role_user_ids );
 		$this->named_list_ids               = self::normalize_ids( $named_list_ids );
@@ -90,6 +99,7 @@ final class AudienceResolutionRequest {
 		$this->excluded_user_ids            = self::normalize_ids( $excluded_user_ids );
 		$this->excluded_subscriber_ids      = self::normalize_ids( $excluded_subscriber_ids );
 		$this->site_default_user_subscribed = $site_default_user_subscribed;
+		$this->include_all_subscribers      = $include_all_subscribers;
 	}
 
 	/**
@@ -153,6 +163,15 @@ final class AudienceResolutionRequest {
 	 */
 	public function site_default_user_subscribed(): bool {
 		return $this->site_default_user_subscribed;
+	}
+
+	/**
+	 * Determine whether this request includes all opted-in addresses.
+	 *
+	 * @return bool
+	 */
+	public function include_all_subscribers(): bool {
+		return $this->include_all_subscribers;
 	}
 
 	/**

@@ -50,6 +50,10 @@ final class AudienceResolver {
 		$contacts = array();
 		$skips    = array();
 
+		if ( $request->include_all_subscribers() ) {
+			$this->add_all_subscribers( $contacts );
+		}
+
 		foreach ( $request->role_user_ids() as $user_id ) {
 			$this->add_contact(
 				$contacts,
@@ -103,6 +107,48 @@ final class AudienceResolver {
 		ksort( $skips, SORT_STRING );
 
 		return new AudienceResolution( $recipients, $skips );
+	}
+
+	/**
+	 * Enumerate current opted-in candidates through the existing central registry.
+	 *
+	 * Ineligible addresses are still rechecked below, and suppressed addresses
+	 * remain excluded. No new consent or list-membership records are created.
+	 *
+	 * @param array<string,array<string,mixed>> $contacts Contact map.
+	 * @return void
+	 */
+	private function add_all_subscribers( array &$contacts ): void {
+		foreach ( $this->subscribers->subscribed_ids() as $id ) {
+			$this->add_contact(
+				$contacts,
+				NamedListMemberType::Subscriber,
+				$id,
+				AudienceSource::AllSubscribers
+			);
+		}
+		// Core usermeta has no composite meta-key/value index; query only positive opt-ins.
+		// The result still goes through verification and suppression checks.
+		$users = get_users(
+			array(
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Required opt-in filter.
+				'meta_key'   => RegisteredUserPreferenceRepository::META_KEY,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Required opt-in value.
+				'meta_value' => RegisteredUserPreference::Subscribed->value,
+				'fields'     => 'ID',
+				'orderby'    => 'ID',
+				'order'      => 'ASC',
+				'number'     => -1,
+			)
+		);
+		foreach ( $users as $user_id ) {
+			$this->add_contact(
+				$contacts,
+				NamedListMemberType::User,
+				(int) $user_id,
+				AudienceSource::AllSubscribers
+			);
+		}
 	}
 
 	/**

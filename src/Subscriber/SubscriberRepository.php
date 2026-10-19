@@ -62,6 +62,28 @@ final class SubscriberRepository {
 	}
 
 	/**
+	 * Return candidate IDs from the one central standalone subscriber registry.
+	 *
+	 * All recipients are subsequently checked for suppression and eligibility.
+	 *
+	 * @return array<int,int>
+	 */
+	public function subscribed_ids(): array {
+		$query = $this->database->prepare(
+			'SELECT id FROM %i WHERE status = %s ORDER BY id ASC',
+			$this->table,
+			SubscriberStatus::Subscribed->value
+		);
+		// Plugin-owned tables require direct database queries.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $this->database->get_col( $query );
+		// phpcs:enable
+		return array_map( 'intval', $rows );
+	}
+
+	/**
 	 * Create a new pending subscriber or refresh an existing pending record.
 	 *
 	 * Existing subscribed, unsubscribed, and suppressed records are never moved
