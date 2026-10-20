@@ -10,6 +10,7 @@ namespace ArgentWolf\PostNotifier\Editor;
 use ArgentWolf\PostNotifier\Admin\Capabilities;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
 use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
+use ArgentWolf\PostNotifier\Settings\NotificationDefaults;
 use ArgentWolf\PostNotifier\Verification\VerificationProvider;
 use Closure;
 use Throwable;
@@ -72,6 +73,7 @@ final class EditorAssets implements Registerable {
 				'wp-api-fetch',
 				'wp-components',
 				'wp-data',
+				'wp-edit-post',
 				'wp-editor',
 				'wp-element',
 				'wp-i18n',
@@ -168,6 +170,31 @@ final class EditorAssets implements Registerable {
 					. EditorAudienceEstimate::REST_NAMESPACE
 					. EditorAudienceEstimate::ROUTE,
 			),
+			'defaults'      => $this->notification_defaults(),
+		);
+	}
+
+	/**
+	 * Return the effective site policy without exposing recipient identities.
+	 *
+	 * @return array{send:bool,audience:string,listId:int,label:string}
+	 */
+	private function notification_defaults(): array {
+		$policy = ( new NotificationDefaults() )->get();
+		$label  = __( 'All Subscribers', 'argentwolf-post-notifier' );
+		if ( NotificationDefaults::AUDIENCE_LIST === $policy['audience'] ) {
+			$list  = $this->named_lists->find( $policy['list_id'] );
+			$label = null === $list
+				? __( 'Unavailable default list', 'argentwolf-post-notifier' )
+				: (string) $list['name'];
+		} elseif ( NotificationDefaults::AUDIENCE_ALL !== $policy['audience'] ) {
+			$label = __( 'Invalid site audience policy', 'argentwolf-post-notifier' );
+		}
+		return array(
+			'send'     => $policy['send'],
+			'audience' => $policy['audience'],
+			'listId'   => $policy['list_id'],
+			'label'    => sanitize_text_field( $label ),
 		);
 	}
 
