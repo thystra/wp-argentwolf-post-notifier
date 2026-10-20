@@ -242,6 +242,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 				'included_subscriber_ids' => array( 7 ),
 				'excluded_user_ids'       => array( 6 ),
 				'excluded_subscriber_ids' => array( 4, 5 ),
+				'include_all_subscribers' => false,
 			),
 			get_post_meta( $post_id, PostNotificationMeta::AUDIENCE_CONFIG_KEY, true )
 		);
@@ -256,6 +257,37 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 			)
 		);
 		self::assertGreaterThanOrEqual( 400, $response->get_status() );
+	}
+
+	/**
+	 * Confirm an explicit All Subscribers override survives REST save and reload.
+	 *
+	 * @return void
+	 */
+	public function test_all_subscribers_override_persists_via_rest(): void {
+		$post_id                             = self::factory()->post->create(
+			array( 'post_status' => 'draft' )
+		);
+		$audience                            = PostNotificationMeta::default_audience_config();
+		$audience['include_all_subscribers'] = true;
+
+		$response = $this->update_post_meta_via_rest(
+			$post_id,
+			array( PostNotificationMeta::AUDIENCE_CONFIG_KEY => $audience )
+		);
+		self::assertSame( 200, $response->get_status() );
+		self::assertSame(
+			$audience,
+			get_post_meta( $post_id, PostNotificationMeta::AUDIENCE_CONFIG_KEY, true )
+		);
+
+		$reloaded = $this->get_post_via_rest( $post_id );
+		self::assertSame( 200, $reloaded->get_status() );
+		self::assertSame(
+			$audience,
+			$reloaded->get_data()['meta'][ PostNotificationMeta::AUDIENCE_CONFIG_KEY ]
+		);
+		$this->assert_no_campaign_state();
 	}
 
 	/**
@@ -478,6 +510,7 @@ final class PostNotificationMetaTest extends WP_UnitTestCase {
 				'included_subscriber_ids' => array( 7 ),
 				'excluded_user_ids'       => array( 6 ),
 				'excluded_subscriber_ids' => array( 4, 5 ),
+				'include_all_subscribers' => false,
 			),
 			PostNotificationMeta::CONTENT_MODE_KEY    => ContentMode::Full->value,
 			PostNotificationMeta::TEMPLATE_ID_KEY     => 17,

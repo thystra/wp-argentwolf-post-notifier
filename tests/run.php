@@ -607,14 +607,19 @@ $assert(
 		&& str_contains( $editor_audience_estimate_source, 'AudienceResolver' )
 		&& str_contains( $editor_audience_estimate_source, "'eligible' => count" )
 		&& str_contains( $audience_request_builder_source, "'role__in'" )
-		&& str_contains( $post_editor_runtime_source, 'PluginSidebar' )
+		&& str_contains( $post_editor_runtime_source, 'PluginDocumentSettingPanel' )
+		&& str_contains( $post_editor_runtime_source, 'window.wp.editPost' )
 		&& str_contains( $post_editor_runtime_source, 'PluginPrePublishPanel' )
-		&& str_contains( $post_editor_runtime_source, 'Post notification summary' )
+		&& str_contains( $post_editor_runtime_source, 'Email notification review' )
 		&& str_contains(
 			$post_editor_runtime_source,
-			'This confirmation does not create a campaign or send email.'
+			'Emails are queued only when WordPress publishes the post.'
 		)
 		&& str_contains( $post_editor_runtime_source, 'render: PostNotificationPlugin' )
+		&& str_contains( $post_editor_runtime_source, 'Email notification decision' )
+		&& str_contains( $post_editor_runtime_source, 'Who will receive this post?' )
+		&& str_contains( $post_editor_runtime_source, 'include_all_subscribers' )
+		&& str_contains( $post_editor_runtime_source, 'All Subscribers' )
 		&& str_contains( $post_editor_runtime_source, 'CheckboxControl' )
 		&& str_contains( $post_editor_runtime_source, 'editPost' )
 		&& str_contains( $post_editor_runtime_source, "'role_slugs'" )
@@ -622,7 +627,7 @@ $assert(
 		&& str_contains( $post_editor_runtime_source, "method: 'POST'" )
 		&& str_contains( $post_editor_runtime_source, 'data: { email: candidate }' )
 		&& str_contains( $post_editor_runtime_source, 'estimateSettings.path' )
-		&& str_contains( $post_editor_runtime_source, 'Eligible recipients: %d' )
+		&& str_contains( $post_editor_runtime_source, 'Estimated eligible recipients: %d' )
 		&& str_contains( $post_editor_runtime_source, 'metaKeys.templateId' )
 		&& str_contains( $post_editor_runtime_source, 'Email template' )
 		&& str_contains(
@@ -632,7 +637,7 @@ $assert(
 		&& str_contains( $post_editor_runtime_source, 'verificationSettings.healthy' )
 		&& str_contains(
 			$post_editor_runtime_source,
-			'The current audience resolves to zero eligible recipients.'
+			'No currently eligible recipients match this selection.'
 		)
 		&& ! str_contains( $post_editor_runtime_source, '&email=' )
 		&& ! str_contains( $post_editor_runtime_source, '&include=' )
@@ -641,7 +646,7 @@ $assert(
 			(string) $package_manifest_script,
 			'argentwolf-post-notifier/assets/runtime/post-editor.js'
 		),
-	'Beta.1 editor sidebar must expose privacy-bounded audience controls '
+	'Native Post settings and pre-publish review must retain privacy-bounded audience controls '
 		. 'and aggregate resolution without putting contact PII in request URLs.'
 );
 $assert(

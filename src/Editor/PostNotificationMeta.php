@@ -299,7 +299,7 @@ final class PostNotificationMeta implements Registerable {
 	/**
 	 * Return the canonical empty audience configuration.
 	 *
-	 * @return array<string,array<int,int|string>>
+	 * @return array<string,mixed>
 	 */
 	public static function default_audience_config(): array {
 		return array(
@@ -309,6 +309,7 @@ final class PostNotificationMeta implements Registerable {
 			'included_subscriber_ids' => array(),
 			'excluded_user_ids'       => array(),
 			'excluded_subscriber_ids' => array(),
+			'include_all_subscribers' => false,
 		);
 	}
 
@@ -319,7 +320,7 @@ final class PostNotificationMeta implements Registerable {
 	 * reject them through the schema before this sanitizer runs.
 	 *
 	 * @param mixed $value Candidate configuration.
-	 * @return array<string,array<int,int|string>>
+	 * @return array<string,mixed>
 	 */
 	public static function sanitize_audience_config( mixed $value ): array {
 		if ( ! is_array( $value ) ) {
@@ -345,6 +346,7 @@ final class PostNotificationMeta implements Registerable {
 			'excluded_subscriber_ids' => self::sanitize_ids(
 				$value['excluded_subscriber_ids'] ?? array()
 			),
+			'include_all_subscribers' => true === ( $value['include_all_subscribers'] ?? false ),
 		);
 	}
 
@@ -440,6 +442,7 @@ final class PostNotificationMeta implements Registerable {
 				'included_subscriber_ids' => $id_list,
 				'excluded_user_ids'       => $id_list,
 				'excluded_subscriber_ids' => $id_list,
+				'include_all_subscribers' => array( 'type' => 'boolean' ),
 			),
 		);
 	}

@@ -137,6 +137,21 @@ final class NotificationDefaults {
 	 * @throws RuntimeException When the configured default list is unavailable.
 	 */
 	public function resolve_audience( array $config, NamedListRepository $lists ): array {
+		if ( true === ( $config['include_all_subscribers'] ?? false ) ) {
+			// Explicit All Subscribers overrides a named-list default. Preserve exclusions.
+			foreach (
+				array(
+					'role_slugs',
+					'named_list_ids',
+					'included_user_ids',
+					'included_subscriber_ids',
+				)
+				as $key
+			) {
+				$config[ $key ] = array();
+			}
+			return $config;
+		}
 		$config['include_all_subscribers'] = false;
 		foreach (
 			array( 'role_slugs', 'named_list_ids', 'included_user_ids', 'included_subscriber_ids' )

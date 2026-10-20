@@ -1,24 +1,26 @@
 /**
  * File: assets/runtime/post-editor.js
  *
- * Human-readable post-editor sidebar for notification configuration.
+ * Native Post-settings panel and actionable pre-publish notification review.
  */
 
 /**
- * Register the post-notification editor sidebar.
+ * Register post-notification document settings and the pre-publish review.
  *
- * @param {Object}   plugins    WordPress plugins package.
- * @param {Object}   editor     WordPress editor package.
- * @param {Object}   components WordPress components package.
- * @param {Object}   data       WordPress data package.
- * @param {Object}   element    WordPress element package.
- * @param {Object}   i18n       WordPress internationalization package.
- * @param {Function} apiFetch   WordPress REST API fetch helper.
- * @param {Object}   settings   Server-provided persistence contract.
+ * @param {Object}   plugins         WordPress plugins package.
+ * @param {Object}   editor          WordPress editor package.
+ * @param {Object}   editPostPackage WordPress edit-post package.
+ * @param {Object}   components      WordPress components package.
+ * @param {Object}   data            WordPress data package.
+ * @param {Object}   element         WordPress element package.
+ * @param {Object}   i18n            WordPress internationalization package.
+ * @param {Function} apiFetch        WordPress REST API fetch helper.
+ * @param {Object}   settings        Server-provided persistence contract.
  */
 ( function (
 	plugins,
 	editor,
+	editPostPackage,
 	components,
 	data,
 	element,
@@ -34,13 +36,17 @@
 		! settings.templates ||
 		! settings.verification ||
 		! settings.contactLookup ||
-		! settings.estimate
+		! settings.estimate ||
+		! settings.defaults ||
+		! editPostPackage ||
+		! editPostPackage.PluginDocumentSettingPanel
 	) {
 		return;
 	}
 
 	const { registerPlugin } = plugins;
-	const { PluginPrePublishPanel, PluginSidebar } = editor;
+	const { PluginPrePublishPanel } = editor;
+	const { PluginDocumentSettingPanel } = editPostPackage;
 	const {
 		Button,
 		CheckboxControl,
@@ -60,6 +66,7 @@
 		verification: verificationSettings,
 		contactLookup,
 		estimate: estimateSettings,
+		defaults: siteDefaults,
 	} = settings;
 
 	/**
@@ -102,6 +109,7 @@
 			excluded_subscriber_ids: selectionValues(
 				config.excluded_subscriber_ids
 			),
+			include_all_subscribers: config.include_all_subscribers === true,
 		};
 	}
 
@@ -490,6 +498,176 @@
 	}
 
 	/**
+	 * Return the one-click selection for the common audience cases.
+	 * Any complex selection remains editable under Advanced targeting.
+	 *
+	 * @param {*} audience Current editor configuration.
+	 * @return {string} Audience selector value.
+	 */
+	function audienceChoice( audience ) {
+		const config = normalizedAudience( audience );
+		if ( config.include_all_subscribers ) {
+			return 'all';
+		}
+		const roles = selectionCount( config.role_slugs );
+		const includes =
+			selectionCount( config.included_user_ids ) +
+			selectionCount( config.included_subscriber_ids );
+		if ( roles === 0 && includes === 0 ) {
+			if ( config.named_list_ids.length === 0 ) {
+				return 'site_default';
+			}
+			if ( config.named_list_ids.length === 1 ) {
+				return `list:${ config.named_list_ids[ 0 ] }`;
+			}
+		}
+		return 'custom';
+	}
+
+	/**
+	 * Build the simple audience choices shown to post authors.
+	 *
+	 * @return {Array} SelectControl options.
+	 */
+	function audienceOptions() {
+		const result = [
+			{
+				label: sprintf(
+					/* translators: %s is the current site-wide audience. */
+					__( 'Site default (%s)', 'argentwolf-post-notifier' ),
+					siteDefaults.label
+				),
+				value: 'site_default',
+			},
+			{
+				label: __( 'All Subscribers', 'argentwolf-post-notifier' ),
+				value: 'all',
+			},
+		];
+		( Array.isArray( audienceChoices.lists )
+			? audienceChoices.lists
+			: []
+		).forEach( ( list ) => {
+			result.push( { label: list.label, value: `list:${ list.value }` } );
+		} );
+		result.push( {
+			label: __(
+				'Custom selections (advanced)',
+				'argentwolf-post-notifier'
+			),
+			value: 'custom',
+			disabled: true,
+		} );
+		return result;
+	}
+
+	/**
+	 * Convert a simple dropdown selection into the same stored audience object.
+	 * Explicit exclusions are retained unless separately edited.
+	 *
+	 * @param {*}      audience Existing configuration.
+	 * @param {string} choice   New selection.
+	 * @return {Object|null} New audience or null for an unsupported choice.
+	 */
+	function chooseAudience( audience, choice ) {
+		const config = normalizedAudience( audience );
+		const next = {
+			...config,
+			role_slugs: [],
+			named_list_ids: [],
+			included_user_ids: [],
+			included_subscriber_ids: [],
+			include_all_subscribers: false,
+		};
+		if ( choice === 'all' ) {
+			return { ...next, include_all_subscribers: true };
+		}
+		if ( choice === 'site_default' ) {
+			return next;
+		}
+		if ( choice.startsWith( 'list:' ) ) {
+			const id = Number( choice.slice( 5 ) );
+			if (
+				Number.isInteger( id ) &&
+				id > 0 &&
+				( audienceChoices.lists || [] ).some(
+					( item ) => item.value === id
+				)
+			) {
+				return { ...next, named_list_ids: [ id ] };
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Describe the effective audience and any existing exclusions.
+	 *
+	 * @param {*} audience Current editor configuration.
+	 * @return {string} Human-readable audience.
+	 */
+	function effectiveAudience( audience ) {
+		const choice = audienceChoice( audience );
+		if ( choice === 'custom' ) {
+			return __(
+				'Custom audience (advanced selection)',
+				'argentwolf-post-notifier'
+			);
+		}
+		const item = audienceOptions().find(
+			( option ) => option.value === choice
+		);
+		if ( item ) {
+			return item.label;
+		}
+		return __( 'Unavailable selected list', 'argentwolf-post-notifier' );
+	}
+
+	/**
+	 * Resolve the actual send decision from per-post intent and site default.
+	 *
+	 * @param {string} intent Post metadata choice.
+	 * @return {boolean} Whether email is requested.
+	 */
+	function willSend( intent ) {
+		if ( intent === values.sendIntent.send ) {
+			return true;
+		}
+		if ( intent === values.sendIntent.doNotSend ) {
+			return false;
+		}
+		return siteDefaults.send === true;
+	}
+
+	/**
+	 * Return the shared three-way send-choice options.
+	 *
+	 * @return {Array} SelectControl options.
+	 */
+	function sendOptions() {
+		return [
+			{
+				label: sprintf(
+					/* translators: %s: Whether the site notification default is On or Off. */
+					__( 'Site default (%s)', 'argentwolf-post-notifier' ),
+					siteDefaults.send
+						? __( 'On', 'argentwolf-post-notifier' )
+						: __( 'Off', 'argentwolf-post-notifier' )
+				),
+				value: values.sendIntent.siteDefault,
+			},
+			{
+				label: __( 'Send notification', 'argentwolf-post-notifier' ),
+				value: values.sendIntent.send,
+			},
+			{
+				label: __( 'Do not send', 'argentwolf-post-notifier' ),
+				value: values.sendIntent.doNotSend,
+			},
+		];
+	}
+
+	/**
 	 * Build a privacy-safe summary of canonical audience selections.
 	 *
 	 * @param {*} audience Saved audience configuration.
@@ -497,6 +675,13 @@
 	 */
 	function audienceSummary( audience ) {
 		const config = normalizedAudience( audience );
+		if ( config.include_all_subscribers ) {
+			return __(
+				'All Subscribers (explicit override)',
+				'argentwolf-post-notifier'
+			);
+		}
+
 		const roles = selectionCount( config.role_slugs );
 		const lists = selectionCount( config.named_list_ids );
 		const inclusions =
@@ -506,10 +691,14 @@
 			selectionCount( config.excluded_user_ids ) +
 			selectionCount( config.excluded_subscriber_ids );
 
-		if ( roles + lists + inclusions + exclusions === 0 ) {
-			return __(
-				'No explicit audience selections saved.',
-				'argentwolf-post-notifier'
+		if ( roles + lists + inclusions === 0 ) {
+			return sprintf(
+				/* translators: %d: Number of exclusions against the site default. */
+				__(
+					'Inherits site audience; %d exclusions.',
+					'argentwolf-post-notifier'
+				),
+				exclusions
 			);
 		}
 
@@ -672,10 +861,24 @@
 		const updateAudience = ( changes ) => {
 			setResolvedEstimate( null );
 			setEstimateMessage( '' );
-			updateMeta( metaKeys.audienceConfig, {
-				...audience,
-				...changes,
-			} );
+			const next = { ...audience, ...changes };
+			if (
+				! Object.prototype.hasOwnProperty.call(
+					changes,
+					'include_all_subscribers'
+				) &&
+				[
+					'role_slugs',
+					'named_list_ids',
+					'included_user_ids',
+					'included_subscriber_ids',
+				].some( ( key ) =>
+					Object.prototype.hasOwnProperty.call( changes, key )
+				)
+			) {
+				next.include_all_subscribers = false;
+			}
+			updateMeta( metaKeys.audienceConfig, next );
 		};
 		const updateAudienceField = ( field, value ) => {
 			updateAudience( { [ field ]: value } );
@@ -729,11 +932,11 @@
 			: [];
 
 		return createElement(
-			PluginSidebar,
+			PluginDocumentSettingPanel,
 			{
 				name: 'argentwolf-post-notifier-settings',
-				title: __( 'Post Notifications', 'argentwolf-post-notifier' ),
-				icon: 'email-alt',
+				title: __( 'Notifications', 'argentwolf-post-notifier' ),
+				className: 'argentwolf-post-notifier-document-settings',
 			},
 			verificationSettings.healthy === true
 				? null
@@ -749,53 +952,52 @@
 						)
 				  ),
 			createElement(
-				PanelBody,
-				{
-					title: __( 'Delivery', 'argentwolf-post-notifier' ),
-					initialOpen: true,
-				},
-				createElement( SelectControl, {
-					label: __(
-						'Notification intent',
-						'argentwolf-post-notifier'
-					),
-					value: sendIntent,
-					options: [
-						{
-							label: __(
-								'Site default',
-								'argentwolf-post-notifier'
-							),
-							value: values.sendIntent.siteDefault,
-						},
-						{
-							label: __(
-								'Send notification',
-								'argentwolf-post-notifier'
-							),
-							value: values.sendIntent.send,
-						},
-						{
-							label: __(
-								'Do not send',
-								'argentwolf-post-notifier'
-							),
-							value: values.sendIntent.doNotSend,
-						},
-					],
-					onChange: ( value ) =>
-						updateMeta( metaKeys.sendIntent, value ),
-					help: __(
-						'This setting records editorial intent only. It does not send email from the editor.',
-						'argentwolf-post-notifier'
-					),
-				} )
+				'p',
+				null,
+				willSend( sendIntent )
+					? __(
+							'Email will be queued when this post is published.',
+							'argentwolf-post-notifier'
+					  )
+					: __(
+							'No email will be sent when this post is published.',
+							'argentwolf-post-notifier'
+					  )
 			),
+			createElement( SelectControl, {
+				label: __( 'Notification intent', 'argentwolf-post-notifier' ),
+				value: sendIntent,
+				options: sendOptions(),
+				onChange: ( value ) => updateMeta( metaKeys.sendIntent, value ),
+				help: __(
+					'Overrides the site-wide send policy for this post only.',
+					'argentwolf-post-notifier'
+				),
+			} ),
+			createElement( SelectControl, {
+				label: __( 'Recipients', 'argentwolf-post-notifier' ),
+				value: audienceChoice( audience ),
+				options: audienceOptions(),
+				onChange: ( value ) => {
+					const next = chooseAudience( audience, value );
+					if ( next ) {
+						updateAudience( next );
+					}
+				},
+				help: __(
+					'All Subscribers includes everyone who has opted in and remains eligible. Named lists narrow the audience; being on a list does not grant consent.',
+					'argentwolf-post-notifier'
+				),
+			} ),
+			createElement( 'p', null, effectiveAudience( audience ) ),
 			createElement(
 				PanelBody,
 				{
-					title: __( 'Email content', 'argentwolf-post-notifier' ),
-					initialOpen: true,
+					title: __(
+						'Advanced email content',
+						'argentwolf-post-notifier'
+					),
+					initialOpen: false,
 				},
 				createElement( SelectControl, {
 					label: __( 'Email template', 'argentwolf-post-notifier' ),
@@ -873,10 +1075,21 @@
 			createElement(
 				PanelBody,
 				{
-					title: __( 'Audience', 'argentwolf-post-notifier' ),
+					title: __(
+						'Advanced audience targeting',
+						'argentwolf-post-notifier'
+					),
 					initialOpen: false,
 				},
 				createElement( 'p', null, audienceSummary( audience ) ),
+				createElement(
+					'p',
+					null,
+					__(
+						'Choosing roles, named lists, or individual inclusions here replaces the default audience. Exclusions alone narrow the default. A list never bypasses consent.',
+						'argentwolf-post-notifier'
+					)
+				),
 				createElement(
 					Button,
 					{
@@ -955,7 +1168,7 @@
 					'p',
 					null,
 					__(
-						'The estimate uses current editor selections. Registered users with the site-default preference are currently treated as not opted in.',
+						'The estimate uses the effective default or overridden audience. Each address receives at most one message. Pending or unsubscribed contacts remain ineligible.',
 						'argentwolf-post-notifier'
 					)
 				),
@@ -1038,10 +1251,59 @@
 			const editorStore = select( 'core/editor' );
 
 			return {
+				postId: Number( editorStore.getCurrentPostId() ) || 0,
 				postType: editorStore.getCurrentPostType(),
 				meta: editorStore.getEditedPostAttribute( 'meta' ) || {},
 			};
 		}, [] );
+		const { editPost } = useDispatch( 'core/editor' );
+		const [ preview, setPreview ] = useState( null );
+		const [ previewError, setPreviewError ] = useState( false );
+		const previewIntent =
+			state.meta[ metaKeys.sendIntent ] || values.sendIntent.siteDefault;
+		const previewKey = JSON.stringify(
+			normalizedAudience( state.meta[ metaKeys.audienceConfig ] )
+		);
+		useEffect( () => {
+			if (
+				state.postId < 1 ||
+				state.postType !== settings.postType ||
+				! willSend( previewIntent )
+			) {
+				setPreview( null );
+				setPreviewError( false );
+				return undefined;
+			}
+			let cancelled = false;
+			setPreview( null );
+			setPreviewError( false );
+			apiFetch( {
+				path: estimateSettings.path,
+				method: 'POST',
+				data: {
+					post_id: state.postId,
+					audience: JSON.parse( previewKey ),
+				},
+			} )
+				.then( ( response ) => {
+					if ( ! cancelled ) {
+						const count = Number( response && response.eligible );
+						if ( Number.isInteger( count ) && count >= 0 ) {
+							setPreview( count );
+						} else {
+							setPreviewError( true );
+						}
+					}
+				} )
+				.catch( () => {
+					if ( ! cancelled ) {
+						setPreviewError( true );
+					}
+				} );
+			return () => {
+				cancelled = true;
+			};
+		}, [ state.postId, state.postType, previewKey, previewIntent ] );
 
 		if ( settings.postType !== state.postType ) {
 			return null;
@@ -1145,7 +1407,7 @@
 			{
 				className: 'argentwolf-post-notifier-pre-publish-summary',
 				title: __(
-					'Post notification summary',
+					'Email notification review',
 					'argentwolf-post-notifier'
 				),
 				initialOpen: true,
@@ -1179,11 +1441,84 @@
 			createElement(
 				'p',
 				null,
-				__(
-					'Review the notification configuration that will be saved with this post.',
-					'argentwolf-post-notifier'
-				)
+				willSend( sendIntent )
+					? __(
+							'Email notifications will be sent when this post is published (or a scheduled post becomes public).',
+							'argentwolf-post-notifier'
+					  )
+					: __(
+							'Notifications are off for this post. Publishing will not create an email campaign.',
+							'argentwolf-post-notifier'
+					  )
 			),
+			createElement( SelectControl, {
+				label: __(
+					'Email notification decision',
+					'argentwolf-post-notifier'
+				),
+				value: sendIntent,
+				options: sendOptions(),
+				onChange: ( value ) =>
+					editPost( { meta: { [ metaKeys.sendIntent ]: value } } ),
+				help: __(
+					'Change this choice to turn notifications on or off for this post.',
+					'argentwolf-post-notifier'
+				),
+			} ),
+			createElement( SelectControl, {
+				label: __(
+					'Who will receive this post?',
+					'argentwolf-post-notifier'
+				),
+				value: audienceChoice( audience ),
+				options: audienceOptions(),
+				onChange: ( value ) => {
+					const next = chooseAudience( audience, value );
+					if ( next ) {
+						editPost( {
+							meta: { [ metaKeys.audienceConfig ]: next },
+						} );
+					}
+				},
+				help: __(
+					'Use Advanced audience targeting in the Post sidebar to combine lists or exclude recipients.',
+					'argentwolf-post-notifier'
+				),
+			} ),
+			willSend( sendIntent ) && typeof preview === 'number'
+				? createElement(
+						'p',
+						null,
+						sprintf(
+							/* translators: %d is an approximate count of eligible recipients. */
+							__(
+								'Estimated eligible recipients: %d',
+								'argentwolf-post-notifier'
+							),
+							preview
+						)
+				  )
+				: null,
+			willSend( sendIntent ) && preview === 0
+				? createElement(
+						Notice,
+						{ status: 'warning', isDismissible: false },
+						__(
+							'No currently eligible recipients match this selection.',
+							'argentwolf-post-notifier'
+						)
+				  )
+				: null,
+			willSend( sendIntent ) && previewError
+				? createElement(
+						Notice,
+						{ status: 'warning', isDismissible: false },
+						__(
+							'Recipient estimate unavailable. Check the default list and verification provider before publishing.',
+							'argentwolf-post-notifier'
+						)
+				  )
+				: null,
 			createElement(
 				'dl',
 				null,
@@ -1198,7 +1533,7 @@
 					null,
 					__( 'Audience', 'argentwolf-post-notifier' )
 				),
-				createElement( 'dd', null, audienceSummary( audience ) ),
+				createElement( 'dd', null, effectiveAudience( audience ) ),
 				createElement(
 					'dt',
 					null,
@@ -1222,7 +1557,7 @@
 				'p',
 				null,
 				__(
-					'This confirmation does not create a campaign or send email.',
+					'Emails are queued only when WordPress publishes the post. The estimate can change as subscription status changes.',
 					'argentwolf-post-notifier'
 				)
 			)
@@ -1250,6 +1585,7 @@
 } )(
 	window.wp.plugins,
 	window.wp.editor,
+	window.wp.editPost,
 	window.wp.components,
 	window.wp.data,
 	window.wp.element,
