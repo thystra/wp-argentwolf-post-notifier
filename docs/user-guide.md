@@ -25,9 +25,12 @@ neutral `site_default` preference currently means *not subscribed*: there is no
 site-wide opt-in policy setting yet. If the companion is missing, too old or
 unhealthy:
 
-- campaigns that include registered users wait (bounded to one day) and then fail closed;
+- campaigns that can include registered users, including **All Subscribers**, wait
+  (bounded to one day) and then fail closed;
 - the editor sidebar and an admin notice warn;
-- standalone double opt-in subscribers are not affected.
+- standalone-only audiences without possible registered users are not blocked
+  by provider health. Mixed audiences wait as a whole; standalone subscriber
+  confirmation and administration remain available during that wait.
 
 ## Site-wide notification defaults
 

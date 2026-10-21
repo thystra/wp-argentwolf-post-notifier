@@ -7,9 +7,14 @@
 
 namespace ArgentWolf\PostNotifier\Admin;
 
+use ArgentWolf\PostNotifier\Audit\AuditEventType;
+use ArgentWolf\PostNotifier\Audit\AuditService;
 use ArgentWolf\PostNotifier\Contracts\Registerable;
+use ArgentWolf\PostNotifier\Recipient\NamedListMemberType;
+use ArgentWolf\PostNotifier\Recipient\NamedListRepository;
 use ArgentWolf\PostNotifier\Subscriber\SubscriberStatus;
 use ArgentWolf\PostNotifier\Suppression\SuppressionService;
+use Throwable;
 
 /**
  * Capability-gated standalone subscriber list, suppression, and CSV export.
@@ -36,6 +41,11 @@ final class SubscriberAdminPage implements Registerable {
 	public const EXPORT_ACTION = 'argentwolf_post_notifier_export_subscribers';
 
 	/**
+	 * Assign checked contacts to a named list.
+	 */
+	public const ASSIGN_ACTION = 'argentwolf_post_notifier_assign_subscribers';
+
+	/**
 	 * Rows displayed per administration page.
 	 */
 	private const PER_PAGE = 50;
@@ -46,11 +56,15 @@ final class SubscriberAdminPage implements Registerable {
 	 * @param SubscriberAdminRepository $repository Administration persistence.
 	 * @param SubscriberCsvExporter     $exporter CSV exporter.
 	 * @param SuppressionService        $suppression Global suppression policy.
+	 * @param NamedListRepository|null  $lists Named-list persistence.
+	 * @param AuditService|null         $audit Structured audit ledger.
 	 */
 	public function __construct(
 		private SubscriberAdminRepository $repository,
 		private SubscriberCsvExporter $exporter,
-		private SuppressionService $suppression
+		private SuppressionService $suppression,
+		private ?NamedListRepository $lists = null,
+		private ?AuditService $audit = null
 	) {
 	}
 
@@ -69,6 +83,7 @@ final class SubscriberAdminPage implements Registerable {
 			'admin_post_' . self::EXPORT_ACTION,
 			array( $this, 'handle_export' )
 		);
+		add_action( 'admin_post_' . self::ASSIGN_ACTION, array( $this, 'handle_assign' ) );
 	}
 
 	/**
@@ -196,6 +211,84 @@ final class SubscriberAdminPage implements Registerable {
 	}
 
 	/**
+	 * Assign selected global registry identities to one existing named list.
+	 *
+	 * This never grants, changes, or reissues subscription consent. Only
+	 * validated IDs explicitly submitted from the current page may be added.
+	 *
+	 * @return never
+	 */
+	public function handle_assign(): never {
+		$this->require_capability();
+		if (
+			'POST' !== $this->request_method()
+			|| ! current_user_can( NamedListAdminPage::CAPABILITY )
+			|| null === $this->lists
+		) {
+			$this->die_with_status(
+				__( 'List management is not permitted.', 'argentwolf-post-notifier' ),
+				403
+			);
+		}
+		check_admin_referer( self::ASSIGN_ACTION );
+		$list_id = absint( $this->request_text( $_POST, 'list_id' ) );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- IDs checked below.
+		$raw_ids = wp_unslash( $_POST['subscriber_ids'] ?? array() );
+		if (
+			null === $this->lists->find( $list_id )
+			|| ! is_array( $raw_ids )
+			|| count( $raw_ids ) < 1
+			|| count( $raw_ids ) > self::PER_PAGE
+		) {
+			$this->redirect_assign( 'invalid' );
+		}
+
+		$ids = array();
+		foreach ( $raw_ids as $raw_id ) {
+			if ( ! is_scalar( $raw_id ) || ! ctype_digit( (string) $raw_id ) ) {
+				$this->redirect_assign( 'invalid' );
+			}
+			$id = absint( $raw_id );
+			if ( 0 === $id ) {
+				$this->redirect_assign( 'invalid' );
+			}
+			$ids[ $id ] = $id;
+		}
+		try {
+			foreach ( $ids as $id ) {
+				if ( null === $this->repository->email_for_id( $id ) ) {
+					$this->redirect_assign( 'invalid' );
+				}
+				$added = $this->lists->add_member( $list_id, NamedListMemberType::Subscriber, $id );
+				if ( $added && null !== $this->audit ) {
+					$this->audit->record_list_event(
+						AuditEventType::ListMemberAdded,
+						$list_id,
+						NamedListMemberType::Subscriber->value,
+						$id
+					);
+				}
+			}
+		} catch ( Throwable ) {
+			$this->redirect_assign( 'failed' );
+		}
+		$this->redirect_assign( 'saved' );
+	}
+
+	/**
+	 * Return to subscribers after a bulk-list assignment.
+	 *
+	 * @param string $notice Operation notice.
+	 * @return never
+	 */
+	private function redirect_assign( string $notice ): never {
+		wp_safe_redirect(
+			add_query_arg( 'arpn_notice', 'bulk_' . $notice, $this->list_url( null, '', 1 ) )
+		);
+		exit;
+	}
+
+	/**
 	 * Render search/status controls and the current-filter CSV export link.
 	 *
 	 * @param SubscriberStatus|null $status Current status filter.
@@ -240,6 +333,10 @@ final class SubscriberAdminPage implements Registerable {
 	 * @return void
 	 */
 	private function render_table( array $rows ): void {
+		$choices    = null !== $this->lists && current_user_can( NamedListAdminPage::CAPABILITY )
+			? $this->lists->all()
+			: array();
+		$can_assign = array() !== $choices;
 		echo '<table class="widefat fixed striped">';
 		echo '<thead><tr>';
 		$headings = array(
@@ -252,13 +349,16 @@ final class SubscriberAdminPage implements Registerable {
 			__( 'Consent', 'argentwolf-post-notifier' ),
 			__( 'Actions', 'argentwolf-post-notifier' ),
 		);
+		if ( $can_assign ) {
+			echo '<th scope="col">' . esc_html__( 'Select', 'argentwolf-post-notifier' ) . '</th>';
+		}
 		foreach ( $headings as $heading ) {
 			echo '<th scope="col">' . esc_html( $heading ) . '</th>';
 		}
 		echo '</tr></thead><tbody>';
 
 		if ( array() === $rows ) {
-			echo '<tr><td colspan="8">';
+			echo '<tr><td colspan="' . esc_attr( (string) ( $can_assign ? 9 : 8 ) ) . '">';
 			echo esc_html__(
 				'No subscribers match the current filters.',
 				'argentwolf-post-notifier'
@@ -266,20 +366,49 @@ final class SubscriberAdminPage implements Registerable {
 			echo '</td></tr>';
 		} else {
 			foreach ( $rows as $row ) {
-				$this->render_row( $row );
+				$this->render_row( $row, $can_assign );
 			}
 		}
 
 		echo '</tbody></table>';
+		if ( $can_assign ) {
+			// HTML form= associates the checkboxes above without nesting forms in
+			// per-row Suppress forms.
+			echo '<form id="arpn-assign-list" method="post" action="';
+			echo esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<input type="hidden" name="action" value="';
+			echo esc_attr( self::ASSIGN_ACTION ) . '">';
+			wp_nonce_field( self::ASSIGN_ACTION );
+			echo '<p><label for="arpn-assign-target">';
+			echo esc_html__( 'Add selected subscribers to:', 'argentwolf-post-notifier' );
+			echo '</label> <select id="arpn-assign-target" name="list_id" required>';
+			echo '<option value="0">' . esc_html__(
+				'Choose a named list',
+				'argentwolf-post-notifier'
+			) . '</option>';
+			foreach ( $choices as $list ) {
+				echo '<option value="' . esc_attr( (string) $list['id'] ) . '">';
+				echo esc_html( (string) $list['name'] ) . '</option>';
+			}
+			echo '</select> ';
+			submit_button(
+				__( 'Add selected to list', 'argentwolf-post-notifier' ),
+				'secondary',
+				'submit',
+				false
+			);
+			echo '</p></form>';
+		}
 	}
 
 	/**
 	 * Render one subscriber table row.
 	 *
 	 * @param array<string,mixed> $row Subscriber row.
+	 * @param bool                $can_assign Whether bulk list management is allowed.
 	 * @return void
 	 */
-	private function render_row( array $row ): void {
+	private function render_row( array $row, bool $can_assign = false ): void {
 		$subscriber_id = (int) ( $row['id'] ?? 0 );
 		$status        = (string) ( $row['status'] ?? '' );
 		$source        = (string) ( $row['signup_source'] ?? '' );
@@ -287,6 +416,14 @@ final class SubscriberAdminPage implements Registerable {
 		$consent       = (string) ( $row['consent_text_snapshot'] ?? '' );
 
 		echo '<tr>';
+		if ( $can_assign ) {
+			echo '<td><label><input type="checkbox" name="subscriber_ids[]"';
+			echo ' form="arpn-assign-list"';
+			echo ' value="' . esc_attr( (string) $subscriber_id ) . '">';
+			echo '<span class="screen-reader-text">';
+			echo esc_html__( 'Select subscriber', 'argentwolf-post-notifier' );
+			echo '</span></label></td>';
+		}
 		echo '<td>' . esc_html( (string) ( $row['email'] ?? '' ) ) . '</td>';
 		echo '<td>' . esc_html( (string) ( $row['display_name'] ?? '' ) ) . '</td>';
 		echo '<td>' . esc_html( ucfirst( $status ) ) . '</td>';
@@ -401,12 +538,29 @@ final class SubscriberAdminPage implements Registerable {
 	 */
 	private function render_notice(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only notice code.
-		if ( 'suppressed' !== $this->request_text( $_GET, 'arpn_notice' ) ) {
+		$notice   = $this->request_text( $_GET, 'arpn_notice' );
+		$messages = array(
+			'suppressed'   => __( 'Subscriber suppressed.', 'argentwolf-post-notifier' ),
+			'bulk_saved'   => __(
+				'Selected contacts assigned to the named list.',
+				'argentwolf-post-notifier'
+			),
+			'bulk_failed'  => __(
+				'Some list assignments could not be completed.',
+				'argentwolf-post-notifier'
+			),
+			'bulk_invalid' => __(
+				'Select contacts and an existing named list.',
+				'argentwolf-post-notifier'
+			),
+		);
+		if ( ! isset( $messages[ $notice ] ) ) {
 			return;
 		}
-
-		echo '<div class="notice notice-success is-dismissible"><p>';
-		echo esc_html__( 'Subscriber suppressed.', 'argentwolf-post-notifier' );
+		$notice_class = in_array( $notice, array( 'bulk_failed', 'bulk_invalid' ), true )
+			? 'notice-error' : 'notice-success';
+		echo '<div class="notice ' . esc_attr( $notice_class ) . ' is-dismissible"><p>';
+		echo esc_html( $messages[ $notice ] );
 		echo '</p></div>';
 	}
 

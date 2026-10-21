@@ -74,6 +74,44 @@ final class AuditService {
 	}
 
 	/**
+	 * Record a new membership from one CSV batch without retaining the file.
+	 *
+	 * A shared opaque import reference groups the memberships established by
+	 * one administrator request. No email, CSV content, or token is logged.
+	 *
+	 * @param int    $list_id       Target list ID.
+	 * @param int    $subscriber_id Subscriber identity ID.
+	 * @param string $batch_id      Random hexadecimal import reference.
+	 * @return void
+	 * @throws InvalidArgumentException When the import provenance is invalid.
+	 */
+	public function record_csv_membership(
+		int $list_id,
+		int $subscriber_id,
+		string $batch_id
+	): void {
+		if (
+			$list_id < 1 || $subscriber_id < 1
+			|| 1 !== preg_match( '/\A[a-f0-9]{24}\z/D', $batch_id )
+		) {
+			throw new InvalidArgumentException( 'Invalid CSV membership provenance.' );
+		}
+
+		$this->repository->record(
+			AuditEventType::ListMemberAdded,
+			$this->actor_user_id(),
+			self::SUBJECT_LIST,
+			$list_id,
+			'subscriber',
+			$subscriber_id,
+			null,
+			$batch_id,
+			'csv_import',
+			$this->normalize_now( null )
+		);
+	}
+
+	/**
 	 * Record one global-suppression audit event using only keyed email identity.
 	 *
 	 * @param AuditEventType         $event_type Stable suppression event type.

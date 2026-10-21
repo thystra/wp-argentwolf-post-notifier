@@ -119,13 +119,20 @@ final class CampaignQueueGate {
 	/**
 	 * Whether a configuration can expand to registered users.
 	 *
-	 * Named lists may contain typed user members, so they count.
+	 * Named lists may contain typed user members, so they count. The site-wide
+	 * All Subscribers audience also includes opted-in registered users.
 	 *
 	 * @param array<string,mixed> $audience Audience configuration.
 	 * @return bool
 	 */
 	private function may_include_users( array $audience ): bool {
-		foreach ( array( 'role_slugs', 'named_list_ids', 'included_user_ids' ) as $key ) {
+		$registered_user_keys = array(
+			'role_slugs',
+			'named_list_ids',
+			'included_user_ids',
+			'include_all_subscribers',
+		);
+		foreach ( $registered_user_keys as $key ) {
 			if ( ! empty( $audience[ $key ] ) ) {
 				return true;
 			}

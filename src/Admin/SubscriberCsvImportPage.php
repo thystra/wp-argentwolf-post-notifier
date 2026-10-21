@@ -145,6 +145,24 @@ final class SubscriberCsvImportPage implements Registerable {
 		echo '</strong></label><br>';
 		echo '<input id="arpn-subscriber-csv" type="file" name="';
 		echo esc_attr( self::FILE_FIELD ) . '" accept=".csv,text/csv" required></p>';
+		$lists = $this->list_choices();
+		if ( array() !== $lists ) {
+			echo '<p><label for="arpn-import-lists"><strong>';
+			echo esc_html__( 'Add imported contacts to named lists', 'argentwolf-post-notifier' );
+			echo '</strong></label><br>';
+			echo '<select id="arpn-import-lists" name="list_ids[]" multiple size="5">';
+			foreach ( $lists as $id => $name ) {
+				echo '<option value="' . esc_attr( (string) $id ) . '">';
+				echo esc_html( $name ) . '</option>';
+			}
+			echo '</select></p><p class="description">';
+			echo esc_html__(
+				// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+				'Use Ctrl or Command to choose multiple lists. Membership remains pending until the email confirms global consent.',
+				'argentwolf-post-notifier'
+			);
+			echo '</p>';
+		}
 		echo '<p><label><input type="checkbox" name="';
 		echo esc_attr( self::APPROVAL_FIELD ) . '" value="1" required> ';
 		echo esc_html__(
@@ -154,7 +172,8 @@ final class SubscriberCsvImportPage implements Registerable {
 		echo '</label></p>';
 		echo '<p class="description">';
 		echo esc_html__(
-			'No address becomes subscribed unless its recipient intentionally confirms.',
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'Each email has one global consent status. Selected list memberships become eligible automatically upon confirmation.',
 			'argentwolf-post-notifier'
 		);
 		echo '</p>';
@@ -359,6 +378,23 @@ final class SubscriberCsvImportPage implements Registerable {
 			$this->redirect( array( 'arpn_import' => 'approval_required' ) );
 		}
 
+		// Only list managers may assign memberships through subscriber CSV intake.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated below.
+		$raw_ids = wp_unslash( $_POST['list_ids'] ?? array() );
+		if ( ! is_array( $raw_ids ) || count( $raw_ids ) > 25 ) {
+			$this->redirect( array( 'arpn_import' => 'error' ) );
+		}
+		if ( array() !== $raw_ids && ! current_user_can( NamedListAdminPage::CAPABILITY ) ) {
+			$this->redirect( array( 'arpn_import' => 'error' ) );
+		}
+		$list_ids = array();
+		foreach ( $raw_ids as $raw_id ) {
+			if ( ! is_scalar( $raw_id ) || ! ctype_digit( (string) $raw_id ) ) {
+				$this->redirect( array( 'arpn_import' => 'error' ) );
+			}
+			$list_ids[] = absint( $raw_id );
+		}
+
 		$file = $this->uploaded_file();
 		if ( null === $file ) {
 			$this->redirect( array( 'arpn_import' => 'error' ) );
@@ -381,7 +417,7 @@ final class SubscriberCsvImportPage implements Registerable {
 		}
 
 		try {
-			$result = $this->importer->import( $stream );
+			$result = $this->importer->import( $stream, $list_ids );
 		} catch ( InvalidArgumentException | RuntimeException ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 			fclose( $stream );
@@ -399,6 +435,8 @@ final class SubscriberCsvImportPage implements Registerable {
 				'invalid'     => $result->invalid(),
 				'duplicates'  => $result->duplicates(),
 				'failed'      => $result->mail_failures(),
+				'listed'      => $result->memberships_added(),
+				'batch'       => $result->batch_id(),
 			)
 		);
 	}
@@ -424,6 +462,10 @@ final class SubscriberCsvImportPage implements Registerable {
 			$duplicates = absint( $this->request_text( $_GET, 'duplicates' ) );
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Aggregate count.
 			$failed = absint( $this->request_text( $_GET, 'failed' ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Aggregate count.
+			$listed = absint( $this->request_text( $_GET, 'listed' ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only reference.
+			$batch = sanitize_key( $this->request_text( $_GET, 'batch' ) );
 
 			$message = sprintf(
 				/* translators: 1: rows; 2: sent; 3: skipped; 4: invalid; 5: dupes; 6: failed. */
@@ -440,6 +482,24 @@ final class SubscriberCsvImportPage implements Registerable {
 			);
 			echo '<div class="notice notice-success is-dismissible"><p>';
 			echo esc_html( $message );
+			echo ' ';
+			echo esc_html(
+				sprintf(
+					/* translators: %d: newly assigned named-list memberships. */
+					__( '%d new list memberships recorded.', 'argentwolf-post-notifier' ),
+					$listed
+				)
+			);
+			if ( 1 === preg_match( '/\A[a-f0-9]{24}\z/D', $batch ) ) {
+				echo ' ';
+				echo esc_html(
+					sprintf(
+						/* translators: %s: opaque CSV import batch reference. */
+						__( 'Import reference: %s', 'argentwolf-post-notifier' ),
+						$batch
+					)
+				);
+			}
 			echo '</p></div>';
 			return;
 		}

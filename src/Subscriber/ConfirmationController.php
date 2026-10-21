@@ -116,6 +116,11 @@ final class ConfirmationController implements Registerable {
 		$html .= esc_html__( 'Confirm your subscription', 'argentwolf-post-notifier' );
 		$html .= '</h1>';
 		$html .= '<p>' . $message . '</p>';
+		$html .= '<p>' . esc_html__(
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'One confirmation enables site-wide notifications and administrator-assigned lists. A global unsubscribe stops all notifications.',
+			'argentwolf-post-notifier'
+		) . '</p>';
 		$html .= '<form method="post" action="' . esc_url( $action_url ) . '">';
 		$html .= sprintf(
 			'<input type="hidden" name="action" value="%s">',

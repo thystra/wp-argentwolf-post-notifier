@@ -491,7 +491,9 @@ final class Plugin {
 					return new SubscriberAdminPage(
 						$repository,
 						$exporter,
-						$suppression
+						$suppression,
+						self::typed( $services, NamedListRepository::class ),
+						self::typed( $services, AuditService::class )
 					);
 				}
 			);
@@ -527,7 +529,9 @@ final class Plugin {
 								get_bloginfo( 'name' ),
 								ENT_QUOTES
 							)
-						)
+						),
+						self::typed( $services, NamedListRepository::class ),
+						self::typed( $services, AuditService::class )
 					);
 				}
 			);

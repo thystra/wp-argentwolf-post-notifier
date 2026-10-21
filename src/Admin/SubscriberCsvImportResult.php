@@ -14,12 +14,14 @@ final class SubscriberCsvImportResult {
 	/**
 	 * Construct an immutable import result.
 	 *
-	 * @param int $rows_total    Nonblank data rows inspected.
-	 * @param int $submitted     Confirmation invitations submitted to the transport.
-	 * @param int $skipped       Existing/cooldown/suppressed rows not invited.
-	 * @param int $invalid       Rows whose email could not be normalized.
-	 * @param int $duplicates    Duplicate normalized emails within the CSV.
-	 * @param int $mail_failures Confirmation invitations rejected by the transport.
+	 * @param int    $rows_total    Nonblank data rows inspected.
+	 * @param int    $submitted     Confirmation invitations submitted to the transport.
+	 * @param int    $skipped       Existing/cooldown/suppressed rows not invited.
+	 * @param int    $invalid       Rows whose email could not be normalized.
+	 * @param int    $duplicates    Duplicate normalized emails within the CSV.
+	 * @param int    $mail_failures Confirmation invitations rejected by the transport.
+	 * @param int    $memberships_added Newly persisted named-list associations.
+	 * @param string $batch_id          Opaque reference for this import.
 	 */
 	public function __construct(
 		private int $rows_total,
@@ -27,7 +29,9 @@ final class SubscriberCsvImportResult {
 		private int $skipped,
 		private int $invalid,
 		private int $duplicates,
-		private int $mail_failures
+		private int $mail_failures,
+		private int $memberships_added = 0,
+		private string $batch_id = ''
 	) {
 	}
 
@@ -74,6 +78,24 @@ final class SubscriberCsvImportResult {
 	 */
 	public function duplicates(): int {
 		return $this->duplicates;
+	}
+
+	/**
+	 * Return the privacy-safe CSV import reference.
+	 *
+	 * @return string
+	 */
+	public function batch_id(): string {
+		return $this->batch_id;
+	}
+
+	/**
+	 * Return newly created named-list memberships regardless of consent state.
+	 *
+	 * @return int
+	 */
+	public function memberships_added(): int {
+		return $this->memberships_added;
 	}
 
 	/**
