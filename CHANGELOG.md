@@ -1,6 +1,23 @@
 <!-- ~/src/wp-argentwolf-post-notifier/CHANGELOG.md -->
 # ArgentWolf Post Notifier Changelog
 
+## 0.1.0-rc.5 — Release candidate (live testing)
+
+- Site defaults: add a send policy (upgraded sites remain Off) and a dynamic
+  All Subscribers audience, with fail-closed handling of deleted named lists.
+- Editor: native Post sidebar notification controls, contextual help and
+  pre-publish notification confirmation.
+- Lists: named-list duplication; bulk selection and membership copy, move,
+  removal and assignment from the global Subscribers screen.
+- CSV: one global subscriber identity and invitation per address; persist
+  memberships in multiple named lists while consent is pending, then make
+  retained memberships eligible after central confirmation. Respect removal,
+  suppression and unsubscribe without granting consent on import.
+- Delivery: recheck affirmative registered-user opt-in and handle verification
+  provider health for audiences including All Subscribers.
+- CI: add isolated smoke and database-backed consent/list acceptance checks.
+- Release validation: live WordPress installation and delivery checks pending.
+
 ## 0.1.0-rc.4 — Release candidate (unreleased)
 
 - Fix: on sites upgraded from rc.1, the Invite existing users screen showed
