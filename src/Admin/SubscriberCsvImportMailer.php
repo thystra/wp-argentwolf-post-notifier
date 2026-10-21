@@ -52,6 +52,12 @@ final class SubscriberCsvImportMailer {
 			),
 			$site_name
 		);
+		$body .= "\n\n";
+		$body .= __(
+			// phpcs:ignore Generic.Files.LineLength -- Preserve gettext source text.
+			'One confirmation enables site-wide notifications and administrator-assigned lists. A global unsubscribe stops all notifications.',
+			'argentwolf-post-notifier'
+		);
 		$body  .= "\n\n";
 		$body  .= __(
 			'You are not subscribed unless you choose to confirm at this link:',

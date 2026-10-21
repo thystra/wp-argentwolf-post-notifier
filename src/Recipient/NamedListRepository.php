@@ -178,6 +178,50 @@ final class NamedListRepository {
 	}
 
 	/**
+	 * Duplicate a list and its typed memberships without copying consent state.
+	 *
+	 * If the membership copy fails, the new list is removed. Existing, missing
+	 * backing entities are omitted rather than revived in the duplicate.
+	 *
+	 * @param int $source_id Existing list ID.
+	 * @param int $created_by Current administrator ID.
+	 * @return int New list ID.
+	 * @throws InvalidArgumentException When the source list is missing.
+	 * @throws \Throwable When list creation or membership copying fails.
+	 */
+	public function duplicate( int $source_id, int $created_by ): int {
+		$source = $this->find( $source_id );
+		if ( null === $source ) {
+			throw new InvalidArgumentException( 'Source list does not exist.' );
+		}
+
+		$original = (string) $source['name'];
+		$name     = ( function_exists( 'mb_strcut' )
+			? mb_strcut( $original, 0, 184, 'UTF-8' )
+			: substr( $original, 0, 184 ) ) . ' (copy)';
+		$new_id   = $this->create( $name, (string) ( $source['description'] ?? '' ), $created_by );
+		try {
+			foreach ( $this->members( $source_id ) as $member ) {
+				$type = NamedListMemberType::tryFrom( (string) $member['member_type'] );
+				if ( null === $type ) {
+					continue;
+				}
+				$id = NamedListMemberType::User === $type
+					? (int) $member['user_id']
+					: (int) $member['subscriber_id'];
+				if ( $this->entity_exists( $type, $id ) ) {
+					$this->add_member( $new_id, $type, $id );
+				}
+			}
+		} catch ( \Throwable $error ) {
+			$this->delete( $new_id );
+			throw $error;
+		}
+
+		return $new_id;
+	}
+
+	/**
 	 * Update one named list.
 	 *
 	 * @param int                    $list_id     List row ID.

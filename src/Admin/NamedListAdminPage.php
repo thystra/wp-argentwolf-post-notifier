@@ -58,6 +58,16 @@ final class NamedListAdminPage implements Registerable {
 	public const REMOVE_ACTION = 'argentwolf_post_notifier_remove_list_member';
 
 	/**
+	 * Duplicate a list (members, not consent).
+	 */
+	public const DUPLICATE_ACTION = 'argentwolf_post_notifier_duplicate_list';
+
+	/**
+	 * Bulk move, copy, or remove selected existing memberships.
+	 */
+	public const BULK_ACTION = 'argentwolf_post_notifier_bulk_list_members';
+
+	/**
 	 * Structured audit policy.
 	 *
 	 * @var AuditService
@@ -108,6 +118,8 @@ final class NamedListAdminPage implements Registerable {
 			'admin_post_' . self::REMOVE_ACTION,
 			array( $this, 'handle_remove_member' )
 		);
+		add_action( 'admin_post_' . self::DUPLICATE_ACTION, array( $this, 'handle_duplicate' ) );
+		add_action( 'admin_post_' . self::BULK_ACTION, array( $this, 'handle_bulk' ) );
 	}
 
 	/**
@@ -349,6 +361,111 @@ final class NamedListAdminPage implements Registerable {
 	}
 
 	/**
+	 * Duplicate the selected list with the same membership intent.
+	 *
+	 * @return never
+	 */
+	public function handle_duplicate(): never {
+		$this->require_post();
+		check_admin_referer( self::DUPLICATE_ACTION );
+		$list_id = absint( $this->request_text( $_POST, 'list_id' ) );
+		try {
+			$new_id = $this->repository->duplicate( $list_id, get_current_user_id() );
+		} catch ( Throwable ) {
+			$this->redirect_editor( $list_id, 'duplicate_failed' );
+		}
+		// phpcs:disable Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- Optional audit.
+		try {
+			$this->audit->record_list_event( AuditEventType::ListCreated, $new_id );
+		} catch ( Throwable ) {
+			// Do not report a successful copy as failed if its audit write fails.
+		}
+		// phpcs:enable Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		$this->redirect_editor( $new_id, 'duplicated' );
+	}
+
+	/**
+	 * Edit selected memberships without ever changing global consent.
+	 *
+	 * This action only accepts membership IDs actually belonging to the source
+	 * list, and never trusts submitted user or subscriber identities.
+	 *
+	 * @return never
+	 */
+	public function handle_bulk(): never {
+		$this->require_post();
+		check_admin_referer( self::BULK_ACTION );
+		$list_id = absint( $this->request_text( $_POST, 'list_id' ) );
+		$action  = $this->request_text( $_POST, 'bulk_operation' );
+		$target  = absint( $this->request_text( $_POST, 'target_list_id' ) );
+		$valid   = array( 'remove', 'copy', 'move' );
+		if ( null === $this->repository->find( $list_id ) || ! in_array( $action, $valid, true ) ) {
+			$this->redirect_editor( $list_id, 'bulk_invalid' );
+		}
+		if (
+			'remove' !== $action
+			&& ( $list_id === $target || null === $this->repository->find( $target ) )
+		) {
+			$this->redirect_editor( $list_id, 'bulk_invalid' );
+		}
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- IDs checked below.
+		$submitted = wp_unslash( $_POST['membership_ids'] ?? array() );
+		if ( ! is_array( $submitted ) || count( $submitted ) > 250 ) {
+			$this->redirect_editor( $list_id, 'bulk_invalid' );
+		}
+		$selected = array();
+		foreach ( $submitted as $submitted_id ) {
+			if ( ! is_scalar( $submitted_id ) || ! ctype_digit( (string) $submitted_id ) ) {
+				$this->redirect_editor( $list_id, 'bulk_invalid' );
+			}
+			$selected[ absint( $submitted_id ) ] = true;
+		}
+		if ( array() === $selected || isset( $selected[0] ) ) {
+			$this->redirect_editor( $list_id, 'bulk_invalid' );
+		}
+
+		try {
+			foreach ( $this->repository->members( $list_id ) as $member ) {
+				$membership_id = (int) $member['membership_id'];
+				if ( ! isset( $selected[ $membership_id ] ) ) {
+					continue;
+				}
+				$type = NamedListMemberType::tryFrom( (string) $member['member_type'] );
+				if ( null === $type ) {
+					continue;
+				}
+				$id = NamedListMemberType::User === $type
+					? (int) $member['user_id']
+					: (int) $member['subscriber_id'];
+				if ( 'remove' !== $action ) {
+					$added = $this->repository->add_member( $target, $type, $id );
+					if ( $added ) {
+						$this->audit->record_list_event(
+							AuditEventType::ListMemberAdded,
+							$target,
+							$type->value,
+							$id
+						);
+					}
+				}
+				if ( 'copy' !== $action ) {
+					$this->repository->remove_member( $list_id, $membership_id );
+					$this->audit->record_list_event(
+						AuditEventType::ListMemberRemoved,
+						$list_id,
+						'membership',
+						$membership_id
+					);
+				}
+				unset( $selected[ $membership_id ] );
+			}
+		} catch ( Throwable ) {
+			$this->redirect_editor( $list_id, 'bulk_failed' );
+		}
+		$this->redirect_editor( $list_id, array() === $selected ? 'bulk_done' : 'bulk_failed' );
+	}
+
+	/**
 	 * Render the list index and create-list form.
 	 *
 	 * @return void
@@ -454,6 +571,19 @@ final class NamedListAdminPage implements Registerable {
 		);
 		echo '</span></form>';
 
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="';
+		echo esc_attr( self::DUPLICATE_ACTION ) . '">';
+		echo '<input type="hidden" name="list_id" value="' . esc_attr( (string) $list_id ) . '">';
+		wp_nonce_field( self::DUPLICATE_ACTION );
+		submit_button(
+			__( 'Duplicate list and members', 'argentwolf-post-notifier' ),
+			'secondary',
+			'submit',
+			false
+		);
+		echo '</form>';
+
 		echo '<hr><h2>' . esc_html__( 'Add member', 'argentwolf-post-notifier' ) . '</h2>';
 		echo '<p>';
 		echo esc_html__(
@@ -532,18 +662,61 @@ final class NamedListAdminPage implements Registerable {
 			return;
 		}
 
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::BULK_ACTION ) . '">';
+		echo '<input type="hidden" name="list_id" value="' . esc_attr( (string) $list_id ) . '">';
+		wp_nonce_field( self::BULK_ACTION );
 		echo '<table class="widefat striped"><thead><tr>';
+		echo '<th><span class="screen-reader-text">';
+		echo esc_html__( 'Select members', 'argentwolf-post-notifier' );
+		echo '</span></th>';
 		echo '<th>' . esc_html__( 'Type', 'argentwolf-post-notifier' ) . '</th>';
 		echo '<th>' . esc_html__( 'Email', 'argentwolf-post-notifier' ) . '</th>';
 		echo '<th>' . esc_html__( 'Name', 'argentwolf-post-notifier' ) . '</th>';
-		echo '<th>' . esc_html__( 'State', 'argentwolf-post-notifier' ) . '</th>';
+		echo '<th>' . esc_html__( 'Subscription status', 'argentwolf-post-notifier' ) . '</th>';
 		echo '<th>' . esc_html__( 'Suppressed', 'argentwolf-post-notifier' ) . '</th>';
-		echo '<th>' . esc_html__( 'Action', 'argentwolf-post-notifier' ) . '</th>';
 		echo '</tr></thead><tbody>';
 		foreach ( $members as $member ) {
 			$this->render_member_row( $list_id, $member );
 		}
 		echo '</tbody></table>';
+		echo '<p><label for="arpn-bulk-op">';
+		echo esc_html__( 'For selected members:', 'argentwolf-post-notifier' );
+		echo '</label> <select id="arpn-bulk-op" name="bulk_operation">';
+		echo '<option value="remove">' . esc_html__(
+			'Remove from this list',
+			'argentwolf-post-notifier'
+		) . '</option>';
+		echo '<option value="copy">' . esc_html__(
+			'Add to another list',
+			'argentwolf-post-notifier'
+		) . '</option>';
+		echo '<option value="move">' . esc_html__(
+			'Move to another list',
+			'argentwolf-post-notifier'
+		) . '</option>';
+		echo '</select> <label for="arpn-bulk-target">';
+		echo esc_html__( 'Target list:', 'argentwolf-post-notifier' );
+		echo '</label> <select id="arpn-bulk-target" name="target_list_id">';
+		echo '<option value="0">' . esc_html__(
+			'Choose a list',
+			'argentwolf-post-notifier'
+		) . '</option>';
+		foreach ( $this->repository->all() as $list ) {
+			if ( (int) $list['id'] === $list_id ) {
+				continue;
+			}
+			echo '<option value="' . esc_attr( (string) $list['id'] ) . '">';
+			echo esc_html( (string) $list['name'] ) . '</option>';
+		}
+		echo '</select> ';
+		submit_button(
+			__( 'Apply to selected', 'argentwolf-post-notifier' ),
+			'secondary',
+			'submit',
+			false
+		);
+		echo '</p></form>';
 	}
 
 	/**
@@ -556,12 +729,19 @@ final class NamedListAdminPage implements Registerable {
 	private function render_member_row( int $list_id, array $member ): void {
 		$type       = NamedListMemberType::tryFrom( (string) $member['member_type'] );
 		$email      = (string) ( $member['email'] ?? '' );
+		$status     = (string) ( $member['subscriber_status'] ?? '' );
 		$state      = NamedListMemberType::Subscriber === $type
-			? (string) ( $member['subscriber_status'] ?? '' )
-			: __( 'WordPress user', 'argentwolf-post-notifier' );
+			? ( 'pending' === $status
+				? __( 'Consent pending', 'argentwolf-post-notifier' )
+				: $status )
+			: __( 'WordPress user: preference checked at send', 'argentwolf-post-notifier' );
 		$suppressed = '' !== $email && $this->suppression->is_suppressed( $email );
 
-		echo '<tr><td>';
+		echo '<tr><td><label><input type="checkbox" name="membership_ids[]" value="';
+		echo esc_attr( (string) (int) $member['membership_id'] ) . '">';
+		echo '<span class="screen-reader-text">';
+		echo esc_html__( 'Select this member', 'argentwolf-post-notifier' );
+		echo '</span></label></td><td>';
 		echo esc_html( null === $type ? '' : $type->value );
 		echo '</td><td>' . esc_html( $email ) . '</td>';
 		echo '<td>' . esc_html( (string) ( $member['display_name'] ?? '' ) ) . '</td>';
@@ -569,15 +749,7 @@ final class NamedListAdminPage implements Registerable {
 		echo $suppressed
 			? esc_html__( 'Yes', 'argentwolf-post-notifier' )
 			: esc_html__( 'No', 'argentwolf-post-notifier' );
-		echo '</td><td>';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		echo '<input type="hidden" name="action" value="' . esc_attr( self::REMOVE_ACTION ) . '">';
-		echo '<input type="hidden" name="list_id" value="' . esc_attr( (string) $list_id ) . '">';
-		echo '<input type="hidden" name="membership_id" value="';
-		echo esc_attr( (string) (int) $member['membership_id'] ) . '">';
-		wp_nonce_field( self::REMOVE_ACTION );
-		submit_button( __( 'Remove', 'argentwolf-post-notifier' ), 'small', 'submit', false );
-		echo '</form></td></tr>';
+		echo '</td></tr>';
 	}
 
 	/**
@@ -590,6 +762,23 @@ final class NamedListAdminPage implements Registerable {
 		$notice   = sanitize_key( $this->request_text( $_GET, 'arpn_notice' ) );
 		$messages = array(
 			'created'          => __( 'Notification list created.', 'argentwolf-post-notifier' ),
+			'duplicated'       => __(
+				'List and memberships duplicated.',
+				'argentwolf-post-notifier'
+			),
+			'duplicate_failed' => __(
+				'The list could not be duplicated.',
+				'argentwolf-post-notifier'
+			),
+			'bulk_done'        => __( 'Selected memberships updated.', 'argentwolf-post-notifier' ),
+			'bulk_failed'      => __(
+				'Some memberships could not be updated.',
+				'argentwolf-post-notifier'
+			),
+			'bulk_invalid'     => __(
+				'Select members and a valid action and target.',
+				'argentwolf-post-notifier'
+			),
 			'updated'          => __( 'Notification list updated.', 'argentwolf-post-notifier' ),
 			'deleted'          => __( 'Notification list deleted.', 'argentwolf-post-notifier' ),
 			'invalid_list'     => __( 'Enter a valid list name.', 'argentwolf-post-notifier' ),
@@ -618,7 +807,17 @@ final class NamedListAdminPage implements Registerable {
 		}
 
 		$class = str_starts_with( $notice, 'invalid_' )
-			|| in_array( $notice, array( 'member_not_found', 'create_failed' ), true )
+			|| in_array(
+				$notice,
+				array(
+					'member_not_found',
+					'create_failed',
+					'duplicate_failed',
+					'bulk_failed',
+					'bulk_invalid',
+				),
+				true
+			)
 			? 'notice notice-error'
 			: 'notice notice-success is-dismissible';
 		echo '<div class="' . esc_attr( $class ) . '"><p>';

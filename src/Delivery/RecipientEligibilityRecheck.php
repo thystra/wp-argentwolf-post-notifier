@@ -21,8 +21,8 @@ use ArgentWolf\PostNotifier\Verification\RegisteredUserEligibility;
  * Suppression always wins. Otherwise the row stays deliverable if any
  * identity retained in the snapshot is still eligible: a registered user
  * must still exist with the same normalized email, be verified by a healthy
- * provider, and not be unsubscribed; a standalone subscriber must still be
- * `subscribed` with the same normalized email. Extensions may veto through
+ * provider, and retain explicit opt-in (neutral is not consent). A standalone
+ * subscriber must still be `subscribed` with the same normalized email. Extensions may veto through
  * `argentwolf_post_notifier_recipient_eligible` but can never make an
  * ineligible recipient eligible.
  */
@@ -129,7 +129,12 @@ final class RecipientEligibilityRecheck {
 		if ( null !== $verification ) {
 			return $verification;
 		}
-		if ( RegisteredUserPreference::Unsubscribed === $this->preferences->get( $user_id ) ) {
+		// Neutral site-default is not consent. A post-publication preference
+		// change can revoke opt-in before this recipient is submitted.
+		if (
+			RegisteredUserPreference::Subscribed
+			!== $this->preferences->get( $user_id )
+		) {
 			return 'unsubscribed';
 		}
 
