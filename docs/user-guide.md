@@ -1,6 +1,6 @@
 # ArgentWolf Post Notifier: user and operator guide
 
-Applies to 0.1.0-rc.4.
+Applies to 0.1.0-rc.5.
 
 ## Install and upgrade
 
@@ -8,7 +8,7 @@ Applies to 0.1.0-rc.4.
    WordPress.org. The notifier declares it with `Requires Plugins`, so WordPress
    will not activate the notifier without it.
 2. Upload the release ZIP through **Plugins → Add New → Upload Plugin** and activate it.
-3. Activation creates the plugin tables (schema 3) and grants administrators the
+3. Activation creates the plugin tables (schema 4) and grants administrators the
    `manage_post_notification_subscribers`, `manage_post_notification_lists` and
    `send_post_notifications` capabilities.
 
@@ -51,10 +51,26 @@ Campaigns freeze this effective audience on actual publication. Membership
 never bypasses consent, verification, or suppression; matching identities
 are deduplicated by normalized email before delivery.
 
-The native Post sidebar, improved publish-time prompts, list duplication,
-bulk selection, and CSV pending-membership enrollment are planned as separate
-qualified changes. The existing editor plugin sidebar remains in place in
-this tranche.
+The native **Post** sidebar exposes notification intent, audience and
+contextual guidance. The pre-publish prompt summarizes the effective send
+choice so authors can override the site default before publishing.
+
+## Named lists and CSV enrollment
+
+Administrators can duplicate named lists and bulk add, copy, move or remove
+membership for selected contacts. CSV import can target multiple named lists;
+every address belongs to one global subscriber registry, not a separate
+subscription for each list. New contacts retain intended list memberships
+while **consent pending**, but are not eligible for any mail until they
+confirm the single global invitation. Confirmation automatically makes all
+still-assigned lists eligible, along with All Subscribers. Removing a pending
+membership prevents it from being restored by a later confirmation.
+A global unsubscribe or suppression blocks delivery to every audience while
+preserving membership records for administration. A confirmed contact is not
+necessarily eligible if suppressed, unsubscribed, or otherwise disqualified.
+
+The template-settings test email is separate from publishing a post. A
+post-specific test-notification action is not yet part of RC5.
 
 ## Cron and the WP-CLI worker
 
