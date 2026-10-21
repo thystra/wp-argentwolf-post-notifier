@@ -58,13 +58,13 @@ final class SubscriberCsvImportMailer {
 			'One confirmation enables site-wide notifications and administrator-assigned lists. A global unsubscribe stops all notifications.',
 			'argentwolf-post-notifier'
 		);
-		$body .= "\n\n";
-		$body .= __(
+		$body  .= "\n\n";
+		$body  .= __(
 			'You are not subscribed unless you choose to confirm at this link:',
 			'argentwolf-post-notifier'
 		);
-		$body .= "\n" . $confirmation_url . "\n\n";
-		$body .= __(
+		$body  .= "\n" . $confirmation_url . "\n\n";
+		$body  .= __(
 			'If you do not want these notifications, ignore this message.',
 			'argentwolf-post-notifier'
 		);

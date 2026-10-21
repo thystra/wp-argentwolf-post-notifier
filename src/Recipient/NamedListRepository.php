@@ -187,8 +187,7 @@ final class NamedListRepository {
 	 * @param int $created_by Current administrator ID.
 	 * @return int New list ID.
 	 * @throws InvalidArgumentException When the source list is missing.
-	 * @throws RuntimeException When the copy cannot be completed.
-	 * @throws \Throwable When the membership copy fails.
+	 * @throws \Throwable When list creation or membership copying fails.
 	 */
 	public function duplicate( int $source_id, int $created_by ): int {
 		$source = $this->find( $source_id );

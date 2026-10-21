@@ -63,7 +63,7 @@ final class SubscriberCsvImportTest extends WP_UnitTestCase {
 		self::assertSame( SubscriberStatus::Pending->value, $row['status'] );
 		self::assertSame( SubscriberCsvImporter::SIGNUP_SOURCE, $row['signup_source'] );
 		self::assertSame(
-			'I agree to receive email notifications when new posts are published.',
+			'I consent to site-wide post notifications, including administrator-assigned lists.',
 			$row['consent_text_snapshot']
 		);
 		self::assertNotEmpty( $row['confirmation_token_hash'] );
